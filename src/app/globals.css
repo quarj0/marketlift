@@ -1,0 +1,257 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =========================================================
+   Marketlift brand system — approved blue / navy / orange mark
+   ========================================================= */
+
+@theme {
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #dbeaff;
+  --color-brand-200: #bdd8ff;
+  --color-brand-300: #8fbdff;
+  --color-brand-400: #579aff;
+  --color-brand-500: #2578ff;
+  --color-brand-600: #0b63f6;
+  --color-brand-700: #0a4fc7;
+  --color-brand-800: #0a3e9d;
+  --color-brand-900: #082f78;
+
+  --color-lift-50: #fff7e8;
+  --color-lift-100: #ffedc5;
+  --color-lift-200: #ffda85;
+  --color-lift-300: #ffc247;
+  --color-lift-400: #ffa51f;
+  --color-lift-500: #ff8800;
+  --color-lift-600: #f56d00;
+  --color-lift-700: #cc5100;
+
+  --color-ink-900: #071b3b;
+  --color-ink-950: #02122f;
+
+  --shadow-soft: 0 14px 36px rgba(2, 18, 47, 0.09);
+  --shadow-brand: 0 18px 50px rgba(11, 99, 246, 0.18);
+}
+
+:root {
+  color-scheme: light;
+
+  --background: #f8fafc;
+  --foreground: #071b3b;
+
+  --card: #ffffff;
+  --card-foreground: #071b3b;
+  --popover: #ffffff;
+  --popover-foreground: #071b3b;
+
+  --primary: #0b63f6;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eef4fb;
+  --secondary-foreground: #071b3b;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #eef6ff;
+  --accent-foreground: #0a3e9d;
+
+  --destructive: #dc2626;
+
+  --border: #dbe3ee;
+  --input: #c8d3e1;
+  --ring: #2578ff;
+
+  --chart-1: #0b63f6;
+  --chart-2: #00aef0;
+  --chart-3: #ff8800;
+  --chart-4: #082f78;
+  --chart-5: #ffc247;
+
+  --radius: 0.8rem;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #071b3b;
+  --sidebar-primary: #0b63f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef6ff;
+  --sidebar-accent-foreground: #0a3e9d;
+  --sidebar-border: #dbe3ee;
+  --sidebar-ring: #2578ff;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #02122f;
+  --foreground: #f8fafc;
+  --card: #071b3b;
+  --card-foreground: #f8fafc;
+  --popover: #071b3b;
+  --popover-foreground: #f8fafc;
+
+  --primary: #579aff;
+  --primary-foreground: #02122f;
+
+  --secondary: #10284e;
+  --secondary-foreground: #f8fafc;
+  --muted: #10284e;
+  --muted-foreground: #a8b7cb;
+  --accent: #0b2d61;
+  --accent-foreground: #dbeaff;
+  --destructive: #ef4444;
+  --border: #203b61;
+  --input: #2b466c;
+  --ring: #8fbdff;
+
+  --chart-1: #579aff;
+  --chart-2: #00c2ff;
+  --chart-3: #ffa51f;
+  --chart-4: #bdd8ff;
+  --chart-5: #ffc247;
+
+  --sidebar: #071b3b;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #579aff;
+  --sidebar-primary-foreground: #02122f;
+  --sidebar-accent: #10284e;
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: #203b61;
+  --sidebar-ring: #8fbdff;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-width: 320px;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  :target {
+    scroll-margin-top: 7rem;
+  }
+}
+
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 1rem;
+  z-index: 9999;
+  transform: translateY(-150%);
+  opacity: 0;
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: #ff8800;
+  color: #071b3b;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(2, 18, 47, 0.22);
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+::selection {
+  background: #bdd8ff;
+  color: #02122f;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(37, 120, 255, 0.45);
+  outline-offset: 2px;
+}
+
+[data-scroll-lock="true"] {
+  overflow: hidden;
+}
+
+@supports (padding: max(0px)) {
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
