@@ -27,6 +27,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { ListingCard } from "./listing-card";
 import { AuthRequiredDialog } from "@/components/auth/auth-required-dialog";
 import { ReportDialog } from "@/components/feedback/report-dialog";
+import { ListingAvailabilityReport } from "./listing-availability-report";
+import { SellerReviewPreview } from "./seller-review-preview";
 import { EmptyState, InlineError } from "@/components/feedback/async-states";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -318,6 +320,8 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                 />
               </div>
             </article>
+
+            {seller && <SellerReviewPreview seller={seller} />}
           </section>
 
           <aside className="self-start lg:sticky lg:top-32">
@@ -412,6 +416,9 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                 </Button>
               </div>
             ) : null}
+
+            <ListingAvailabilityReport listingId={listing.id} />
+
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
               <div className="flex gap-2">
                 <ShieldAlert className="mt-0.5 size-5 shrink-0" />
