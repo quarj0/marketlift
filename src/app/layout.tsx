@@ -48,6 +48,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+
 function AppPrerenderFallback() {
   return (
     <div
@@ -96,17 +97,17 @@ export default function RootLayout({
       className={cn("font-sans", figtree.variable)}
     >
       <body>
-        <LocaleProvider>
-          <SkipLink />
-          <QueryProvider>
-            <AuthProvider>
-              <PwaRegister />
-              <Suspense fallback={<AppPrerenderFallback />}>
+        <Suspense fallback={<AppPrerenderFallback />}>
+          <LocaleProvider>
+            <SkipLink />
+            <QueryProvider>
+              <AuthProvider>
+                <PwaRegister />
                 <AccessController>{children}</AccessController>
-              </Suspense>
-            </AuthProvider>
-          </QueryProvider>
-        </LocaleProvider>
+              </AuthProvider>
+            </QueryProvider>
+          </LocaleProvider>
+        </Suspense>
       </body>
     </html>
   );

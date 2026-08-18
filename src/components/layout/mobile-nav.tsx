@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Home, MessageCircle, Plus, Search, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,6 +12,19 @@ export function MobileNav() {
   const pathname = usePathname();
   const { hydrated, isAuthenticated, canSell } = useAuth();
   const { t } = useLocale();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setMounted(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  const authReady = mounted && hydrated;
 
   const hidden =
     pathname.startsWith('/login') ||
@@ -19,7 +33,7 @@ export function MobileNav() {
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/reset-password');
 
-  if (!hydrated || !isAuthenticated || hidden) return null;
+  if (!authReady || !isAuthenticated || hidden) return null;
 
   const items = [
     { href: '/', label: t('mobile.home'), icon: Home },

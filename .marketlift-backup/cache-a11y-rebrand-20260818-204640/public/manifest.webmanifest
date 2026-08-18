@@ -1,3 +1,0 @@
-{
-  "name":"Marketlift — Buy & Sell in Brazil","short_name":"Marketlift","description":"Discover local products and trusted sellers across Brazil.","start_url":"/","scope":"/","display":"standalone","orientation":"portrait-primary","background_color":"#f8fafc","theme_color":"#188847","categories":["shopping","lifestyle"],"icons":[{"src":"/icons/icon-192.svg","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"},{"src":"/icons/icon-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]
-}

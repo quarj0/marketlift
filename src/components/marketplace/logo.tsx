@@ -10,11 +10,27 @@ interface MarketliftLogoProps {
   inverse?: boolean;
 }
 
-const dimensions = {
-  compact: { width: 188, height: 34 },
-  default: { width: 226, height: 40 },
-  large: { width: 226, height: 160 },
-  mark: { width: 48, height: 48 },
+const logoSources = {
+  compact: {
+    src: "/brand/marketlift-logo.png",
+    width: 1105,
+    height: 195,
+  },
+  default: {
+    src: "/brand/marketlift-logo.png",
+    width: 1105,
+    height: 195,
+  },
+  large: {
+    src: "/brand/marketlift-logo-full.png",
+    width: 1130,
+    height: 795,
+  },
+  mark: {
+    src: "/brand/marketlift-mark.png",
+    width: 512,
+    height: 512,
+  },
 } as const;
 
 export function MarketliftLogo({
@@ -22,14 +38,7 @@ export function MarketliftLogo({
   className,
   priority = false,
 }: MarketliftLogoProps) {
-  const source =
-    size === "mark"
-      ? "/brand/marketlift-mark.png"
-      : size === "large"
-        ? "/brand/marketlift-logo-full.png"
-        : "/brand/marketlift-logo.png";
-
-  const imageSize = dimensions[size];
+  const source = logoSources[size];
 
   return (
     <Link
@@ -42,18 +51,17 @@ export function MarketliftLogo({
       )}
     >
       <Image
-        src={source}
+        src={source.src}
         alt="Marketlift"
-        width={imageSize.width}
-        height={imageSize.height}
+        width={source.width}
+        height={source.height}
         priority={priority}
-        style={{ width: "auto" }}
         className={cn(
-          "w-auto object-contain",
-          size === "mark" && "size-11",
-          size === "compact" && "h-8 sm:h-9",
-          size === "default" && "h-9 sm:h-10",
-          size === "large" && "h-28 sm:h-32",
+          "block h-auto object-contain",
+          size === "mark" && "w-11",
+          size === "compact" && "w-[188px] sm:w-[204px]",
+          size === "default" && "w-[204px] sm:w-[226px]",
+          size === "large" && "w-[226px] sm:w-[256px]",
         )}
       />
     </Link>

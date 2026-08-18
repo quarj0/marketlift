@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { LockKeyhole, Store } from 'lucide-react';
 
@@ -81,11 +82,24 @@ export function AccessController({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useLocale();
   const { hydrated, isAuthenticated, canSell } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const authRequired = requiresAuthentication(pathname);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setMounted(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   if (!authRequired) return <>{children}</>;
 
-  if (!hydrated) {
+  const authReady = mounted && hydrated;
+
+  if (!authReady) {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-12" role="status" aria-live="polite">
         <span className="sr-only">{t('access.checking')}</span>
