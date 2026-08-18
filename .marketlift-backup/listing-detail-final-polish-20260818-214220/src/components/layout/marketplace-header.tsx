@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -45,7 +45,6 @@ export function MarketplaceHeader() {
   const pathname = usePathname();
   const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [location, setLocation] = useState<Location>({
     state: "São Paulo",
     stateCode: "SP",
@@ -54,24 +53,10 @@ export function MarketplaceHeader() {
 
   const { user, hydrated, isAuthenticated, canSell, logout } = useAuth();
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setMounted(true);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  // This gate belongs to the header itself so its first client render always
-  // matches the server HTML, even when the parent tree is streamed by Suspense.
-  const authReady = mounted && hydrated;
-
   const savedIdsQuery = useQuery({
     queryKey: ["saved-listing-ids"],
     queryFn: socialService.getSavedIds,
-    enabled: authReady && isAuthenticated,
+    enabled: hydrated && isAuthenticated,
     staleTime: 60_000,
   });
 
@@ -128,7 +113,7 @@ export function MarketplaceHeader() {
         >
           <LanguageSwitcher compact inverse className="lg:hidden" />
 
-          {authReady && user && (
+          {hydrated && user && (
             <>
               <Button
                 variant="ghost"
@@ -177,7 +162,7 @@ export function MarketplaceHeader() {
             </>
           )}
 
-          {authReady && !user && (
+          {hydrated && !user && (
             <>
               <Button
                 variant="ghost"
@@ -197,7 +182,7 @@ export function MarketplaceHeader() {
             </>
           )}
 
-          {authReady && (
+          {hydrated && (
             <Button
               asChild
               className="hidden bg-lift-500 font-extrabold text-ink-950 shadow-md shadow-orange-950/10 hover:bg-lift-400 sm:inline-flex"
@@ -209,7 +194,7 @@ export function MarketplaceHeader() {
             </Button>
           )}
 
-          {authReady && user && (
+          {hydrated && user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

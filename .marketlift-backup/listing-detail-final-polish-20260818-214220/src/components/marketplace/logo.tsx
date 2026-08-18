@@ -47,7 +47,6 @@ export function MarketliftLogo({
         width={imageSize.width}
         height={imageSize.height}
         priority={priority}
-        style={{ width: "auto" }}
         className={cn(
           "w-auto object-contain",
           size === "mark" && "size-11",

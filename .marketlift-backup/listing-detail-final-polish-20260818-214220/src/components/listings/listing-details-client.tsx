@@ -33,7 +33,7 @@ import { useLocale } from "@/providers/locale-provider";
 
 export function ListingDetailsClient({ slug }: { slug: string }) {
   const { isAuthenticated } = useAuth();
-  const { t, locale, tr, categoryName } = useLocale();
+  const { t, locale, tr } = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [active, setActive] = useState(0);
@@ -119,97 +119,27 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
   return (
     <>
       <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
-        <nav
-          aria-label={t("listing.breadcrumbLabel")}
-          className="mb-4 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-500 sm:text-sm"
-        >
-          <Link
-            href="/"
-            className="shrink-0 font-medium transition hover:text-brand-700 hover:underline"
-          >
-            {t("listing.breadcrumbHome")}
-          </Link>
-
-          <ChevronRight className="size-3.5 shrink-0 text-slate-300" aria-hidden="true" />
-
-          <Link
-            href={`/search?category=${listing.category}`}
-            className="shrink-0 font-medium transition hover:text-brand-700 hover:underline"
-          >
-            {categoryName(listing.category)}
-          </Link>
-
-          <ChevronRight className="size-3.5 shrink-0 text-slate-300" aria-hidden="true" />
-
-          <span
-            aria-current="page"
-            className="min-w-0 truncate font-medium text-slate-700"
-            title={listing.title}
-          >
-            {listing.title}
-          </span>
-        </nav>
-
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="min-w-0">
             <div className="overflow-hidden rounded-2xl border bg-white shadow-sm sm:rounded-3xl">
-              <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100 sm:aspect-16/10">
+              <button
+                type="button"
+                onClick={() => setGallery(true)}
+                className="relative block aspect-4/3 w-full overflow-hidden bg-slate-100 sm:aspect-16/10"
+                aria-label={t("listing.galleryOpen")}
+              >
                 <Image
                   src={image}
                   alt={`${listing.title}, image ${active + 1}`}
                   fill
-                  loading="eager"
-                  fetchPriority="high"
+                  priority
                   className="object-cover"
                   sizes="(min-width:1024px) 70vw, 100vw"
                 />
-
-                <button
-                  type="button"
-                  onClick={() => setGallery(true)}
-                  className="absolute inset-0 z-[1] rounded-[inherit] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand-400"
-                  aria-label={t("listing.galleryOpen")}
-                >
-                  <span className="sr-only">{t("listing.galleryOpen")}</span>
-                </button>
-
-                {listing.images.length > 1 && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setActive(
-                          (active - 1 + listing.images.length) %
-                            listing.images.length,
-                        )
-                      }
-                      className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-slate-200/80 bg-white/95 text-slate-800 shadow-lg backdrop-blur hover:bg-white hover:text-slate-950"
-                      aria-label={t("listing.previousImage")}
-                    >
-                      <ChevronLeft className="size-5" aria-hidden="true" />
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setActive((active + 1) % listing.images.length)
-                      }
-                      className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-slate-200/80 bg-white/95 text-slate-800 shadow-lg backdrop-blur hover:bg-white hover:text-slate-950"
-                      aria-label={t("listing.nextImage")}
-                    >
-                      <ChevronRight className="size-5" aria-hidden="true" />
-                    </Button>
-                  </>
-                )}
-
-                <span className="pointer-events-none absolute bottom-3 right-3 z-20 rounded-full bg-slate-950/75 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
+                <span className="absolute bottom-3 right-3 rounded-full bg-slate-950/75 px-3 py-1.5 text-xs font-bold text-white">
                   {active + 1} / {listing.images.length}
                 </span>
-              </div>
+              </button>
               {listing.images.length > 1 && (
                 <div className="marketlift-scrollbar flex gap-2 overflow-x-auto p-3 sm:p-4">
                   {listing.images.map((src, index) => (
@@ -310,7 +240,8 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                   </dl>
                 </div>
               )}
-              <div className="mt-7 flex justify-end border-t pt-5 text-xs text-slate-400">
+              <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t pt-5 text-xs text-slate-400">
+                <span>{t("listing.id", { id: listing.id })}</span>
                 <ReportDialog
                   targetType="listing"
                   targetId={listing.id}
@@ -504,6 +435,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
               src={image}
               alt={`${listing.title}, image ${active + 1}`}
               fill
+              priority
               className="object-contain"
               sizes="(min-width: 1024px) 1024px, 94vw"
             />

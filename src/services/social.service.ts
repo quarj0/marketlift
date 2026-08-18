@@ -2,7 +2,7 @@ import { listings, sellers } from '@/mocks/data';
 import type { MarketplaceReport, NotificationItem, Review } from '@/types';
 
 const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
-const saved = new Set<string>(['listing-1', 'listing-4']);
+const saved = new Set<string>();
 const followed = new Set<string>();
 let reviews: Review[] = [
   {
