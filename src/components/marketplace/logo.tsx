@@ -45,7 +45,7 @@ export function MarketliftLogo({
       href="/"
       aria-label="Marketlift"
       className={cn(
-        "inline-flex shrink-0 items-center overflow-hidden rounded-xl bg-[#02122f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#02122f]",
+        "inline-flex shrink-0 items-center overflow-hidden rounded-xl bg-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950",
         size === "large" && "rounded-2xl",
         className,
       )}
@@ -59,9 +59,9 @@ export function MarketliftLogo({
         className={cn(
           "block h-auto object-contain",
           size === "mark" && "w-11",
-          size === "compact" && "w-[188px] sm:w-[204px]",
-          size === "default" && "w-[204px] sm:w-[226px]",
-          size === "large" && "w-[226px] sm:w-[256px]",
+          size === "compact" && "w-47 sm:w-51",
+          size === "default" && "w-51 sm:w-56.5",
+          size === "large" && "w-56.5 sm:w-[256px]",
         )}
       />
     </Link>
