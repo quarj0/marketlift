@@ -4,9 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   useSyncExternalStore,
 } from 'react';
 import { authService } from '@/services/auth.service';
@@ -34,6 +32,8 @@ function subscribeToAuth(callback: () => void) {
   };
 }
 
+const subscribeToHydration = () => () => undefined;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sessionSnapshot = useSyncExternalStore(
     subscribeToAuth,
@@ -41,19 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => '',
   );
 
-  // Keep the server render and the browser's first render identical.
-  // This is especially important when the subtree is streamed behind Suspense.
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setHydrated(true);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, []);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
 
   const user = useMemo(
     () => authService.parseSessionSnapshot(sessionSnapshot),

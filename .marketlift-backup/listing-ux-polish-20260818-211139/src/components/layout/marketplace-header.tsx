@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   Heart,
@@ -36,7 +35,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { socialService } from "@/services/social.service";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
 import type { Location } from "@/types";
@@ -52,15 +50,6 @@ export function MarketplaceHeader() {
   });
 
   const { user, hydrated, isAuthenticated, canSell, logout } = useAuth();
-
-  const savedIdsQuery = useQuery({
-    queryKey: ["saved-listing-ids"],
-    queryFn: socialService.getSavedIds,
-    enabled: hydrated && isAuthenticated,
-    staleTime: 60_000,
-  });
-
-  const savedCount = savedIdsQuery.data?.length ?? 0;
 
   const privateWorkspace =
     pathname.startsWith("/selling") ||
@@ -118,23 +107,11 @@ export function MarketplaceHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
+                className="hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
                 asChild
               >
-                <Link
-                  href="/account/saved"
-                  aria-label={`${t("nav.saved")}: ${savedCount}`}
-                >
+                <Link href="/account/saved" aria-label={t("nav.saved")}>
                   <Heart className="size-5" aria-hidden="true" />
-
-                  {savedCount > 0 && (
-                    <span
-                      className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-[#02122f]"
-                      aria-hidden="true"
-                    >
-                      {savedCount > 99 ? "99+" : savedCount}
-                    </span>
-                  )}
                 </Link>
               </Button>
 
@@ -348,15 +325,9 @@ export function MarketplaceHeader() {
               <Link
                 href="/account/saved"
                 onClick={() => setMenuOpen(false)}
-                className="flex min-h-20 items-start justify-between gap-3 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
+                className="min-h-20 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
               >
-                <span>{t("nav.saved")}</span>
-
-                {savedCount > 0 && (
-                  <span className="grid min-w-6 place-items-center rounded-full bg-lift-500 px-2 text-[11px] font-black leading-6 text-ink-950">
-                    {savedCount > 99 ? "99+" : savedCount}
-                  </span>
-                )}
+                {t("nav.saved")}
               </Link>
             )}
 

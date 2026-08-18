@@ -423,68 +423,61 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
       <Dialog open={gallery} onOpenChange={setGallery}>
         <DialogContent
           showCloseButton={false}
-          className="w-[min(94vw,1120px)] max-w-[94vw] gap-0 rounded-2xl bg-white p-2 shadow-2xl ring-1 ring-white/30 sm:max-w-5xl sm:rounded-3xl"
+          className="inset-0 top-0 left-0 h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 gap-0 rounded-none bg-black p-0 ring-0"
         >
           <DialogTitle className="sr-only">{t("listing.gallery")}</DialogTitle>
           <DialogDescription className="sr-only">
             {listing.title}
           </DialogDescription>
 
-          <div className="relative h-[min(78dvh,760px)] w-full overflow-hidden rounded-xl bg-black sm:rounded-2xl">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setGallery(false)}
+            className="absolute right-4 top-4 z-10 bg-white/15 text-white hover:bg-white/25 hover:text-white"
+            aria-label={t("listing.closeGallery")}
+          >
+            <X aria-hidden="true" />
+          </Button>
+
+          <div className="relative h-full w-full">
             <Image
               src={image}
               alt={`${listing.title}, image ${active + 1}`}
               fill
-              priority
               className="object-contain"
-              sizes="(min-width: 1024px) 1024px, 94vw"
+              sizes="100vw"
             />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setGallery(false)}
-              className="absolute right-3 top-3 z-20 bg-white/95 text-slate-950 shadow-lg hover:bg-white hover:text-slate-950"
-              aria-label={t("listing.closeGallery")}
-            >
-              <X aria-hidden="true" />
-            </Button>
-
-            <span className="absolute bottom-3 right-3 z-10 rounded-full bg-slate-950/75 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
-              {active + 1} / {listing.images.length}
-            </span>
-
-            {listing.images.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    setActive(
-                      (active - 1 + listing.images.length) %
-                        listing.images.length,
-                    )
-                  }
-                  className="absolute left-3 top-1/2 z-10 -translate-y-1/2 bg-white/95 text-slate-950 shadow-lg hover:bg-white hover:text-slate-950"
-                  aria-label={t("listing.previousImage")}
-                >
-                  <ChevronLeft aria-hidden="true" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    setActive((active + 1) % listing.images.length)
-                  }
-                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 bg-white/95 text-slate-950 shadow-lg hover:bg-white hover:text-slate-950"
-                  aria-label={t("listing.nextImage")}
-                >
-                  <ChevronRight aria-hidden="true" />
-                </Button>
-              </>
-            )}
           </div>
+
+          {listing.images.length > 1 && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setActive(
+                    (active - 1 + listing.images.length) %
+                      listing.images.length,
+                  )
+                }
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/15 text-white hover:bg-white/25 hover:text-white"
+                aria-label={t("listing.previousImage")}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setActive((active + 1) % listing.images.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/15 text-white hover:bg-white/25 hover:text-white"
+                aria-label={t("listing.nextImage")}
+              >
+                <ChevronRight aria-hidden="true" />
+              </Button>
+            </>
+          )}
         </DialogContent>
       </Dialog>
       <AuthRequiredDialog

@@ -1,42 +1,58 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, RefreshCw } from 'lucide-react';
-import { MarketplaceShell } from '@/components/layout/marketplace-shell';
-import { SellingSidebar } from '@/components/selling/selling-sidebar';
+import Link from "next/link";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, RefreshCw } from "lucide-react";
+import { MarketplaceShell } from "@/components/layout/marketplace-shell";
+import { SellingSidebar } from "@/components/selling/selling-sidebar";
 import {
   CategoryFields,
   validateCategoryAttributes,
   type CategoryFieldErrors,
-} from '@/components/selling/category-fields';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useLocale } from '@/providers/locale-provider';
-import { categoryService } from '@/services/category.service';
-import type { ListingAttributes } from '@/types';
+} from "@/components/selling/category-fields";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useLocale } from "@/providers/locale-provider";
+import { categoryService } from "@/services/category.service";
+import type { ListingAttributes } from "@/types";
 
 const initialVehicleAttributes: ListingAttributes = {
-  make: 'Honda', model: 'Civic', year: 2018, mileage_km: 72000,
-  transmission: 'automatic', fuel: 'flex', body_type: 'sedan', color: 'Silver', documents_ready: true,
+  make: "Honda",
+  model: "Civic",
+  year: 2018,
+  mileage_km: 72000,
+  transmission: "automatic",
+  fuel: "flex",
+  body_type: "sedan",
+  color: "Silver",
+  documents_ready: true,
 };
 
 export function EditListingClient() {
   const { t, tr } = useLocale();
   const [saved, setSaved] = useState(false);
-  const [attributes, setAttributes] = useState<ListingAttributes>(initialVehicleAttributes);
-  const [attributeErrors, setAttributeErrors] = useState<CategoryFieldErrors>({});
+  const [attributes, setAttributes] = useState<ListingAttributes>(
+    initialVehicleAttributes,
+  );
+  const [attributeErrors, setAttributeErrors] = useState<CategoryFieldErrors>(
+    {},
+  );
 
   const categoryQuery = useQuery({
-    queryKey: ['category-configuration', 'vehicles'],
-    queryFn: () => categoryService.getConfiguration('vehicles'),
+    queryKey: ["category-configuration", "vehicles"],
+    queryFn: () => categoryService.getConfiguration("vehicles"),
     staleTime: 5 * 60_000,
   });
 
   const save = () => {
     if (!categoryQuery.data) return;
-    const errors = validateCategoryAttributes(categoryQuery.data, attributes, t, tr);
+    const errors = validateCategoryAttributes(
+      categoryQuery.data,
+      attributes,
+      t,
+      tr,
+    );
     setAttributeErrors(errors);
     if (Object.keys(errors).length) return;
     setSaved(true);
@@ -46,49 +62,111 @@ export function EditListingClient() {
     <MarketplaceShell>
       <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
         <div className="mb-5 sm:mb-7">
-          <p className="text-sm font-bold uppercase tracking-wider text-brand-700">{t('selling.eyebrow')}</p>
-          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{t('selling.edit.title')}</h1>
-          <p className="mt-1 text-slate-500">{t('selling.edit.body')}</p>
+          <p className="text-sm font-bold uppercase tracking-wider text-brand-700">
+            {t("selling.eyebrow")}
+          </p>
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
+            {t("selling.edit.title")}
+          </h1>
+          <p className="mt-1 text-slate-500">{t("selling.edit.body")}</p>
         </div>
 
         <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
           <SellingSidebar />
           <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-2"><span className="mb-1.5 block text-sm font-bold">{t('selling.edit.titleLabel')}</span><Input defaultValue="Honda Civic 2018 Automatic" /></label>
-              <label><span className="mb-1.5 block text-sm font-bold">{t('selling.edit.price')}</span><Input type="number" defaultValue="89000" /></label>
+              <label className="sm:col-span-2">
+                <span className="mb-1.5 block text-sm font-bold">
+                  {t("selling.edit.titleLabel")}
+                </span>
+                <Input defaultValue="Honda Civic 2018 Automatic" />
+              </label>
               <label>
-                <span className="mb-1.5 block text-sm font-bold">{t('selling.edit.condition')}</span>
-                <select className="h-11 w-full rounded-xl border bg-white px-3 text-sm" defaultValue="Used">
-                  <option value="Used">{t('search.condition.used')}</option>
-                  <option value="Like new">{t('search.condition.likeNew')}</option>
-                  <option value="New">{t('search.condition.new')}</option>
+                <span className="mb-1.5 block text-sm font-bold">
+                  {t("selling.edit.price")}
+                </span>
+                <Input type="number" defaultValue="89000" />
+              </label>
+              <label>
+                <span className="mb-1.5 block text-sm font-bold">
+                  {t("selling.edit.condition")}
+                </span>
+                <select
+                  className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+                  defaultValue="Used"
+                >
+                  <option value="Used">{t("search.condition.used")}</option>
+                  <option value="Like new">
+                    {t("search.condition.likeNew")}
+                  </option>
+                  <option value="New">{t("search.condition.new")}</option>
                 </select>
               </label>
-              <label className="sm:col-span-2"><span className="mb-1.5 block text-sm font-bold">{t('selling.edit.description')}</span><textarea defaultValue="Well maintained, automatic transmission, documents up to date." className="min-h-40 w-full rounded-xl border p-3 text-sm" /></label>
-              <label><span className="mb-1.5 block text-sm font-bold">{t('selling.edit.city')}</span><Input defaultValue="São Paulo" /></label>
-              <label><span className="mb-1.5 block text-sm font-bold">{t('selling.edit.neighborhood')}</span><Input defaultValue="Vila Mariana" /></label>
+              <label className="sm:col-span-2">
+                <span className="mb-1.5 block text-sm font-bold">
+                  {t("selling.edit.description")}
+                </span>
+                <textarea
+                  defaultValue="Well maintained, automatic transmission, documents up to date."
+                  className="min-h-40 w-full rounded-xl border p-3 text-sm"
+                />
+              </label>
+              <label>
+                <span className="mb-1.5 block text-sm font-bold">
+                  {t("selling.edit.city")}
+                </span>
+                <Input defaultValue="São Paulo" />
+              </label>
+              <label>
+                <span className="mb-1.5 block text-sm font-bold">
+                  {t("selling.edit.neighborhood")}
+                </span>
+                <Input defaultValue="Vila Mariana" />
+              </label>
             </div>
 
             <div className="mt-8 border-t pt-6">
-              <h2 className="text-lg font-black">{t('selling.edit.vehicle')}</h2>
+              <h2 className="text-lg font-black">
+                {t("selling.edit.vehicle")}
+              </h2>
               {categoryQuery.isLoading ? (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">{[1, 2, 3, 4].map((item) => <div key={item} className="h-16 animate-pulse rounded-xl bg-slate-100" />)}</div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((item) => (
+                    <div
+                      key={item}
+                      className="h-16 animate-pulse rounded-xl bg-slate-100"
+                    />
+                  ))}
+                </div>
               ) : categoryQuery.isError || !categoryQuery.data ? (
                 <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                  <p className="text-sm font-semibold text-red-800">{t('selling.edit.vehicleError')}</p>
-                  <Button type="button" variant="outline" className="mt-3" onClick={() => categoryQuery.refetch()}><RefreshCw className="size-4" /> {t('common.retry')}</Button>
+                  <p className="text-sm font-semibold text-red-800">
+                    {t("selling.edit.vehicleError")}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={() => categoryQuery.refetch()}
+                  >
+                    <RefreshCw className="size-4" /> {t("common.retry")}
+                  </Button>
                 </div>
               ) : (
                 <>
-                  <p className="mt-1 text-sm text-slate-500">{tr(categoryQuery.data.description)}</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {tr(categoryQuery.data.description)}
+                  </p>
                   <div className="mt-4">
                     <CategoryFields
                       config={categoryQuery.data}
                       values={attributes}
                       errors={attributeErrors}
                       onChange={(fieldId, value) => {
-                        setAttributes((current) => ({ ...current, [fieldId]: value }));
+                        setAttributes((current) => ({
+                          ...current,
+                          [fieldId]: value,
+                        }));
                         setSaved(false);
                       }}
                     />
@@ -97,11 +175,19 @@ export function EditListingClient() {
               )}
             </div>
 
-            {saved && <div className="mt-5 flex items-center gap-2 rounded-xl bg-brand-50 p-3 text-sm font-semibold text-brand-800"><CheckCircle2 className="size-4" /> {t('selling.edit.saved')}</div>}
+            {saved && (
+              <div className="mt-5 flex items-center gap-2 rounded-xl bg-brand-50 p-3 text-sm font-semibold text-brand-800">
+                <CheckCircle2 className="size-4" /> {t("selling.edit.saved")}
+              </div>
+            )}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button onClick={save} disabled={categoryQuery.isLoading}>{t('selling.edit.save')}</Button>
-              <Button variant="outline" asChild><Link href="/selling/listings">{t('common.cancel')}</Link></Button>
+              <Button onClick={save} disabled={categoryQuery.isLoading}>
+                {t("selling.edit.save")}
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/selling/listings">{t("common.cancel")}</Link>
+              </Button>
             </div>
           </section>
         </div>
