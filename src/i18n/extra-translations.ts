@@ -192,7 +192,7 @@ export const extraEn: Record<string, string> = {
   "listing.seller": "Seller",
   "listing.viewSeller": "View seller profile",
   "listing.safetyTitle": "Stay safe.",
-  "listing.safetyBody": "Avoid advance payments. Check the item and seller before completing any transaction. Marketlift does not hold seller funds in V1.",
+  "listing.safetyBody": "Avoid advance payments. Check the item and seller before completing any transaction. Marketlift does not hold or process payments between buyers and sellers.",
   "listing.keepBrowsing": "Keep browsing",
   "listing.similar": "Similar listings",
   "listing.sellerUnavailable": "Seller details unavailable",
