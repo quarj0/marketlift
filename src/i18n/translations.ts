@@ -119,7 +119,7 @@ const en: Dictionary = {
   "home.sectionErrorBody": "Please try again. Your browsing session is safe.",
 
   "footer.description": "A simple, trusted way to discover local products and connect with sellers across Brazil.",
-  "footer.noEscrow": "Marketlift does not hold product payments or provide escrow in V1.",
+  "footer.noEscrow": "Marketlift does not hold product payments or provide escrow.",
   "footer.marketplace": "Marketplace",
   "footer.account": "Account",
   "footer.safetySupport": "Safety & support",
@@ -300,7 +300,7 @@ const ptBR: Dictionary = {
   "home.sectionErrorBody": "Tente novamente. Sua sessão de navegação está segura.",
 
   "footer.description": "Uma forma simples e confiável de descobrir produtos locais e falar com vendedores em todo o Brasil.",
-  "footer.noEscrow": "O Marketlift não recebe pagamentos de produtos nem oferece custódia (escrow) no V1.",
+  "footer.noEscrow": "O Marketlift não recebe pagamentos de produtos nem oferece custódia (escrow).",
   "footer.marketplace": "Marketplace",
   "footer.account": "Conta",
   "footer.safetySupport": "Segurança e suporte",
