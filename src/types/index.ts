@@ -56,6 +56,7 @@ export interface CategoryFieldDefinition {
   type: CategoryFieldType;
   required: boolean;
   filterable: boolean;
+  allowCustomValue?: boolean;
   placeholder?: string;
   helpText?: string;
   unit?: string;

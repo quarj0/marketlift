@@ -37,6 +37,14 @@ export function validateCategoryAttributes(
       continue;
     }
 
+    if (field.type === 'select' && !empty && !field.allowCustomValue && field.options?.length) {
+      const selected = String(value);
+      if (!field.options.some((option) => option.value === selected)) {
+        errors[field.id] = t ? t('categoryFields.valid', { label }) : `Choose a valid ${label.toLowerCase()}.`;
+        continue;
+      }
+    }
+
     if (field.type === 'number' && !empty) {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) {
@@ -115,7 +123,24 @@ export function CategoryFields({
               {label}{field.required && <span className="ml-1 text-red-600" aria-hidden="true">*</span>}
             </span>
 
-            {field.type === 'select' ? (
+            {field.type === 'select' && field.allowCustomValue ? (
+              <div className="relative">
+                <Input
+                  id={inputId}
+                  list={`${inputId}-options`}
+                  value={String(valueFor(values, field))}
+                  placeholder={placeholder ?? t('categoryFields.select', { label })}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={describedBy}
+                  onChange={(event) => onChange(field.id, event.target.value)}
+                  className={field.unit ? 'pr-16' : undefined}
+                />
+                <datalist id={`${inputId}-options`}>
+                  {field.options?.map((option) => <option key={option.value} value={option.value}>{tr(option.label)}</option>)}
+                </datalist>
+                {field.unit && <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">{field.unit}</span>}
+              </div>
+            ) : field.type === 'select' ? (
               <select id={inputId} value={String(valueFor(values, field))} onChange={(event) => onChange(field.id, event.target.value)} aria-invalid={Boolean(error)} aria-describedby={describedBy} className="h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100">
                 <option value="">{t('categoryFields.select', { label })}</option>
                 {field.options?.map((option) => <option key={option.value} value={option.value}>{tr(option.label)}</option>)}

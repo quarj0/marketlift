@@ -12,9 +12,9 @@ export const categoryConfigurations: CategoryConfiguration[] = [
     pricing: { mode: 'required', label: 'Price (R$)', placeholder: 'e.g. 3500' },
     condition: { enabled: true, required: true },
     fields: [
-      { id: 'brand', label: 'Brand', type: 'select', required: true, filterable: true, options: ['Apple','Samsung','Motorola','Xiaomi','Google','Realme','Asus','Other'].map((v) => option(v.toLowerCase(), v)) },
+      { id: 'brand', label: 'Brand', type: 'select', required: true, filterable: true, allowCustomValue: true, helpText: 'Choose a common brand or type another brand if it is not listed.', options: ['Apple','Samsung','Motorola','Xiaomi','Google','Realme','Asus','Other'].map((v) => option(v.toLowerCase(), v)) },
       { id: 'model', label: 'Model', type: 'text', required: true, filterable: true, placeholder: 'e.g. iPhone 15 Pro' },
-      { id: 'storage_gb', label: 'Storage', type: 'select', required: true, filterable: true, unit: 'GB', options: ['32','64','128','256','512','1024'].map((v) => option(v, v === '1024' ? '1 TB' : `${v} GB`)) },
+      { id: 'storage_gb', label: 'Storage', type: 'select', required: true, filterable: true, allowCustomValue: true, unit: 'GB', helpText: 'Choose a common storage size or type another size if it is not listed.', options: ['32','64','128','256','512','1024'].map((v) => option(v, v === '1024' ? '1 TB' : `${v} GB`)) },
       { id: 'ram_gb', label: 'RAM', type: 'number', required: false, filterable: true, unit: 'GB', min: 1, max: 32, placeholder: 'e.g. 8' },
       { id: 'color', label: 'Color', type: 'text', required: false, filterable: true, placeholder: 'e.g. Natural Titanium' },
       { id: 'sim_type', label: 'SIM configuration', type: 'select', required: false, filterable: true, options: [option('single','Single SIM'), option('dual','Dual SIM'), option('esim','eSIM'), option('physical_esim','Physical SIM + eSIM')] },
