@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Check,
@@ -41,14 +41,13 @@ const RECENT_LOCATIONS_KEY = "marketlift.recentLocations";
 function readRecentLocations(): Location[] {
   if (typeof window === "undefined") return [];
   try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(RECENT_LOCATIONS_KEY) || "[]",
-    );
+    const parsed = JSON.parse(window.localStorage.getItem(RECENT_LOCATIONS_KEY) || "[]");
     return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
   } catch {
     return [];
   }
 }
+
 
 export function LocationSelector({
   value,
@@ -60,7 +59,9 @@ export function LocationSelector({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [recentLocations, setRecentLocations] = useState<Location[]>([]);
-  const [selectedState, setSelectedState] = useState(value?.stateCode ?? "SP");
+  const [selectedState, setSelectedState] = useState(
+    value?.stateCode ?? "SP",
+  );
   const debouncedQuery = useDebouncedValue(query, 250);
   const { locate, locating, errorCode, clearError } = useCurrentLocation();
 
@@ -74,13 +75,14 @@ export function LocationSelector({
     brazilLocations.find((item) => item.code === selectedState) ??
     brazilLocations[0];
 
-  useEffect(() => {
-    if (open) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
       setRecentLocations(readRecentLocations());
       clearError();
       if (value?.stateCode) setSelectedState(value.stateCode);
     }
-  }, [clearError, open, value?.stateCode]);
+    setOpen(nextOpen);
+  }
 
   const cityQuery = useMemo(() => {
     const normalized = debouncedQuery.trim().toLocaleLowerCase("pt-BR");
@@ -100,9 +102,7 @@ export function LocationSelector({
   const cities = citiesQuery.data?.length
     ? citiesQuery.data
     : [...state.cities].filter((city) =>
-        city
-          .toLocaleLowerCase("pt-BR")
-          .includes(cityQuery.toLocaleLowerCase("pt-BR")),
+        city.toLocaleLowerCase("pt-BR").includes(cityQuery.toLocaleLowerCase("pt-BR")),
       );
 
   const globalSearchQuery = useQuery({
@@ -115,7 +115,9 @@ export function LocationSelector({
   const filteredStates = useMemo(
     () =>
       brazilLocations.filter((item) =>
-        `${item.name} ${item.code}`.toLowerCase().includes(query.toLowerCase()),
+        `${item.name} ${item.code}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
       ),
     [query],
   );
@@ -130,10 +132,7 @@ export function LocationSelector({
     const next = [
       location,
       ...recentLocations.filter(
-        (item) =>
-          !(
-            item.city === location.city && item.stateCode === location.stateCode
-          ),
+        (item) => !(item.city === location.city && item.stateCode === location.stateCode),
       ),
     ].slice(0, 5);
     setRecentLocations(next);
@@ -147,7 +146,7 @@ export function LocationSelector({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <button
           type="button"
@@ -235,10 +234,7 @@ export function LocationSelector({
             disabled={locating}
           >
             {locating ? (
-              <LoaderCircle
-                className="size-4 animate-spin"
-                aria-hidden="true"
-              />
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
             ) : (
               <LocateFixed className="size-4" aria-hidden="true" />
             )}
@@ -282,32 +278,26 @@ export function LocationSelector({
             </div>
           )}
 
-          {query.trim().length >= 2 &&
-            (globalSearchQuery.data?.length ?? 0) > 0 && (
-              <div className="mt-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {t("location.suggestions")}
-                </p>
-                <div className="mt-2 grid gap-1 rounded-xl border p-1 sm:grid-cols-2">
-                  {globalSearchQuery.data?.map((location) => (
-                    <button
-                      type="button"
-                      key={`${location.city}-${location.stateCode}`}
-                      onClick={() => choose(location)}
-                      className="flex min-h-11 items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-400"
-                    >
-                      <span>
-                        {location.city}, {location.stateCode}
-                      </span>
-                      <ChevronRight
-                        className="size-4 text-slate-300"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  ))}
-                </div>
+          {query.trim().length >= 2 && (globalSearchQuery.data?.length ?? 0) > 0 && (
+            <div className="mt-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                {t("location.suggestions")}
+              </p>
+              <div className="mt-2 grid gap-1 rounded-xl border p-1 sm:grid-cols-2">
+                {globalSearchQuery.data?.map((location) => (
+                  <button
+                    type="button"
+                    key={`${location.city}-${location.stateCode}`}
+                    onClick={() => choose(location)}
+                    className="flex min-h-11 items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-400"
+                  >
+                    <span>{location.city}, {location.stateCode}</span>
+                    <ChevronRight className="size-4 text-slate-300" aria-hidden="true" />
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
           <div className="mt-6 grid min-h-64 gap-5 sm:grid-cols-[0.9fr_1.1fr]">
             <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
@@ -348,25 +338,25 @@ export function LocationSelector({
 
               <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
                 {cities.map((city) => (
-                  <button
-                    type="button"
-                    key={city}
-                    onClick={() =>
-                      choose({
-                        state: state.name,
-                        stateCode: state.code,
-                        city,
-                      })
-                    }
-                    className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-400"
-                  >
-                    {city}
-                    <ChevronRight
-                      className="size-4 text-slate-300"
-                      aria-hidden="true"
-                    />
-                  </button>
-                ))}
+                    <button
+                      type="button"
+                      key={city}
+                      onClick={() =>
+                        choose({
+                          state: state.name,
+                          stateCode: state.code,
+                          city,
+                        })
+                      }
+                      className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-400"
+                    >
+                      {city}
+                      <ChevronRight
+                        className="size-4 text-slate-300"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ))}
               </div>
             </div>
           </div>

@@ -51,10 +51,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated || !user) {
       realtimeClient.disconnect();
-      setConnected(false);
-      setUnreadMessageCount(0);
-      setUnreadNotificationCount(0);
-      return;
+      const frame = window.requestAnimationFrame(() => {
+        setConnected(false);
+        setUnreadMessageCount(0);
+        setUnreadNotificationCount(0);
+      });
+      return () => window.cancelAnimationFrame(frame);
     }
 
     const handleEvent = (event: RealtimeEvent) => {

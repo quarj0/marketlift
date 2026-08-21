@@ -58,14 +58,20 @@ export function MarketplaceLocationProvider({ children }: { children: ReactNode 
   const [location, setLocationState] = useState<Location>(DEFAULT_LOCATION);
 
   useEffect(() => {
+    let frame = 0;
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const stored = normalizeStoredLocation(JSON.parse(raw));
-      if (stored) setLocationState(stored);
+      if (stored) {
+        frame = window.requestAnimationFrame(() => setLocationState(stored));
+      }
     } catch {
       // Storage restrictions or old invalid values must not block browsing.
     }
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   const setLocation = useCallback((next: Location) => {

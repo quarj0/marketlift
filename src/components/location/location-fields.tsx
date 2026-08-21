@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LoaderCircle, LocateFixed } from 'lucide-react';
 
@@ -58,13 +58,8 @@ export function LocationFields({
   const { locate, locating, errorCode, clearError } = useCurrentLocation();
   const uid = useId().replace(/:/g, '');
   const selectedState = getBrazilState(value.stateCode);
-  const [regionCode, setRegionCode] = useState<BrazilRegionCode>(
-    selectedState?.regionCode ?? 'SE',
-  );
-
-  useEffect(() => {
-    if (selectedState) setRegionCode(selectedState.regionCode);
-  }, [selectedState]);
+  const [regionDraft, setRegionDraft] = useState<BrazilRegionCode>('SE');
+  const regionCode = selectedState?.regionCode ?? regionDraft;
 
   const debouncedCity = useDebouncedValue(value.city, 250);
   const debouncedDistrict = useDebouncedValue(value.district, 250);
@@ -113,7 +108,7 @@ export function LocationFields({
       onChange({ stateCode: '', city: '', district: '' });
       return;
     }
-    setRegionCode(state.regionCode);
+    setRegionDraft(state.regionCode);
     onChange({ stateCode: state.code, city: '', district: '' });
   }
 
@@ -121,7 +116,7 @@ export function LocationFields({
     const resolved = await locate();
     if (!resolved) return;
     const state = getBrazilState(resolved.stateCode);
-    if (state) setRegionCode(state.regionCode);
+    if (state) setRegionDraft(state.regionCode);
     onChange({
       stateCode: resolved.stateCode,
       city: resolved.city,
@@ -170,7 +165,7 @@ export function LocationFields({
             value={regionCode}
             onChange={(event) => {
               const nextRegion = event.target.value as BrazilRegionCode;
-              setRegionCode(nextRegion);
+              setRegionDraft(nextRegion);
               clearError();
               onChange({ stateCode: '', city: '', district: '' });
             }}

@@ -61,19 +61,22 @@ export function EditListingClient() {
 
   useEffect(() => {
     if (!listing) return;
-    setForm({
-      title: listing.title,
-      description: listing.description,
-      price: listing.price,
-      condition: listing.condition ?? 'Used',
-      negotiable: Boolean(listing.negotiable),
-      stateCode: listing.location.stateCode || 'SP',
-      city: listing.location.city || '',
-      district: listing.location.district || '',
-      latitude: listing.location.latitude,
-      longitude: listing.location.longitude,
+    const frame = window.requestAnimationFrame(() => {
+      setForm({
+        title: listing.title,
+        description: listing.description,
+        price: listing.price,
+        condition: listing.condition ?? 'Used',
+        negotiable: Boolean(listing.negotiable),
+        stateCode: listing.location.stateCode || 'SP',
+        city: listing.location.city || '',
+        district: listing.location.district || '',
+        latitude: listing.location.latitude,
+        longitude: listing.location.longitude,
+      });
+      setAttributes(listing.attributes ?? {});
     });
-    setAttributes(listing.attributes ?? {});
+    return () => window.cancelAnimationFrame(frame);
   }, [listing]);
 
   const mutation = useMutation({

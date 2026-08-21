@@ -47,15 +47,20 @@ export default function SellingProfilePage() {
 
   useEffect(() => {
     if (!profileQuery.data || !sellerQuery.data) return;
-    setForm({
-      displayName: sellerQuery.data.name || profileQuery.data.fullName,
-      sellerType: sellerQuery.data.type ?? 'individual',
-      phone: profileQuery.data.phone || '',
-      stateCode: profileQuery.data.location.stateCode || 'SP',
-      city: profileQuery.data.location.city || '',
-      district: profileQuery.data.location.district || '',
-      bio: profileQuery.data.bio || '',
+    const profile = profileQuery.data;
+    const seller = sellerQuery.data;
+    const frame = window.requestAnimationFrame(() => {
+      setForm({
+        displayName: seller.name || profile.fullName,
+        sellerType: seller.type ?? 'individual',
+        phone: profile.phone || '',
+        stateCode: profile.location.stateCode || 'SP',
+        city: profile.location.city || '',
+        district: profile.location.district || '',
+        bio: profile.bio || '',
+      });
     });
+    return () => window.cancelAnimationFrame(frame);
   }, [profileQuery.data, sellerQuery.data]);
 
   const saveMutation = useMutation({

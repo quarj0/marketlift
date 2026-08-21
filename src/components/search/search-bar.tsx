@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useEffect, useId, useMemo, useState } from 'react';
+import { type FormEvent, useId, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Search } from 'lucide-react';
@@ -40,14 +40,13 @@ export function SearchBar({
   const activeLocation = location ?? marketplaceLocation;
   const datalistId = useId().replace(/:/g, '');
   const [q, setQ] = useState('');
-  const [localLocation, setLocalLocation] = useState(
-    `${activeLocation.city}, ${activeLocation.stateCode}`,
-  );
+  const activeLocationLabel = `${activeLocation.city}, ${activeLocation.stateCode}`;
+  const activeLocationKey = `${activeLocation.stateCode}:${activeLocation.city}:${activeLocation.district ?? ''}:${activeLocation.latitude ?? ''}:${activeLocation.longitude ?? ''}`;
+  const [locationDraft, setLocationDraft] = useState<{ key: string; value: string } | null>(null);
+  const localLocation = locationDraft?.key === activeLocationKey
+    ? locationDraft.value
+    : activeLocationLabel;
   const debouncedLocation = useDebouncedValue(localLocation, 250);
-
-  useEffect(() => {
-    setLocalLocation(`${activeLocation.city}, ${activeLocation.stateCode}`);
-  }, [activeLocation.city, activeLocation.stateCode]);
 
   const locationSuggestions = useQuery({
     queryKey: ['search-bar-location-suggestions', debouncedLocation],
@@ -70,7 +69,6 @@ export function SearchBar({
 
     if (q.trim()) params.set('q', q.trim());
 
-    const activeLocationLabel = `${activeLocation.city}, ${activeLocation.stateCode}`;
     const selectedLocation =
       (compact && location ? location : null) ??
       (localLocation.trim().toLocaleLowerCase('pt-BR') ===
@@ -136,7 +134,7 @@ export function SearchBar({
           <MapPin className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
           <Input
             value={localLocation}
-            onChange={(event) => setLocalLocation(event.target.value)}
+            onChange={(event) => setLocationDraft({ key: activeLocationKey, value: event.target.value })}
             list={`${datalistId}-locations`}
             className="pl-11"
             aria-label={t('search.location')}
