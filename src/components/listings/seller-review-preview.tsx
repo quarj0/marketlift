@@ -6,11 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/providers/locale-provider";
+import { formatReadableDate } from "@/lib/utils";
 import { socialService } from "@/services/social.service";
 import type { Seller } from "@/types";
 
 export function SellerReviewPreview({ seller }: { seller: Seller }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const reviewsQuery = useQuery({
     queryKey: ["seller-reviews", seller.id],
@@ -83,7 +84,7 @@ export function SellerReviewPreview({ seller }: { seller: Seller }) {
                     ))}
                   </div>
                 </div>
-                <span className="shrink-0 text-xs text-slate-400">{review.date}</span>
+                <span className="shrink-0 text-xs text-slate-400">{formatReadableDate(review.date, locale)}</span>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-600">{review.comment}</p>

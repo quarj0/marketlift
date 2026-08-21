@@ -8,11 +8,14 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AccountSidebar } from '@/components/account/account-sidebar';
+import { LocalizedDate } from '@/components/i18n/t';
+import { LocationFields } from '@/components/location/location-fields';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
 import { accountService } from '@/services/account.service';
+import { getBrazilState } from '@/data/brazil-locations';
 
 function ProfileSkeleton() {
   return (
@@ -25,7 +28,7 @@ function ProfileSkeleton() {
 }
 
 export default function ProfilePage() {
-  const { t, tr } = useLocale();
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
 
@@ -35,7 +38,7 @@ export default function ProfilePage() {
         fullName: z.string().min(2, t('account.profile.validation.name')),
         email: z.string().email(t('account.profile.validation.email')),
         phone: z.string().min(10, t('account.profile.validation.phone')),
-        state: z.string().min(2, t('account.profile.validation.state')),
+        stateCode: z.string().min(2, t('account.profile.validation.state')),
         city: z.string().min(2, t('account.profile.validation.city')),
         district: z.string().optional(),
         bio: z.string().max(240, t('account.profile.validation.bio')).optional(),
@@ -55,6 +58,8 @@ export default function ProfilePage() {
     handleSubmit,
     reset,
     formState: { errors, isDirty },
+    watch,
+    setValue,
   } = useForm<ProfileForm>({ resolver: zodResolver(profileSchema) });
 
   useEffect(() => {
@@ -64,7 +69,7 @@ export default function ProfilePage() {
       fullName: profileQuery.data.fullName,
       email: profileQuery.data.email,
       phone: profileQuery.data.phone,
-      state: profileQuery.data.location.state,
+      stateCode: profileQuery.data.location.stateCode,
       city: profileQuery.data.location.city,
       district: profileQuery.data.location.district ?? '',
       bio: profileQuery.data.bio ?? '',
@@ -79,8 +84,8 @@ export default function ProfilePage() {
         phone: values.phone,
         bio: values.bio,
         location: {
-          state: values.state,
-          stateCode: profileQuery.data?.location.stateCode ?? 'SP',
+          state: getBrazilState(values.stateCode)?.name ?? profileQuery.data?.location.state ?? values.stateCode,
+          stateCode: values.stateCode,
           city: values.city,
           district: values.district,
         },
@@ -93,7 +98,7 @@ export default function ProfilePage() {
         fullName: data.fullName,
         email: data.email,
         phone: data.phone,
-        state: data.location.state,
+        stateCode: data.location.stateCode,
         city: data.location.city,
         district: data.location.district ?? '',
         bio: data.bio ?? '',
@@ -143,7 +148,7 @@ export default function ProfilePage() {
                         </div>
 
                         <p className="mt-1 text-sm text-slate-500">
-                          {t('account.profile.memberSince', { date: tr(profileQuery.data.memberSince) })}
+                          {t('account.profile.memberSince', { date: '' })}<LocalizedDate value={profileQuery.data.memberSince} dateStyle="medium" />
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
@@ -180,24 +185,38 @@ export default function ProfilePage() {
                         {errors.phone && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.phone.message}</p>}
                       </label>
 
-                      <label>
-                        <span className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                          <MapPin className="size-4 text-slate-400" /> {t('account.profile.state')}
-                        </span>
-                        <Input {...register('state')} aria-invalid={!!errors.state} />
-                        {errors.state && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.state.message}</p>}
-                      </label>
-
-                      <label>
-                        <span className="mb-2 block text-sm font-semibold">{t('account.profile.city')}</span>
-                        <Input {...register('city')} aria-invalid={!!errors.city} />
-                        {errors.city && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.city.message}</p>}
-                      </label>
-
-                      <label className="sm:col-span-2">
-                        <span className="mb-2 block text-sm font-semibold">{t('account.profile.district')}</span>
-                        <Input {...register('district')} placeholder={t('account.profile.districtPlaceholder')} />
-                      </label>
+                      <div className="sm:col-span-2">
+                        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                          <MapPin className="size-4 text-slate-400" /> {t('account.profile.location')}
+                        </div>
+                        <LocationFields
+                          value={{
+                            stateCode: watch('stateCode') || profileQuery.data.location.stateCode || 'SP',
+                            city: watch('city') || '',
+                            district: watch('district') || '',
+                          }}
+                          onChange={(location) => {
+                            setValue('stateCode', location.stateCode, { shouldDirty: true, shouldValidate: true });
+                            setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
+                            setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
+                          }}
+                          labels={{
+                            region: t('search.region'),
+                            state: t('account.profile.state'),
+                            city: t('account.profile.city'),
+                            district: t('account.profile.district'),
+                          }}
+                          placeholders={{
+                            city: t('account.profile.city'),
+                            district: t('account.profile.districtPlaceholder'),
+                          }}
+                          errors={{
+                            stateCode: errors.stateCode?.message,
+                            city: errors.city?.message,
+                            district: errors.district?.message,
+                          }}
+                        />
+                      </div>
 
                       <label className="sm:col-span-2">
                         <span className="mb-2 block text-sm font-semibold">{t('account.profile.about')}</span>

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { CheckCircle2, MapPin, Star } from "lucide-react";
 
-import { LocalizedDate, LocalizedValue, T } from "@/components/i18n/t";
+import { LocalizedDate, T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { ListingCard } from "@/components/listings/listing-card";
 import { SellerProfileActions } from "@/components/seller/seller-profile-actions";
@@ -45,6 +45,7 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
   }
 
   const { seller, listings, reviews } = data;
+  const sellerLocation = [seller.location.city, seller.location.stateCode].filter(Boolean).join(", ");
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
@@ -72,11 +73,15 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
             </div>
 
             <p className="mt-2 flex flex-wrap items-center gap-1 text-sm text-slate-500">
-              <MapPin className="size-4" aria-hidden="true" />
-              {seller.location.city}, {seller.location.stateCode}
-              <span aria-hidden="true">·</span>
+              {sellerLocation && (
+                <>
+                  <MapPin className="size-4" aria-hidden="true" />
+                  <span>{sellerLocation}</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
               <T id="seller.memberSince" values={{ date: "" }} />
-              <LocalizedValue value={seller.memberSince} />
+              <LocalizedDate value={seller.memberSince} dateStyle="medium" />
             </p>
 
             <div className="mt-3 grid grid-cols-3 gap-3 rounded-2xl bg-slate-50 p-3 text-center text-xs sm:flex sm:gap-6 sm:bg-transparent sm:p-0 sm:text-left sm:text-sm">

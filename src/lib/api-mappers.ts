@@ -33,6 +33,7 @@ export type ApiSeller = {
   id: string;
   name: string;
   avatarUrl?: string | null;
+  phone?: string | null;
   verified: boolean;
   sellerType: 'individual' | 'business' | string;
   isSuspended?: boolean;
@@ -89,6 +90,7 @@ export function mapSeller(raw: ApiSeller): Seller {
     id: String(raw.id),
     name: raw.name,
     avatar: raw.avatarUrl?.trim() ? resolveApiUrl(raw.avatarUrl.trim()) : AVATAR_PLACEHOLDER,
+    phone: raw.phone?.trim() || undefined,
     verified: Boolean(raw.verified),
     type: raw.sellerType === 'business' ? 'business' : 'individual',
     rating: Number(raw.rating || 0),
@@ -249,24 +251,24 @@ export function mapConversation(raw: any): Conversation {
       responseRate: 0,
       location: { state: '', stateCode: '', city: '' },
     },
-    listing: {
-      id: String(raw.listing.id || ''),
-      slug: raw.listing.slug || '',
-      title: raw.listing.title,
-      description: '',
-      price: Number(raw.listing.price ?? 0),
-      category: '',
-      location: { state: '', stateCode: '', city: '' },
-      images: mapMediaUrls([raw.listing.primaryImage]),
-      sellerId: '',
-      createdAt: raw.lastMessageAt || new Date(0).toISOString(),
-      views: 0,
-      status: raw.listing.status || undefined,
-    },
+    listing: raw.listing && !raw.listing.deleted && raw.listing.id && raw.listing.slug
+      ? {
+          id: String(raw.listing.id),
+          slug: raw.listing.slug,
+          title: raw.listing.title,
+          description: '',
+          price: Number(raw.listing.price ?? 0),
+          category: '',
+          location: { state: '', stateCode: '', city: '' },
+          images: mapMediaUrls([raw.listing.primaryImage]),
+          sellerId: '',
+          createdAt: raw.lastMessageAt || new Date(0).toISOString(),
+          views: 0,
+        }
+      : undefined,
     lastMessage: raw.lastMessage || '',
     lastMessageAt: raw.lastMessageAt || '',
     unread: Number(raw.unread || 0),
-    blocked: Boolean(raw.blocked),
   };
 }
 
