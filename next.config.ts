@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  async redirects() {
+    return [
+      {
+        source: "/reset--password",
+        destination: "/reset-password",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
