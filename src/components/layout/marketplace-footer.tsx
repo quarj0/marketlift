@@ -43,7 +43,7 @@ export function MarketplaceFooter() {
   ];
 
   return (
-    <footer className="border-t border-white/10 bg-[#02122f] pb-20 text-white lg:pb-0">
+    <footer className="border-t border-white/10 bg-ink-950 pb-20 text-white lg:pb-0">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.2fr_2fr] lg:px-8 lg:py-14">
         <div>
           <MarketliftLogo />
@@ -52,7 +52,7 @@ export function MarketplaceFooter() {
             {t("footer.description")}
           </p>
 
-          <div className="mt-5 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm text-slate-200">
+          <div className="mt-5 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/6 p-4 text-sm text-slate-200">
             <ShieldCheck
               className="mt-0.5 size-5 shrink-0 text-cyan-300"
               aria-hidden="true"

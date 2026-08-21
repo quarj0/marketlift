@@ -261,10 +261,12 @@ export function mapConversation(raw: any): Conversation {
       sellerId: '',
       createdAt: raw.lastMessageAt || new Date(0).toISOString(),
       views: 0,
+      status: raw.listing.status || undefined,
     },
     lastMessage: raw.lastMessage || '',
     lastMessageAt: raw.lastMessageAt || '',
     unread: Number(raw.unread || 0),
+    blocked: Boolean(raw.blocked),
   };
 }
 

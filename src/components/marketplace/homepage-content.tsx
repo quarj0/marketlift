@@ -35,11 +35,7 @@ import { useLocale } from "@/providers/locale-provider";
 import { listingService } from "@/services/listing.service";
 import { marketplaceService } from "@/services/marketplace.service";
 import { sellerService } from "@/services/seller.service";
-import type {
-  Category,
-  Listing,
-  Seller,
-} from "@/types";
+import type { Category, Listing, Seller } from "@/types";
 
 const icons = {
   Smartphone,
@@ -104,7 +100,7 @@ function SectionHeading({
 function ListingSkeleton() {
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className="aspect-[4/3] animate-pulse bg-slate-200" />
+      <div className="aspect-4/3 animate-pulse bg-slate-200" />
       <div className="space-y-3 p-4">
         <div className="h-6 w-2/5 animate-pulse rounded bg-slate-200" />
         <div className="h-4 w-5/6 animate-pulse rounded bg-slate-200" />
@@ -143,11 +139,9 @@ function ListingSection({
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map(
-          (_, index) => (
-            <ListingSkeleton key={index} />
-          ),
-        )}
+        {Array.from({ length: 4 }).map((_, index) => (
+          <ListingSkeleton key={index} />
+        ))}
       </div>
     );
   }
@@ -161,10 +155,7 @@ function ListingSection({
   }
 
   const sellerMap = new Map(
-    (sellers ?? []).map((seller) => [
-      seller.id,
-      seller,
-    ]),
+    (sellers ?? []).map((seller) => [seller.id, seller]),
   );
 
   return (
@@ -180,22 +171,14 @@ function ListingSection({
   );
 }
 
-function ErrorCard({
-  onRetry,
-}: {
-  onRetry: () => void;
-}) {
+function ErrorCard({ onRetry }: { onRetry: () => void }) {
   const { t } = useLocale();
 
   return (
     <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-6">
-      <p className="font-bold text-rose-900">
-        {t("home.sectionError")}
-      </p>
+      <p className="font-bold text-rose-900">{t("home.sectionError")}</p>
 
-      <p className="mt-1 text-sm text-rose-700">
-        {t("home.sectionErrorBody")}
-      </p>
+      <p className="mt-1 text-sm text-rose-700">{t("home.sectionErrorBody")}</p>
 
       <Button
         type="button"
@@ -221,14 +204,12 @@ function CategoryGrid({
   if (loading) {
     return (
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-        {Array.from({ length: 13 }).map(
-          (_, index) => (
-            <div
-              key={index}
-              className="min-h-28 animate-pulse rounded-2xl border bg-white"
-            />
-          ),
-        )}
+        {Array.from({ length: 13 }).map((_, index) => (
+          <div
+            key={index}
+            className="min-h-28 animate-pulse rounded-2xl border bg-white"
+          />
+        ))}
       </div>
     );
   }
@@ -236,10 +217,7 @@ function CategoryGrid({
   return (
     <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
       {categories?.map((category) => {
-        const Icon =
-          icons[
-            category.icon as keyof typeof icons
-          ] ?? Grid3X3;
+        const Icon = icons[category.icon as keyof typeof icons] ?? Grid3X3;
 
         return (
           <Link
@@ -252,10 +230,7 @@ function CategoryGrid({
             </span>
 
             <span className="text-xs font-bold text-slate-800 sm:text-sm">
-              {categoryName(
-                category.id,
-                category.name,
-              )}
+              {categoryName(category.id, category.name)}
             </span>
           </Link>
         );
@@ -284,8 +259,7 @@ export function HomepageContent() {
 
   const nearbyQuery = useQuery({
     queryKey: ["listings", "nearby", "SP"],
-    queryFn: () =>
-      listingService.getNearby("SP", 4),
+    queryFn: () => listingService.getNearby("SP", 4),
   });
 
   const featuredQuery = useQuery({
@@ -307,11 +281,8 @@ export function HomepageContent() {
 
   return (
     <main className="overflow-hidden">
-      <section className="relative isolate overflow-hidden bg-[#02122f] text-white">
-        <div
-          className="absolute inset-0 -z-10 opacity-25"
-          aria-hidden="true"
-        >
+      <section className="relative isolate overflow-hidden bg-ink-950 text-white">
+        <div className="absolute inset-0 -z-10 opacity-25" aria-hidden="true">
           <div className="absolute -right-24 top-8 size-80 rounded-full bg-cyan-400 blur-3xl" />
           <div className="absolute -left-20 bottom-0 size-72 rounded-full bg-lift-400 blur-3xl" />
         </div>
@@ -341,17 +312,11 @@ export function HomepageContent() {
                   {t("home.popular")}
                 </span>
 
-                <Link
-                  className="hover:text-white"
-                  href="/search?q=iPhone+15"
-                >
+                <Link className="hover:text-white" href="/search?q=iPhone+15">
                   iPhone 15
                 </Link>
 
-                <Link
-                  className="hover:text-white"
-                  href="/search?q=Honda+Civic"
-                >
+                <Link className="hover:text-white" href="/search?q=Honda+Civic">
                   Honda Civic
                 </Link>
 
@@ -362,10 +327,7 @@ export function HomepageContent() {
                   {t("category.properties")}
                 </Link>
 
-                <Link
-                  className="hover:text-white"
-                  href="/search?q=Samsung+S24"
-                >
+                <Link className="hover:text-white" href="/search?q=Samsung+S24">
                   Samsung S24
                 </Link>
               </div>
@@ -381,27 +343,21 @@ export function HomepageContent() {
 
                     <div className="mt-4 grid grid-cols-3 gap-4">
                       <div>
-                        <p className="text-2xl font-black">
-                          13
-                        </p>
+                        <p className="text-2xl font-black">13</p>
                         <p className="text-xs text-slate-500">
                           {t("home.categoriesCount")}
                         </p>
                       </div>
 
                       <div>
-                        <p className="text-2xl font-black">
-                          9
-                        </p>
+                        <p className="text-2xl font-black">9</p>
                         <p className="text-xs text-slate-500">
                           {t("home.regionsCount")}
                         </p>
                       </div>
 
                       <div>
-                        <p className="text-2xl font-black">
-                          24/7
-                        </p>
+                        <p className="text-2xl font-black">24/7</p>
                         <p className="text-xs text-slate-500">
                           {t("home.browsing")}
                         </p>
@@ -409,23 +365,19 @@ export function HomepageContent() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-[#071b3b]/90 p-4">
+                  <div className="rounded-2xl bg-ink-900/90 p-4">
                     <ShieldCheck className="size-6 text-cyan-300" />
                     <p className="mt-3 font-bold">
                       {t("home.sellerVerification")}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-slate-300">
-                      {t(
-                        "home.sellerVerificationBody",
-                      )}
+                      {t("home.sellerVerificationBody")}
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-[#071b3b]/90 p-4">
+                  <div className="rounded-2xl bg-ink-900/90 p-4">
                     <MapPin className="size-6 text-cyan-300" />
-                    <p className="mt-3 font-bold">
-                      {t("home.browseNearby")}
-                    </p>
+                    <p className="mt-3 font-bold">{t("home.browseNearby")}</p>
                     <p className="mt-1 text-xs leading-5 text-slate-300">
                       {t("home.browseNearbyBody")}
                     </p>
@@ -445,16 +397,13 @@ export function HomepageContent() {
             [t("home.signalReporting"), Flag],
             [t("home.signalCommerce"), Users],
           ].map(([label, Icon], index) => {
-            const SignalIcon =
-              Icon as typeof ShieldCheck;
+            const SignalIcon = Icon as typeof ShieldCheck;
 
             return (
               <div
                 key={String(label)}
                 className={`flex items-center gap-3 py-4 text-sm font-semibold text-slate-700 ${
-                  index % 2 === 0
-                    ? "pr-3"
-                    : "pl-3"
+                  index % 2 === 0 ? "pr-3" : "pl-3"
                 } md:px-4`}
               >
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
@@ -471,19 +420,13 @@ export function HomepageContent() {
         <SectionHeading
           eyebrow={t("home.explore")}
           title={t("home.browseCategories")}
-          description={t(
-            "home.browseCategoriesBody",
-          )}
+          description={t("home.browseCategoriesBody")}
           href="/search"
           action={t("common.viewAll")}
         />
 
         {categoriesQuery.isError ? (
-          <ErrorCard
-            onRetry={() =>
-              categoriesQuery.refetch()
-            }
-          />
+          <ErrorCard onRetry={() => categoriesQuery.refetch()} />
         ) : (
           <CategoryGrid
             categories={categoriesQuery.data}
@@ -502,17 +445,12 @@ export function HomepageContent() {
         />
 
         {nearbyQuery.isError ? (
-          <ErrorCard
-            onRetry={() => nearbyQuery.refetch()}
-          />
+          <ErrorCard onRetry={() => nearbyQuery.refetch()} />
         ) : (
           <ListingSection
             listings={nearbyQuery.data}
             sellers={allSellersQuery.data}
-            loading={
-              nearbyQuery.isLoading ||
-              allSellersQuery.isLoading
-            }
+            loading={nearbyQuery.isLoading || allSellersQuery.isLoading}
             emptyMessage={t("home.noNearby")}
           />
         )}
@@ -529,19 +467,12 @@ export function HomepageContent() {
           />
 
           {featuredQuery.isError ? (
-            <ErrorCard
-              onRetry={() =>
-                featuredQuery.refetch()
-              }
-            />
+            <ErrorCard onRetry={() => featuredQuery.refetch()} />
           ) : (
             <ListingSection
               listings={featuredQuery.data}
               sellers={allSellersQuery.data}
-              loading={
-                featuredQuery.isLoading ||
-                allSellersQuery.isLoading
-              }
+              loading={featuredQuery.isLoading || allSellersQuery.isLoading}
               emptyMessage={t("home.noFeatured")}
             />
           )}
@@ -558,17 +489,12 @@ export function HomepageContent() {
         />
 
         {recentQuery.isError ? (
-          <ErrorCard
-            onRetry={() => recentQuery.refetch()}
-          />
+          <ErrorCard onRetry={() => recentQuery.refetch()} />
         ) : (
           <ListingSection
             listings={recentQuery.data}
             sellers={allSellersQuery.data}
-            loading={
-              recentQuery.isLoading ||
-              allSellersQuery.isLoading
-            }
+            loading={recentQuery.isLoading || allSellersQuery.isLoading}
             emptyMessage={t("home.noRecent")}
           />
         )}
@@ -579,34 +505,23 @@ export function HomepageContent() {
           <SectionHeading
             eyebrow={t("home.trusted")}
             title={t("home.verifiedSellers")}
-            description={t(
-              "home.verifiedSellersBody",
-            )}
+            description={t("home.verifiedSellersBody")}
             href="/search?verifiedOnly=true"
             action={t("home.viewListings")}
           />
 
           {sellersQuery.isError ? (
-            <ErrorCard
-              onRetry={() =>
-                sellersQuery.refetch()
-              }
-            />
+            <ErrorCard onRetry={() => sellersQuery.refetch()} />
           ) : sellersQuery.isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map(
-                (_, index) => (
-                  <SellerSkeleton key={index} />
-                ),
-              )}
+              {Array.from({ length: 3 }).map((_, index) => (
+                <SellerSkeleton key={index} />
+              ))}
             </div>
           ) : sellersQuery.data?.length ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {sellersQuery.data.map((seller) => (
-                <SellerCard
-                  key={seller.id}
-                  seller={seller}
-                />
+                <SellerCard key={seller.id} seller={seller} />
               ))}
             </div>
           ) : (
@@ -617,7 +532,7 @@ export function HomepageContent() {
         </div>
       </section>
 
-      <section className="bg-[#02122f] py-14 text-white lg:py-20">
+      <section className="bg-ink-950 py-14 text-white lg:py-20">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:px-8">
           <div className="self-center">
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand-300">
@@ -637,9 +552,7 @@ export function HomepageContent() {
               className="mt-6 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
               asChild
             >
-              <Link href="/safety">
-                {t("home.safetyGuide")}
-              </Link>
+              <Link href="/safety">{t("home.safetyGuide")}</Link>
             </Button>
           </div>
 
@@ -655,32 +568,25 @@ export function HomepageContent() {
                 t("home.safetyProfiles"),
                 t("home.safetyProfilesBody"),
               ],
-              [
-                Flag,
-                t("home.safetyReporting"),
-                t("home.safetyReportingBody"),
-              ],
+              [Flag, t("home.safetyReporting"), t("home.safetyReportingBody")],
               [
                 BadgeCheck,
                 t("home.safetyModeration"),
                 t("home.safetyModerationBody"),
               ],
             ].map(([Icon, title, body]) => {
-              const SafetyIcon =
-                Icon as typeof ShieldCheck;
+              const SafetyIcon = Icon as typeof ShieldCheck;
 
               return (
                 <div
                   key={String(title)}
-                  className="rounded-2xl border border-white/10 bg-white/[.05] p-5"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-5"
                 >
                   <span className="grid size-10 place-items-center rounded-xl bg-brand-400/10 text-brand-300">
                     <SafetyIcon className="size-5" />
                   </span>
 
-                  <h3 className="mt-4 font-bold">
-                    {String(title)}
-                  </h3>
+                  <h3 className="mt-4 font-bold">{String(title)}</h3>
 
                   <p className="mt-2 text-sm leading-6 text-slate-400">
                     {String(body)}
@@ -693,7 +599,7 @@ export function HomepageContent() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="relative overflow-hidden rounded-[2rem] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-lift-50 p-7 sm:p-10 lg:p-12">
+        <div className="relative overflow-hidden rounded-[2rem] border border-brand-100 bg-linear-to-br from-brand-50 via-white to-lift-50 p-7 sm:p-10 lg:p-12">
           <div
             className="absolute -right-14 -top-16 size-56 rounded-full bg-lift-200/70 blur-3xl"
             aria-hidden="true"
@@ -715,20 +621,18 @@ export function HomepageContent() {
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button size="lg" className="bg-lift-500 font-extrabold text-ink-950 hover:bg-lift-400" asChild>
+                <Button
+                  size="lg"
+                  className="bg-lift-500 font-extrabold text-ink-950 hover:bg-lift-400"
+                  asChild
+                >
                   <Link href="/selling/listings/new">
                     {t("home.postListing")}
                   </Link>
                 </Button>
 
-                <Button
-                  size="lg"
-                  variant="outline"
-                  asChild
-                >
-                  <Link href="/selling/start">
-                    {t("home.exploreSelling")}
-                  </Link>
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/selling/start">{t("home.exploreSelling")}</Link>
                 </Button>
               </div>
             </div>
@@ -744,10 +648,7 @@ export function HomepageContent() {
                   ["2", t("home.journey2")],
                   ["3", t("home.journey3")],
                 ].map(([number, text]) => (
-                  <div
-                    key={number}
-                    className="flex items-center gap-3"
-                  >
+                  <div key={number} className="flex items-center gap-3">
                     <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-50 font-black text-brand-700">
                       {number}
                     </span>

@@ -22,9 +22,7 @@ export function SearchBar({
   const { t } = useLocale();
   const [q, setQ] = useState("");
   const [localLocation, setLocalLocation] = useState(
-    location
-      ? `${location.city}, ${location.stateCode}`
-      : "São Paulo, SP",
+    location ? `${location.city}, ${location.stateCode}` : "São Paulo, SP",
   );
 
   function submit(event: FormEvent) {
@@ -74,9 +72,7 @@ export function SearchBar({
 
           <Input
             value={localLocation}
-            onChange={(event) =>
-              setLocalLocation(event.target.value)
-            }
+            onChange={(event) => setLocalLocation(event.target.value)}
             className="pl-11"
             aria-label={t("search.location")}
           />
@@ -92,9 +88,7 @@ export function SearchBar({
           <Search className="size-4" />
 
           {compact ? (
-            <span className="sr-only">
-              {t("common.search")}
-            </span>
+            <span className="sr-only">{t("common.search")}</span>
           ) : (
             t("common.search")
           )}
