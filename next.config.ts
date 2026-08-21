@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   output: "standalone",
   poweredByHeader: false,
-  experimental: {
-    webpackBuildWorker: false,
-  },
   async headers() {
     return [
       {
