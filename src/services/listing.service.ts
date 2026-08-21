@@ -1,7 +1,7 @@
 import { apiRequest, graphqlRequest } from '@/lib/api-client';
 import { mapListing } from '@/lib/api-mappers';
 import { LISTING_FIELDS } from '@/lib/graphql-fragments';
-import type { SearchFilters } from '@/types';
+import type { Location, SearchFilters } from '@/types';
 
 function paramsFromFilters(filters: SearchFilters) {
   const params = new URLSearchParams();
@@ -24,19 +24,36 @@ function paramsFromFilters(filters: SearchFilters) {
 
 type SearchResponse = { results?: any[]; items?: any[]; count?: number; totalCount?: number };
 
-export const listingService = {
-  async getListings(filters: SearchFilters = {}) {
-    const params = paramsFromFilters(filters);
-    const data = await apiRequest<SearchResponse>(`/api/v1/search/listings/?${params.toString()}`);
-    const rows = data.results ?? data.items ?? [];
-    return rows.map((row: any) => mapListing({
+async function fetchListings(filters: SearchFilters = {}) {
+  const params = paramsFromFilters(filters);
+  const data = await apiRequest<SearchResponse>(
+    `/api/v1/search/listings/?${params.toString()}`,
+  );
+  const rows = data.results ?? data.items ?? [];
+  return rows.map((row: any) =>
+    mapListing({
       ...row,
-      seller: row.seller || { id: row.sellerId, name: 'Seller', verified: false, sellerType: 'individual', rating: 0, reviews: 0, activeListings: 0, memberSince: row.createdAt, responseRate: 0, location: row.location },
+      seller: row.seller || {
+        id: row.sellerId,
+        name: 'Seller',
+        verified: false,
+        sellerType: 'individual',
+        rating: 0,
+        reviews: 0,
+        activeListings: 0,
+        memberSince: row.createdAt,
+        responseRate: 0,
+        location: row.location,
+      },
       status: 'published',
       categorySchemaVersion: row.categorySchemaVersion || 1,
       attributes: row.attributes || {},
-    }));
-  },
+    }),
+  );
+}
+
+export const listingService = {
+  getListings: fetchListings,
 
   async getListing(slug: string) {
     const data = await graphqlRequest<{ listing: any | null }>(
@@ -70,11 +87,13 @@ export const listingService = {
     return data.recentListings.map(mapListing);
   },
 
-  async getNearby(stateCode = 'SP', limit = 8) {
-    const data = await graphqlRequest<{ nearbyListings: any[] }>(
-      `query NearbyListings($stateCode: String!, $limit: Int!) { nearbyListings(stateCode: $stateCode, limit: $limit) { ${LISTING_FIELDS} } }`,
-      { stateCode, limit },
-    );
-    return data.nearbyListings.map(mapListing);
+  async getNearby(location: Location, limit = 8) {
+    const listings = await fetchListings({
+      state: location.stateCode,
+      city: location.city,
+      district: location.district,
+      sort: 'newest',
+    });
+    return listings.slice(0, Math.max(1, limit));
   },
 };

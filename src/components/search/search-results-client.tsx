@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Grid2X2, List, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { listingService } from '@/services/listing.service';
 import { brazilLocations, brazilRegions } from '@/data/brazil-locations';
 import { locationService } from '@/services/location.service';
@@ -19,12 +20,21 @@ const toNum = (value: string | null) => value && !Number.isNaN(Number(value)) ? 
 
 function useFilters(): SearchFilters {
   const params = useSearchParams();
+  const legacyLocation = params.get('location') || '';
+  const legacyMatch = legacyLocation.match(/^(.*?)(?:,|\s)\s*([A-Za-z]{2})\s*$/);
+  const legacyState = legacyMatch
+    ? brazilLocations.find((state) => state.code === legacyMatch[2].toUpperCase())
+    : undefined;
+  const state = params.get('state') || legacyState?.code || '';
+  const city = params.get('city') || (legacyState ? legacyMatch?.[1].trim() || '' : '');
+  const stateRow = brazilLocations.find((item) => item.code === state);
+
   return {
     q: params.get('q') || '',
     category: params.get('category') || '',
-    region: params.get('region') || '',
-    state: params.get('state') || '',
-    city: params.get('city') || '',
+    region: params.get('region') || stateRow?.regionCode || '',
+    state,
+    city,
     district: params.get('district') || '',
     minPrice: toNum(params.get('minPrice')),
     maxPrice: toNum(params.get('maxPrice')),
@@ -44,6 +54,18 @@ export function SearchResultsClient() {
   const { t, categoryName, locale } = useLocale();
   const [mobileFilters, setMobileFilters] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [cityDraft, setCityDraft] = useState(filters.city || '');
+  const [districtDraft, setDistrictDraft] = useState(filters.district || '');
+  const debouncedCityDraft = useDebouncedValue(cityDraft, 250);
+  const debouncedDistrictDraft = useDebouncedValue(districtDraft, 250);
+
+  useEffect(() => {
+    setCityDraft(filters.city || '');
+  }, [filters.state, filters.city]);
+
+  useEffect(() => {
+    setDistrictDraft(filters.district || '');
+  }, [filters.city, filters.district]);
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -64,18 +86,33 @@ export function SearchResultsClient() {
     ? brazilLocations.filter((state) => state.regionCode === selectedRegionCode)
     : brazilLocations;
   const citiesQuery = useQuery({
-    queryKey: ['location-cities', filters.state],
-    queryFn: () => locationService.getCities(filters.state || ''),
+    queryKey: ['location-cities', filters.state, debouncedCityDraft],
+    queryFn: () =>
+      locationService.getCities(filters.state || '', debouncedCityDraft, 40),
     enabled: Boolean(filters.state),
     staleTime: 24 * 60 * 60_000,
   });
   const neighborhoodsQuery = useQuery({
-    queryKey: ['location-neighborhoods', filters.state, filters.city],
-    queryFn: () => locationService.getNeighborhoods(filters.state || '', filters.city || ''),
+    queryKey: [
+      'location-neighborhoods',
+      filters.state,
+      filters.city,
+      debouncedDistrictDraft,
+    ],
+    queryFn: () =>
+      locationService.getNeighborhoods(
+        filters.state || '',
+        filters.city || '',
+        debouncedDistrictDraft,
+      ),
     enabled: Boolean(filters.state && filters.city),
     staleTime: 5 * 60_000,
   });
-  const cities = citiesQuery.data?.length ? citiesQuery.data : [...(selectedState?.cities ?? [])];
+  const cities = citiesQuery.data?.length
+    ? citiesQuery.data
+    : [...(selectedState?.cities ?? [])].filter((city) =>
+        city.toLocaleLowerCase('pt-BR').includes(cityDraft.toLocaleLowerCase('pt-BR')),
+      );
   const neighborhoods = neighborhoodsQuery.data ?? [];
 
   function update(patch: Record<string, string | undefined>) {
@@ -110,7 +147,7 @@ export function SearchResultsClient() {
         <select
           id="search-filter-region"
           value={selectedRegionCode}
-          onChange={(event) => update({ region: event.target.value, state: undefined, city: undefined, district: undefined })}
+          onChange={(event) => { setCityDraft(''); setDistrictDraft(''); update({ region: event.target.value, state: undefined, city: undefined, district: undefined, location: undefined }); }}
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
         >
           <option value="">{t('search.all')}</option>
@@ -125,11 +162,14 @@ export function SearchResultsClient() {
             value={filters.state}
             onChange={(event) => {
               const state = brazilLocations.find((item) => item.code === event.target.value);
+              setCityDraft('');
+              setDistrictDraft('');
               update({
                 state: event.target.value,
                 region: state?.regionCode || filters.region || undefined,
                 city: undefined,
                 district: undefined,
+                location: undefined,
               });
             }}
             className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
@@ -143,12 +183,21 @@ export function SearchResultsClient() {
           <Input
             id="search-filter-city"
             disabled={!filters.state}
-            defaultValue={filters.city}
-            key={`city-${filters.state}-${filters.city}`}
+            value={cityDraft}
             list="search-city-suggestions"
             placeholder={filters.state ? t('search.allCities') : t('search.state')}
-            onBlur={(event) => update({ city: event.currentTarget.value, district: undefined })}
-            onKeyDown={(event) => { if (event.key === 'Enter') update({ city: event.currentTarget.value, district: undefined }); }}
+            onChange={(event) => setCityDraft(event.target.value)}
+            onBlur={() => {
+              setDistrictDraft('');
+              update({ city: cityDraft.trim() || undefined, district: undefined, location: undefined });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                setDistrictDraft('');
+                update({ city: cityDraft.trim() || undefined, district: undefined, location: undefined });
+              }
+            }}
           />
           <datalist id="search-city-suggestions">
             {cities.map((city) => <option key={city} value={city} />)}
@@ -160,12 +209,17 @@ export function SearchResultsClient() {
         <Input
           id="search-filter-neighborhood"
           disabled={!filters.city}
-          defaultValue={filters.district}
-          key={`d-${filters.state}-${filters.city}-${filters.district}`}
+          value={districtDraft}
           list="search-neighborhood-suggestions"
           placeholder={t('selling.new.districtPlaceholder')}
-          onBlur={(event) => update({ district: event.currentTarget.value })}
-          onKeyDown={(event) => { if (event.key === 'Enter') update({ district: event.currentTarget.value }); }}
+          onChange={(event) => setDistrictDraft(event.target.value)}
+          onBlur={() => update({ district: districtDraft.trim() || undefined })}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              update({ district: districtDraft.trim() || undefined });
+            }
+          }}
         />
         <datalist id="search-neighborhood-suggestions">
           {neighborhoods.map((district) => <option key={district} value={district} />)}

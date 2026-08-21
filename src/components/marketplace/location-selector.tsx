@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { brazilLocations } from "@/data/brazil-locations";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { locationService } from "@/services/location.service";
 import { useLocale } from "@/providers/locale-provider";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ export function LocationSelector({
   const [selectedState, setSelectedState] = useState(
     value?.stateCode ?? "SP",
   );
+  const debouncedQuery = useDebouncedValue(query, 250);
 
   const current = value ?? {
     state: "São Paulo",
@@ -73,18 +75,31 @@ export function LocationSelector({
     if (open) setRecentLocations(readRecentLocations());
   }, [open]);
 
+  const cityQuery = useMemo(() => {
+    const normalized = debouncedQuery.trim().toLocaleLowerCase("pt-BR");
+    if (!normalized) return "";
+    const selectedStateMatches = `${state.name} ${state.code}`
+      .toLocaleLowerCase("pt-BR")
+      .includes(normalized);
+    return selectedStateMatches ? "" : debouncedQuery.trim();
+  }, [debouncedQuery, state.code, state.name]);
+
   const citiesQuery = useQuery({
-    queryKey: ["location-cities", state.code],
-    queryFn: () => locationService.getCities(state.code),
+    queryKey: ["location-cities", state.code, cityQuery],
+    queryFn: () => locationService.getCities(state.code, cityQuery, 80),
     enabled: open,
     staleTime: 24 * 60 * 60_000,
   });
-  const cities = citiesQuery.data?.length ? citiesQuery.data : [...state.cities];
+  const cities = citiesQuery.data?.length
+    ? citiesQuery.data
+    : [...state.cities].filter((city) =>
+        city.toLocaleLowerCase("pt-BR").includes(cityQuery.toLocaleLowerCase("pt-BR")),
+      );
 
   const globalSearchQuery = useQuery({
-    queryKey: ["location-search", query],
-    queryFn: () => locationService.search(query),
-    enabled: open && query.trim().length >= 2,
+    queryKey: ["location-search", debouncedQuery],
+    queryFn: () => locationService.search(debouncedQuery),
+    enabled: open && debouncedQuery.trim().length >= 2,
     staleTime: 5 * 60_000,
   });
 
@@ -276,11 +291,7 @@ export function LocationSelector({
               </p>
 
               <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
-                {cities
-                  .filter((city) =>
-                    city.toLowerCase().includes(query.toLowerCase()),
-                  )
-                  .map((city) => (
+                {cities.map((city) => (
                     <button
                       type="button"
                       key={city}

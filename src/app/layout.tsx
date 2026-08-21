@@ -10,13 +10,13 @@ import { SkipLink } from "@/components/i18n/skip-link";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/providers/auth-provider";
 import { LocaleProvider } from "@/providers/locale-provider";
+import { MarketplaceLocationProvider } from "@/providers/marketplace-location-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 
 const figtree = Figtree({
   subsets: ["latin"],
   variable: "--font-sans",
-  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -103,12 +103,14 @@ export default function RootLayout({
           <LocaleProvider>
             <SkipLink />
             <QueryProvider>
-              <AuthProvider>
-                <RealtimeProvider>
-                  <PwaRegister />
-                  <AccessController>{children}</AccessController>
-                </RealtimeProvider>
-              </AuthProvider>
+              <MarketplaceLocationProvider>
+                <AuthProvider>
+                  <RealtimeProvider>
+                    <PwaRegister />
+                    <AccessController>{children}</AccessController>
+                  </RealtimeProvider>
+                </AuthProvider>
+              </MarketplaceLocationProvider>
             </QueryProvider>
           </LocaleProvider>
         </Suspense>

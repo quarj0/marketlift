@@ -32,6 +32,7 @@ import { SearchBar } from "@/components/search/search-bar";
 import { SellerCard } from "@/components/seller/seller-card";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarketplaceLocation } from "@/providers/marketplace-location-provider";
 import { listingService } from "@/services/listing.service";
 import { marketplaceService } from "@/services/marketplace.service";
 import { sellerService } from "@/services/seller.service";
@@ -241,6 +242,7 @@ function CategoryGrid({
 
 export function HomepageContent() {
   const { t } = useLocale();
+  const { location } = useMarketplaceLocation();
 
   const categoriesQuery = useQuery({
     queryKey: ["marketplace", "categories"],
@@ -258,8 +260,14 @@ export function HomepageContent() {
   });
 
   const nearbyQuery = useQuery({
-    queryKey: ["listings", "nearby", "SP"],
-    queryFn: () => listingService.getNearby("SP", 4),
+    queryKey: [
+      "listings",
+      "nearby",
+      location.stateCode,
+      location.city,
+      location.district ?? "",
+    ],
+    queryFn: () => listingService.getNearby(location, 4),
   });
 
   const featuredQuery = useQuery({
@@ -437,10 +445,14 @@ export function HomepageContent() {
 
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <SectionHeading
-          eyebrow="São Paulo, SP"
+          eyebrow={`${location.city}, ${location.stateCode}`}
           title={t("home.nearbyTitle")}
           description={t("home.nearbyBody")}
-          href="/search?state=SP"
+          href={`/search?${new URLSearchParams({
+            state: location.stateCode,
+            city: location.city,
+            ...(location.district ? { district: location.district } : {}),
+          }).toString()}`}
           action={t("common.viewAll")}
         />
 
