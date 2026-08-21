@@ -1,5 +1,5 @@
 import { graphqlRequest } from "@/lib/api-client";
-import { mapSellerListing } from "@/lib/api-mappers";
+import { mapSellerListing, type ApiListing } from "@/lib/api-mappers";
 import { LISTING_FIELDS } from "@/lib/graphql-fragments";
 import { uploadFile } from "@/services/upload.service";
 import type {
@@ -35,15 +35,43 @@ const DASHBOARD_QUERY = `
   }
 `;
 
+type DashboardListingSummary = {
+  id: string;
+  title: string;
+  status: string;
+  views: number;
+  inquiries: number;
+  createdAt: string;
+};
+
+type DashboardPlan = {
+  name: string;
+  code: string;
+  used: number;
+  limit: number;
+};
+
+type DashboardSummary = {
+  active: number;
+  drafts: number;
+  underReview: number;
+  views: number;
+  messages: number;
+  plan: DashboardPlan | null;
+  recentListings: DashboardListingSummary[];
+};
+
+type SellingDashboardResponse = {
+  mySellingDashboard: DashboardSummary;
+  myListings: ApiListing[];
+};
+
 export const sellingService = {
   async getDashboard(): Promise<SellingDashboardData> {
-    const data = await graphqlRequest<{
-      mySellingDashboard: any;
-      myListings: any[];
-    }>(DASHBOARD_QUERY);
+    const data = await graphqlRequest<SellingDashboardResponse>(DASHBOARD_QUERY);
     const listings = data.myListings.map(mapSellerListing);
     const recentIds = new Set(
-      (data.mySellingDashboard.recentListings || []).map((item: any) =>
+      (data.mySellingDashboard.recentListings || []).map((item) =>
         String(item.id),
       ),
     );
@@ -65,7 +93,7 @@ export const sellingService = {
   },
 
   async getListings() {
-    const data = await graphqlRequest<{ myListings: any[] }>(
+    const data = await graphqlRequest<{ myListings: ApiListing[] }>(
       `query MyListings { myListings { ${LISTING_FIELDS} } }`,
     );
     return data.myListings.map(mapSellerListing);
@@ -110,7 +138,7 @@ export const sellingService = {
     };
     if (imageUploadIds) payload.imageUploadIds = imageUploadIds;
 
-    const data = await graphqlRequest<{ updateListing: any }>(
+    const data = await graphqlRequest<{ updateListing: ApiListing }>(
       `mutation UpdateListing($id: ID!, $input: ListingInput!) {
         updateListing(listingId: $id, input: $input) { ${LISTING_FIELDS} }
       }`,
@@ -121,21 +149,21 @@ export const sellingService = {
 
   async setStatus(id: string, status: SellerListing["status"]) {
     if (status === "published") {
-      const data = await graphqlRequest<{ publishListing: any }>(
+      const data = await graphqlRequest<{ publishListing: ApiListing }>(
         `mutation PublishListing($id: ID!) { publishListing(listingId: $id) { ${LISTING_FIELDS} } }`,
         { id },
       );
       return mapSellerListing(data.publishListing);
     }
     if (status === "paused") {
-      const data = await graphqlRequest<{ pauseListing: any }>(
+      const data = await graphqlRequest<{ pauseListing: ApiListing }>(
         `mutation PauseListing($id: ID!) { pauseListing(listingId: $id) { ${LISTING_FIELDS} } }`,
         { id },
       );
       return mapSellerListing(data.pauseListing);
     }
     if (status === "sold") {
-      const data = await graphqlRequest<{ markListingSold: any }>(
+      const data = await graphqlRequest<{ markListingSold: ApiListing }>(
         `mutation MarkListingSold($id: ID!) { markListingSold(listingId: $id) { ${LISTING_FIELDS} } }`,
         { id },
       );
@@ -156,7 +184,7 @@ export const sellingService = {
     const imageUploadIds = await Promise.all(
       input.images.map((file) => uploadFile(file, "listing_image")),
     );
-    const data = await graphqlRequest<{ createListing: any }>(
+    const data = await graphqlRequest<{ createListing: ApiListing }>(
       `mutation CreateListing($input: ListingInput!) { createListing(input: $input) { ${LISTING_FIELDS} } }`,
       {
         input: {

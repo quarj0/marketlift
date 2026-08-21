@@ -1,5 +1,5 @@
 import { apiRequest, graphqlRequest } from "@/lib/api-client";
-import { mapListing } from "@/lib/api-mappers";
+import { mapListing, type ApiListing, type ApiSeller } from "@/lib/api-mappers";
 import { LISTING_FIELDS } from "@/lib/graphql-fragments";
 import type { Location, SearchFilters } from "@/types";
 
@@ -34,12 +34,47 @@ function paramsFromFilters(filters: SearchFilters) {
   return params;
 }
 
+type SearchListingSeller = Pick<ApiSeller, "id" | "name"> & {
+  type?: string;
+  verified?: boolean;
+};
+
+type SearchListingRow = Omit<
+  ApiListing,
+  "seller" | "status" | "categorySchemaVersion"
+> & {
+  sellerId?: string;
+  seller?: SearchListingSeller | null;
+  categorySchemaVersion?: number;
+};
+
 type SearchResponse = {
-  results?: any[];
-  items?: any[];
+  results?: SearchListingRow[];
+  items?: SearchListingRow[];
   count?: number;
   totalCount?: number;
 };
+
+function normalizeSearchListing(row: SearchListingRow): ApiListing {
+  return {
+    ...row,
+    seller: {
+      id: String(row.seller?.id || row.sellerId || ""),
+      name: row.seller?.name || "Seller",
+      verified: Boolean(row.seller?.verified),
+      sellerType: row.seller?.type || "individual",
+      rating: 0,
+      reviews: 0,
+      activeListings: 0,
+      memberSince: row.createdAt,
+      responseRate: 0,
+      location: row.location,
+    },
+    status: "published",
+    categorySchemaVersion: row.categorySchemaVersion || 1,
+    attributes: row.attributes || {},
+  };
+}
 
 async function fetchListings(filters: SearchFilters = {}) {
   const params = paramsFromFilters(filters);
@@ -47,33 +82,14 @@ async function fetchListings(filters: SearchFilters = {}) {
     `/api/v1/search/listings/?${params.toString()}`,
   );
   const rows = data.results ?? data.items ?? [];
-  return rows.map((row: any) =>
-    mapListing({
-      ...row,
-      seller: row.seller || {
-        id: row.sellerId,
-        name: "Seller",
-        verified: false,
-        sellerType: "individual",
-        rating: 0,
-        reviews: 0,
-        activeListings: 0,
-        memberSince: row.createdAt,
-        responseRate: 0,
-        location: row.location,
-      },
-      status: "published",
-      categorySchemaVersion: row.categorySchemaVersion || 1,
-      attributes: row.attributes || {},
-    }),
-  );
+  return rows.map((row) => mapListing(normalizeSearchListing(row)));
 }
 
 export const listingService = {
   getListings: fetchListings,
 
   async getListing(slug: string) {
-    const data = await graphqlRequest<{ listing: any | null }>(
+    const data = await graphqlRequest<{ listing: ApiListing | null }>(
       `query Listing($id: String!) { listing(id: $id) { ${LISTING_FIELDS} } }`,
       { id: slug },
     );
@@ -81,7 +97,7 @@ export const listingService = {
   },
 
   async getSimilar(slug: string, limit = 4) {
-    const data = await graphqlRequest<{ similarListings: any[] }>(
+    const data = await graphqlRequest<{ similarListings: ApiListing[] }>(
       `query SimilarListings($id: String!, $limit: Int!) { similarListings(listingId: $id, limit: $limit) { ${LISTING_FIELDS} } }`,
       { id: slug, limit },
     );
@@ -89,7 +105,7 @@ export const listingService = {
   },
 
   async getFeatured(limit = 8) {
-    const data = await graphqlRequest<{ featuredListings: any[] }>(
+    const data = await graphqlRequest<{ featuredListings: ApiListing[] }>(
       `query FeaturedListings($limit: Int!) { featuredListings(limit: $limit) { ${LISTING_FIELDS} } }`,
       { limit },
     );
@@ -97,7 +113,7 @@ export const listingService = {
   },
 
   async getRecent(limit = 8) {
-    const data = await graphqlRequest<{ recentListings: any[] }>(
+    const data = await graphqlRequest<{ recentListings: ApiListing[] }>(
       `query RecentListings($limit: Int!) { recentListings(limit: $limit) { ${LISTING_FIELDS} } }`,
       { limit },
     );

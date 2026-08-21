@@ -8,12 +8,11 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
   const params = await searchParams;
   const rawToken = params.token;
   const raw = Array.isArray(rawToken) ? rawToken[0] ?? '' : rawToken ?? '';
-  let token = raw.trim();
+  let token = raw.replace(/\s+/g, '').replace(/^=+/, '');
   // Some development mail viewers expose quoted-printable '=3D' as a literal
-  // '3D' prefix when a raw message link is copied. A UUID-based reset UID can
-  // never legitimately start with '3D', so normalize that one safe artifact.
-  if (/^3D[MNOYZ]/.test(token)) token = token.slice(2);
-  if (token.startsWith('=')) token = token.slice(1);
+  // '3D' prefix when a raw message link is copied. A reset token is a
+  // base64-encoded UUID followed by a dot, so this prefix is unambiguous.
+  if (/^3D(?=[A-Za-z0-9_-]+\.)/.test(token)) token = token.slice(2);
 
   return <ResetPasswordClient token={token} />;
 }
