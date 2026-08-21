@@ -12,15 +12,21 @@ import { MarketplaceLocationProvider } from "@/providers/marketplace-location-pr
 import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 
+const siteDescription =
+  "Discover great local deals and trusted sellers across Brazil.";
+
 export const metadata: Metadata = {
   title: {
     default: "Marketlift — Buy & Sell in Brazil",
     template: "%s | Marketlift",
   },
-  description: "Discover great local deals and trusted sellers across Brazil.",
+  description: siteDescription,
   manifest: "/manifest.webmanifest",
   metadataBase: new URL("https://marketlift.com.br"),
   applicationName: "Marketlift",
+  creator: "Marketlift",
+  publisher: "Marketlift",
+  category: "marketplace",
   appleWebApp: {
     capable: true,
     title: "Marketlift",
@@ -29,6 +35,48 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Marketlift",
+    locale: "pt_BR",
+    title: "Marketlift — Buy & Sell in Brazil",
+    description: siteDescription,
+    images: [
+      {
+        url: "/seo/marketlift-social-card.png",
+        width: 1732,
+        height: 908,
+        alt: "Marketlift — Buy, sell and grow across Brazil",
+      },
+      {
+        url: "/seo/marketlift-social-square.png",
+        width: 1254,
+        height: 1254,
+        alt: "Marketlift — Buy, sell and grow across Brazil",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Marketlift — Buy & Sell in Brazil",
+    description: siteDescription,
+    images: [
+      {
+        url: "/seo/marketlift-social-card.png",
+        width: 1732,
+        height: 908,
+        alt: "Marketlift — Buy, sell and grow across Brazil",
+      },
+    ],
   },
   icons: {
     icon: "/brand/marketlift-mark.png",
