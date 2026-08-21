@@ -57,8 +57,10 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
   const [selectedId, setSelectedId] = useState(initialId ?? "");
   const [text, setText] = useState("");
-  const [blocked, setBlocked] = useState(false);
+  const [blockedOverride, setBlockedOverride] = useState<boolean | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendConfirmed, setSendConfirmed] = useState(false);
 
   const [attachment, setAttachment] = useState<SelectedAttachment | null>(null);
 
@@ -74,18 +76,30 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
   const current = conversations.data?.find(
     (conversation) => conversation.id === activeId,
   );
+  const blocked = blockedOverride ?? current?.blocked ?? false;
+  const listingUnavailable =
+    current?.listing.status === "removed" ||
+    current?.listing.status === "rejected";
+  const composerDisabled = blocked || listingUnavailable;
 
   const messages = useQuery({
     queryKey: ["messages", activeId],
     queryFn: () => messagingService.getMessages(activeId),
-    enabled: Boolean(activeId),
+    enabled: Boolean(activeId && current),
   });
 
   useEffect(() => {
-    if (activeId) {
-      void messagingService.markRead(activeId);
+    if (activeId && current?.id === activeId) {
+      void messagingService.markRead(activeId).catch(() => undefined);
     }
-  }, [activeId]);
+  }, [activeId, current?.id]);
+
+  useEffect(() => {
+    if (!initialId || !conversations.data?.length || current) return;
+
+    const fallbackId = conversations.data[0].id;
+    router.replace(`/messages/${fallbackId}`);
+  }, [conversations.data, current, initialId, router]);
 
   useEffect(() => {
     return () => {
@@ -147,6 +161,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
     clearAttachment();
     setText("");
     setReportOpen(false);
+    setBlockedOverride(null);
+    setSendError(null);
+    setSendConfirmed(false);
 
     if (window.innerWidth < 1024) {
       router.push(`/messages/${conversationId}`);
@@ -163,9 +180,13 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
         image: attachment?.file,
       }),
 
+    onMutate: () => {
+      setSendError(null);
+      setSendConfirmed(false);
+    },
+
     onSuccess: async () => {
       setText("");
-      clearAttachment();
 
       await queryClient.invalidateQueries({
         queryKey: ["messages", activeId],
@@ -174,6 +195,17 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
       await queryClient.invalidateQueries({
         queryKey: ["conversations"],
       });
+
+      clearAttachment();
+      setSendConfirmed(true);
+    },
+
+    onError: (error) => {
+      setSendError(
+        error instanceof Error && error.message
+          ? error.message
+          : t("messages.sendError"),
+      );
     },
   });
 
@@ -336,7 +368,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem
                     onSelect={() => {
-                      setBlocked((value) => !value);
+                      setBlockedOverride(!blocked);
                     }}
                     className={
                       blocked
@@ -467,10 +499,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
             {/* Composer */}
             <div className="border-t bg-white p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
               {/* Listing */}
-              <Link
-                href={`/listing/${current.listing.slug}`}
-                className="mb-2 flex min-w-0 items-center gap-3 rounded-xl border bg-slate-50 p-2 transition hover:bg-slate-100"
-              >
+              <div className="mb-2 flex min-w-0 items-center gap-3 rounded-xl border bg-slate-50 p-2">
                 <Image
                   src={current.listing.images[0]}
                   width={40}
@@ -480,7 +509,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   alt={current.listing.title}
                 />
 
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold">
                     {current.listing.title}
                   </p>
@@ -489,7 +518,15 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     R$ {current.listing.price.toLocaleString("pt-BR")}
                   </p>
                 </div>
-              </Link>
+
+                {current.listing.slug && !listingUnavailable && (
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={`/listing/${current.listing.slug}`}>
+                      {t("messages.viewListing")}
+                    </Link>
+                  </Button>
+                )}
+              </div>
 
               {/* Attachment preview */}
               {attachment && (
@@ -548,7 +585,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
                   if (
                     (!text.trim() && !attachment) ||
-                    blocked ||
+                    composerDisabled ||
                     send.isPending
                   ) {
                     return;
@@ -565,7 +602,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
-                    disabled={blocked || send.isPending}
+                    disabled={composerDisabled || send.isPending}
                     onChange={handleImageChange}
                   />
 
@@ -574,7 +611,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     variant="ghost"
                     size="icon"
                     className="shrink-0"
-                    disabled={blocked || send.isPending}
+                    disabled={composerDisabled || send.isPending}
                     onClick={() => imageInputRef.current?.click()}
                     aria-label={t("messages.attach")}
                     title={t("messages.attach")}
@@ -585,10 +622,16 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
                 <Input
                   value={text}
-                  disabled={blocked || send.isPending}
-                  onChange={(event) => setText(event.target.value)}
+                  disabled={composerDisabled || send.isPending}
+                  onChange={(event) => {
+                    setText(event.target.value);
+                    setSendError(null);
+                    setSendConfirmed(false);
+                  }}
                   placeholder={
-                    blocked
+                    listingUnavailable
+                      ? t("messages.unavailablePlaceholder")
+                      : blocked
                       ? t("messages.blockedPlaceholder")
                       : attachment
                         ? t("messages.placeholderImage")
@@ -602,7 +645,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   size="icon"
                   className="shrink-0 sm:w-auto sm:px-4"
                   disabled={
-                    (!text.trim() && !attachment) || send.isPending || blocked
+                    (!text.trim() && !attachment) ||
+                    send.isPending ||
+                    composerDisabled
                   }
                   loading={send.isPending}
                   loadingText=""
@@ -617,6 +662,25 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
               <p className="mt-1.5 pl-1 text-[10px] text-slate-400">
                 {t("messages.fileHint")}
               </p>
+
+              {sendError && (
+                <p className="mt-2 text-xs font-medium text-rose-700" role="alert">
+                  {t("messages.sendError")} {sendError}
+                </p>
+              )}
+
+              {sendConfirmed && (
+                <p className="mt-2 text-xs font-medium text-emerald-700" role="status">
+                  {t("messages.sendConfirmed")}
+                </p>
+              )}
+
+              {listingUnavailable && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800" role="status">
+                  <TriangleAlert className="size-4 shrink-0" />
+                  {t("messages.unavailableNotice")}
+                </div>
+              )}
 
               {blocked && (
                 <div className="mt-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">

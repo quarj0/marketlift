@@ -4,6 +4,8 @@ import { T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { MessagesClient } from "@/components/messaging/messages-client";
 
+export const instant = false;
+
 type ConversationPageProps = {
   params: Promise<{ conversationId: string }>;
 };

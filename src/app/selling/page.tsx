@@ -6,6 +6,8 @@ import { SellingDashboardClient } from '@/components/selling/selling-dashboard-c
 import { Button } from '@/components/ui/button';
 import { T } from '@/components/i18n/t';
 
+export const instant = false;
+
 export default function SellingPage() {
   return (
     <MarketplaceShell>

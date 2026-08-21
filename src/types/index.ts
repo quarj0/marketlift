@@ -100,6 +100,7 @@ export interface Listing {
   specifications?: Record<string, string | number>;
   attributes?: ListingAttributes;
   categorySchemaVersion?: number;
+  status?: ListingStatus;
 }
 
 export interface Category {
@@ -242,6 +243,7 @@ export interface Conversation {
   lastMessage: string;
   lastMessageAt: string;
   unread: number;
+  blocked: boolean;
 }
 
 export interface MessageAttachment {

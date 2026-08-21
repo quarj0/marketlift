@@ -1,6 +1,8 @@
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { MessagesClient } from "@/components/messaging/messages-client";
 
+export const instant = false;
+
 export default function MessagesPage() {
   return (
     <MarketplaceShell>

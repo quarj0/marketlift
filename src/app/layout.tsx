@@ -16,6 +16,7 @@ import { RealtimeProvider } from "@/providers/realtime-provider";
 const figtree = Figtree({
   subsets: ["latin"],
   variable: "--font-sans",
+  preload: false,
 });
 
 export const metadata: Metadata = {
