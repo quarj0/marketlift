@@ -1,14 +1,14 @@
-import { graphqlRequest } from '@/lib/api-client';
-import { mapSellerListing } from '@/lib/api-mappers';
-import { LISTING_FIELDS } from '@/lib/graphql-fragments';
-import { uploadFile } from '@/services/upload.service';
+import { graphqlRequest } from "@/lib/api-client";
+import { mapSellerListing } from "@/lib/api-mappers";
+import { LISTING_FIELDS } from "@/lib/graphql-fragments";
+import { uploadFile } from "@/services/upload.service";
 import type {
   ListingAttributes,
   ListingCondition,
   Location,
   SellerListing,
   SellingDashboardData,
-} from '@/types';
+} from "@/types";
 
 export interface CreateListingInput {
   title: string;
@@ -37,9 +37,16 @@ const DASHBOARD_QUERY = `
 
 export const sellingService = {
   async getDashboard(): Promise<SellingDashboardData> {
-    const data = await graphqlRequest<{ mySellingDashboard: any; myListings: any[] }>(DASHBOARD_QUERY);
+    const data = await graphqlRequest<{
+      mySellingDashboard: any;
+      myListings: any[];
+    }>(DASHBOARD_QUERY);
     const listings = data.myListings.map(mapSellerListing);
-    const recentIds = new Set((data.mySellingDashboard.recentListings || []).map((item: any) => String(item.id)));
+    const recentIds = new Set(
+      (data.mySellingDashboard.recentListings || []).map((item: any) =>
+        String(item.id),
+      ),
+    );
     return {
       active: Number(data.mySellingDashboard.active || 0),
       drafts: Number(data.mySellingDashboard.drafts || 0),
@@ -47,27 +54,39 @@ export const sellingService = {
       views: Number(data.mySellingDashboard.views || 0),
       messages: Number(data.mySellingDashboard.messages || 0),
       plan: {
-        name: data.mySellingDashboard.plan?.name || 'Free',
+        name: data.mySellingDashboard.plan?.name || "Free",
         used: Number(data.mySellingDashboard.plan?.used || 0),
         limit: Number(data.mySellingDashboard.plan?.limit || 0),
       },
-      recentListings: listings.filter((item) => recentIds.has(item.id)).slice(0, 5),
+      recentListings: listings
+        .filter((item) => recentIds.has(item.id))
+        .slice(0, 5),
     };
   },
 
   async getListings() {
-    const data = await graphqlRequest<{ myListings: any[] }>(`query MyListings { myListings { ${LISTING_FIELDS} } }`);
+    const data = await graphqlRequest<{ myListings: any[] }>(
+      `query MyListings { myListings { ${LISTING_FIELDS} } }`,
+    );
     return data.myListings.map(mapSellerListing);
   },
 
   async getListing(id: string) {
     const listings = await this.getListings();
-    return listings.find((listing) => listing.id === id || listing.slug === id) ?? null;
+    return (
+      listings.find((listing) => listing.id === id || listing.slug === id) ??
+      null
+    );
   },
 
-  async updateListing(id: string, input: Omit<CreateListingInput, 'images'> & { images?: File[] }) {
+  async updateListing(
+    id: string,
+    input: Omit<CreateListingInput, "images"> & { images?: File[] },
+  ) {
     const imageUploadIds = input.images?.length
-      ? await Promise.all(input.images.map((file) => uploadFile(file, 'listing_image')))
+      ? await Promise.all(
+          input.images.map((file) => uploadFile(file, "listing_image")),
+        )
       : undefined;
     const payload: Record<string, unknown> = {
       categoryId: input.category,
@@ -76,9 +95,16 @@ export const sellingService = {
       state: input.location.state,
       stateCode: input.location.stateCode,
       city: input.location.city,
-      district: input.location.district || '',
+      district: input.location.district || "",
+      ...(Number.isFinite(input.location.latitude) &&
+      Number.isFinite(input.location.longitude)
+        ? {
+            latitude: input.location.latitude,
+            longitude: input.location.longitude,
+          }
+        : {}),
       price: input.price,
-      condition: input.condition || '',
+      condition: input.condition || "",
       negotiable: input.negotiable,
       attributes: input.attributes || input.specifications || {},
     };
@@ -93,22 +119,22 @@ export const sellingService = {
     return mapSellerListing(data.updateListing);
   },
 
-  async setStatus(id: string, status: SellerListing['status']) {
-    if (status === 'published') {
+  async setStatus(id: string, status: SellerListing["status"]) {
+    if (status === "published") {
       const data = await graphqlRequest<{ publishListing: any }>(
         `mutation PublishListing($id: ID!) { publishListing(listingId: $id) { ${LISTING_FIELDS} } }`,
         { id },
       );
       return mapSellerListing(data.publishListing);
     }
-    if (status === 'paused') {
+    if (status === "paused") {
       const data = await graphqlRequest<{ pauseListing: any }>(
         `mutation PauseListing($id: ID!) { pauseListing(listingId: $id) { ${LISTING_FIELDS} } }`,
         { id },
       );
       return mapSellerListing(data.pauseListing);
     }
-    if (status === 'sold') {
+    if (status === "sold") {
       const data = await graphqlRequest<{ markListingSold: any }>(
         `mutation MarkListingSold($id: ID!) { markListingSold(listingId: $id) { ${LISTING_FIELDS} } }`,
         { id },
@@ -128,7 +154,7 @@ export const sellingService = {
 
   async createListing(input: CreateListingInput) {
     const imageUploadIds = await Promise.all(
-      input.images.map((file) => uploadFile(file, 'listing_image')),
+      input.images.map((file) => uploadFile(file, "listing_image")),
     );
     const data = await graphqlRequest<{ createListing: any }>(
       `mutation CreateListing($input: ListingInput!) { createListing(input: $input) { ${LISTING_FIELDS} } }`,
@@ -140,9 +166,16 @@ export const sellingService = {
           state: input.location.state,
           stateCode: input.location.stateCode,
           city: input.location.city,
-          district: input.location.district || '',
+          district: input.location.district || "",
+          ...(Number.isFinite(input.location.latitude) &&
+          Number.isFinite(input.location.longitude)
+            ? {
+                latitude: input.location.latitude,
+                longitude: input.location.longitude,
+              }
+            : {}),
           price: input.price,
-          condition: input.condition || '',
+          condition: input.condition || "",
           negotiable: input.negotiable,
           attributes: input.attributes || input.specifications || {},
           imageUploadIds,

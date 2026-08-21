@@ -70,8 +70,13 @@ export function SearchBar({
 
     if (q.trim()) params.set('q', q.trim());
 
+    const activeLocationLabel = `${activeLocation.city}, ${activeLocation.stateCode}`;
     const selectedLocation =
       (compact && location ? location : null) ??
+      (localLocation.trim().toLocaleLowerCase('pt-BR') ===
+      activeLocationLabel.toLocaleLowerCase('pt-BR')
+        ? activeLocation
+        : null) ??
       locationFromLabel(localLocation) ??
       locationSuggestions.data?.find(
         (item) =>
@@ -87,6 +92,15 @@ export function SearchBar({
       params.set('city', selectedLocation.city);
       if (selectedLocation.district) {
         params.set('district', selectedLocation.district);
+      }
+      if (
+        Number.isFinite(selectedLocation.latitude) &&
+        Number.isFinite(selectedLocation.longitude)
+      ) {
+        params.set('latitude', String(selectedLocation.latitude));
+        params.set('longitude', String(selectedLocation.longitude));
+        params.set('radiusKm', '25');
+        params.set('sort', 'distance');
       }
     } else if (!compact && localLocation.trim()) {
       // A user can still search a city name before selecting a suggestion. The

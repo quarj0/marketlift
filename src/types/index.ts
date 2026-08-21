@@ -1,12 +1,18 @@
-export type ListingCondition = 'New' | 'Like new' | 'Used';
-export type VerificationStatus = 'not_verified' | 'pending' | 'verified' | 'rejected';
-export type SellerType = 'individual' | 'business';
+export type ListingCondition = "New" | "Like new" | "Used";
+export type VerificationStatus =
+  | "not_verified"
+  | "pending"
+  | "verified"
+  | "rejected";
+export type SellerType = "individual" | "business";
 
 export interface Location {
   state: string;
   stateCode: string;
   city: string;
   district?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 /**
@@ -42,7 +48,12 @@ export interface Seller {
   type?: SellerType;
 }
 
-export type CategoryFieldType = 'text' | 'textarea' | 'number' | 'select' | 'boolean';
+export type CategoryFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "select"
+  | "boolean";
 export type CategoryFieldValue = string | number | boolean;
 export type ListingAttributes = Record<string, CategoryFieldValue>;
 
@@ -71,7 +82,7 @@ export interface CategoryConfiguration extends Category {
   schemaVersion: number;
   description: string;
   pricing: {
-    mode: 'required' | 'optional';
+    mode: "required" | "optional";
     label: string;
     placeholder?: string;
   };
@@ -116,13 +127,16 @@ export interface SearchFilters {
   state?: string;
   city?: string;
   district?: string;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
   minPrice?: number;
   maxPrice?: number;
-  condition?: ListingCondition | '';
-  sellerType?: SellerType | '';
+  condition?: ListingCondition | "";
+  sellerType?: SellerType | "";
   verifiedOnly?: boolean;
-  dateListed?: 'today' | 'week' | 'month' | '';
-  sort?: 'relevant' | 'newest' | 'price_asc' | 'price_desc';
+  dateListed?: "today" | "week" | "month" | "";
+  sort?: "relevant" | "newest" | "price_asc" | "price_desc" | "distance";
 }
 
 /**
@@ -131,14 +145,14 @@ export interface SearchFilters {
  * reports, or category rules require additional moderation.
  */
 export type ListingStatus =
-  | 'draft'
-  | 'published'
-  | 'paused'
-  | 'sold'
-  | 'expired'
-  | 'under_review'
-  | 'rejected'
-  | 'removed';
+  | "draft"
+  | "published"
+  | "paused"
+  | "sold"
+  | "expired"
+  | "under_review"
+  | "rejected"
+  | "removed";
 
 export interface SellerListing extends Listing {
   status: ListingStatus;
@@ -160,8 +174,8 @@ export interface AccountProfile {
 }
 
 export interface AccountSettings {
-  language: 'en' | 'pt-BR';
-  currency: 'BRL';
+  language: "en" | "pt-BR";
+  currency: "BRL";
   emailMessages: boolean;
   emailListingUpdates: boolean;
   emailRecommendations: boolean;
@@ -196,9 +210,9 @@ export interface SellingDashboardData {
   recentListings: SellerListing[];
 }
 
-export type BillingCycle = 'monthly' | 'yearly';
-export type PaymentMethod = 'pix' | 'card' | 'boleto';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled';
+export type BillingCycle = "monthly" | "yearly";
+export type PaymentMethod = "pix" | "card" | "boleto";
+export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
 export interface SellerPlan {
   id: string;
@@ -214,7 +228,7 @@ export interface SellerPlan {
 
 export interface Payment {
   id: string;
-  purpose: 'subscription' | 'promotion';
+  purpose: "subscription" | "promotion";
   amount: number;
   method: PaymentMethod;
   status: PaymentStatus;
@@ -227,7 +241,7 @@ export interface Payment {
   promotionId?: string;
 }
 
-export type PromotionType = 'featured' | 'top_search' | 'urgent' | 'homepage';
+export type PromotionType = "featured" | "top_search" | "urgent" | "homepage";
 
 export interface PromotionOption {
   id: PromotionType;
@@ -292,7 +306,13 @@ export interface Review {
 
 export interface NotificationItem {
   id: string;
-  type: 'message' | 'listing' | 'subscription' | 'payment' | 'review' | 'verification';
+  type:
+    | "message"
+    | "listing"
+    | "subscription"
+    | "payment"
+    | "review"
+    | "verification";
   title: string;
   body: string;
   createdAt: string;
@@ -301,21 +321,21 @@ export interface NotificationItem {
 }
 
 export type ReportReason =
-  | 'fraud'
-  | 'fake_listing'
-  | 'incorrect_info'
-  | 'prohibited'
-  | 'offensive'
-  | 'duplicate'
-  | 'other';
+  | "fraud"
+  | "fake_listing"
+  | "incorrect_info"
+  | "prohibited"
+  | "offensive"
+  | "duplicate"
+  | "other";
 
 export interface MarketplaceReport {
   id: string;
-  targetType: 'listing' | 'seller' | 'message';
+  targetType: "listing" | "seller" | "message";
   targetId: string;
   reporter: string;
   reason: ReportReason;
   description: string;
   createdAt: string;
-  status: 'open' | 'dismissed' | 'actioned';
+  status: "open" | "dismissed" | "actioned";
 }

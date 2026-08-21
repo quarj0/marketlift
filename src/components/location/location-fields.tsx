@@ -2,7 +2,9 @@
 
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { LoaderCircle, LocateFixed } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   brazilLocations,
@@ -11,12 +13,16 @@ import {
   type BrazilRegionCode,
 } from '@/data/brazil-locations';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useCurrentLocation } from '@/hooks/use-current-location';
+import { useLocale } from '@/providers/locale-provider';
 import { locationService } from '@/services/location.service';
 
 export type LocationFieldValue = {
   stateCode: string;
   city: string;
   district: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 type Props = {
@@ -35,6 +41,7 @@ type Props = {
   errors?: Partial<Record<keyof LocationFieldValue, string>>;
   className?: string;
   showRegion?: boolean;
+  showCurrentLocation?: boolean;
 };
 
 export function LocationFields({
@@ -45,7 +52,10 @@ export function LocationFields({
   errors,
   className = 'grid gap-4 sm:grid-cols-2',
   showRegion = true,
+  showCurrentLocation = true,
 }: Props) {
+  const { t } = useLocale();
+  const { locate, locating, errorCode, clearError } = useCurrentLocation();
   const uid = useId().replace(/:/g, '');
   const selectedState = getBrazilState(value.stateCode);
   const [regionCode, setRegionCode] = useState<BrazilRegionCode>(
@@ -97,6 +107,7 @@ export function LocationFields({
   const neighborhoods = neighborhoodsQuery.data ?? [];
 
   function updateState(stateCode: string) {
+    clearError();
     const state = getBrazilState(stateCode);
     if (!state) {
       onChange({ stateCode: '', city: '', district: '' });
@@ -106,8 +117,52 @@ export function LocationFields({
     onChange({ stateCode: state.code, city: '', district: '' });
   }
 
+  async function chooseCurrentLocation() {
+    const resolved = await locate();
+    if (!resolved) return;
+    const state = getBrazilState(resolved.stateCode);
+    if (state) setRegionCode(state.regionCode);
+    onChange({
+      stateCode: resolved.stateCode,
+      city: resolved.city,
+      district: resolved.district ?? '',
+      latitude: resolved.latitude,
+      longitude: resolved.longitude,
+    });
+  }
+
   return (
     <div className={className}>
+      {showCurrentLocation && (
+        <div className="sm:col-span-2 lg:col-span-full">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={chooseCurrentLocation}
+            disabled={locating}
+          >
+            {locating ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <LocateFixed className="size-4" aria-hidden="true" />
+            )}
+            {locating ? t('location.locating') : t('location.useMine')}
+          </Button>
+          {errorCode && (
+            <p role="alert" className="mt-2 text-sm font-medium text-amber-800">
+              {t(
+                errorCode === 'denied'
+                  ? 'location.denied'
+                  : errorCode === 'unsupported'
+                    ? 'location.unavailable'
+                    : errorCode === 'outside_brazil'
+                      ? 'location.notInBrazil'
+                      : 'location.failed',
+              )}
+            </p>
+          )}
+        </div>
+      )}
       {showRegion && (
         <label className="block">
           <span className="mb-1.5 block text-sm font-bold">{labels.region}</span>
@@ -116,6 +171,7 @@ export function LocationFields({
             onChange={(event) => {
               const nextRegion = event.target.value as BrazilRegionCode;
               setRegionCode(nextRegion);
+              clearError();
               onChange({ stateCode: '', city: '', district: '' });
             }}
             className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
@@ -156,9 +212,14 @@ export function LocationFields({
           list={`${uid}-cities`}
           autoComplete="address-level2"
           disabled={!selectedState}
-          onChange={(event) =>
-            onChange({ ...value, city: event.target.value, district: '' })
-          }
+          onChange={(event) => {
+            clearError();
+            onChange({
+              stateCode: value.stateCode,
+              city: event.target.value,
+              district: '',
+            });
+          }}
           placeholder={placeholders?.city}
           aria-invalid={Boolean(errors?.city)}
         />
@@ -179,7 +240,14 @@ export function LocationFields({
           list={`${uid}-neighborhoods`}
           autoComplete="address-level3"
           disabled={!selectedState || !value.city.trim()}
-          onChange={(event) => onChange({ ...value, district: event.target.value })}
+          onChange={(event) => {
+            clearError();
+            onChange({
+              stateCode: value.stateCode,
+              city: value.city,
+              district: event.target.value,
+            });
+          }}
           placeholder={placeholders?.district}
           aria-invalid={Boolean(errors?.district)}
         />

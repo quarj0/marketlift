@@ -36,11 +36,21 @@ function normalizeStoredLocation(value: unknown): Location | null {
   const city = String(row.city || '').trim();
   if (!state || !city) return null;
   const district = String(row.district || '').trim();
+  const latitude = typeof row.latitude === 'number' ? row.latitude : Number.NaN;
+  const longitude = typeof row.longitude === 'number' ? row.longitude : Number.NaN;
+  const hasCoordinates =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
   return {
     state: state.name,
     stateCode: state.code,
     city,
     ...(district ? { district } : {}),
+    ...(hasCoordinates ? { latitude, longitude } : {}),
   };
 }
 

@@ -1,28 +1,45 @@
-import { apiRequest, graphqlRequest } from '@/lib/api-client';
-import { mapListing } from '@/lib/api-mappers';
-import { LISTING_FIELDS } from '@/lib/graphql-fragments';
-import type { Location, SearchFilters } from '@/types';
+import { apiRequest, graphqlRequest } from "@/lib/api-client";
+import { mapListing } from "@/lib/api-mappers";
+import { LISTING_FIELDS } from "@/lib/graphql-fragments";
+import type { Location, SearchFilters } from "@/types";
 
 function paramsFromFilters(filters: SearchFilters) {
   const params = new URLSearchParams();
-  if (filters.q) params.set('q', filters.q);
-  if (filters.category) params.set('category', filters.category);
-  if (filters.region) params.set('region', filters.region);
-  if (filters.state) params.set('state', filters.state);
-  if (filters.city) params.set('city', filters.city);
-  if (filters.district) params.set('district', filters.district);
-  if (filters.minPrice !== undefined) params.set('minPrice', String(filters.minPrice));
-  if (filters.maxPrice !== undefined) params.set('maxPrice', String(filters.maxPrice));
-  if (filters.condition) params.set('condition', filters.condition);
-  if (filters.sellerType) params.set('sellerType', filters.sellerType);
-  if (filters.verifiedOnly) params.set('verifiedOnly', 'true');
-  if (filters.dateListed) params.set('dateListed', filters.dateListed);
-  if (filters.sort) params.set('sort', filters.sort);
-  params.set('pageSize', '50');
+  if (filters.q) params.set("q", filters.q);
+  if (filters.category) params.set("category", filters.category);
+  const hasCoordinates =
+    Number.isFinite(filters.latitude) && Number.isFinite(filters.longitude);
+  if (!hasCoordinates) {
+    if (filters.region) params.set("region", filters.region);
+    if (filters.state) params.set("state", filters.state);
+    if (filters.city) params.set("city", filters.city);
+    if (filters.district) params.set("district", filters.district);
+  }
+  if (filters.latitude !== undefined)
+    params.set("latitude", String(filters.latitude));
+  if (filters.longitude !== undefined)
+    params.set("longitude", String(filters.longitude));
+  if (filters.radiusKm !== undefined)
+    params.set("radiusKm", String(filters.radiusKm));
+  if (filters.minPrice !== undefined)
+    params.set("minPrice", String(filters.minPrice));
+  if (filters.maxPrice !== undefined)
+    params.set("maxPrice", String(filters.maxPrice));
+  if (filters.condition) params.set("condition", filters.condition);
+  if (filters.sellerType) params.set("sellerType", filters.sellerType);
+  if (filters.verifiedOnly) params.set("verifiedOnly", "true");
+  if (filters.dateListed) params.set("dateListed", filters.dateListed);
+  if (filters.sort) params.set("sort", filters.sort);
+  params.set("pageSize", "50");
   return params;
 }
 
-type SearchResponse = { results?: any[]; items?: any[]; count?: number; totalCount?: number };
+type SearchResponse = {
+  results?: any[];
+  items?: any[];
+  count?: number;
+  totalCount?: number;
+};
 
 async function fetchListings(filters: SearchFilters = {}) {
   const params = paramsFromFilters(filters);
@@ -35,9 +52,9 @@ async function fetchListings(filters: SearchFilters = {}) {
       ...row,
       seller: row.seller || {
         id: row.sellerId,
-        name: 'Seller',
+        name: "Seller",
         verified: false,
-        sellerType: 'individual',
+        sellerType: "individual",
         rating: 0,
         reviews: 0,
         activeListings: 0,
@@ -45,7 +62,7 @@ async function fetchListings(filters: SearchFilters = {}) {
         responseRate: 0,
         location: row.location,
       },
-      status: 'published',
+      status: "published",
       categorySchemaVersion: row.categorySchemaVersion || 1,
       attributes: row.attributes || {},
     }),
@@ -88,12 +105,23 @@ export const listingService = {
   },
 
   async getNearby(location: Location, limit = 8) {
-    const listings = await fetchListings({
-      state: location.stateCode,
-      city: location.city,
-      district: location.district,
-      sort: 'newest',
-    });
+    const hasCoordinates =
+      Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
+    const listings = await fetchListings(
+      hasCoordinates
+        ? {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            radiusKm: 25,
+            sort: "distance",
+          }
+        : {
+            state: location.stateCode,
+            city: location.city,
+            district: location.district,
+            sort: "newest",
+          },
+    );
     return listings.slice(0, Math.max(1, limit));
   },
 };

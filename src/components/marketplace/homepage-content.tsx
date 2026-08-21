@@ -266,6 +266,8 @@ export function HomepageContent() {
       location.stateCode,
       location.city,
       location.district ?? "",
+      location.latitude ?? null,
+      location.longitude ?? null,
     ],
     queryFn: () => listingService.getNearby(location, 4),
   });
@@ -452,6 +454,15 @@ export function HomepageContent() {
             state: location.stateCode,
             city: location.city,
             ...(location.district ? { district: location.district } : {}),
+            ...(Number.isFinite(location.latitude) &&
+            Number.isFinite(location.longitude)
+              ? {
+                  latitude: String(location.latitude),
+                  longitude: String(location.longitude),
+                  radiusKm: "25",
+                  sort: "distance",
+                }
+              : {}),
           }).toString()}`}
           action={t("common.viewAll")}
         />

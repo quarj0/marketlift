@@ -43,6 +43,8 @@ type Form = {
   state: string;
   city: string;
   district: string;
+  latitude?: number;
+  longitude?: number;
 };
 type PhotoPreview = { name: string; url: string; file: File };
 
@@ -91,6 +93,8 @@ export default function NewListingPage() {
     state: z.string().min(1),
     city: z.string().min(1),
     district: z.string().min(2, t('selling.new.validation.district')),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
   }), [t]);
 
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: categoryService.getCategories, staleTime: 5 * 60_000 });
@@ -232,6 +236,8 @@ export default function NewListingPage() {
         stateCode: data.state,
         city: data.city,
         district: data.district,
+        latitude: data.latitude,
+        longitude: data.longitude,
       },
       attributes,
       categorySchemaVersion: categoryConfig.schemaVersion,
@@ -406,11 +412,15 @@ export default function NewListingPage() {
                         stateCode: values.state ?? 'SP',
                         city: values.city ?? '',
                         district: values.district ?? '',
+                        latitude: values.latitude,
+                        longitude: values.longitude,
                       }}
                       onChange={(location) => {
                         form.setValue('state', location.stateCode, { shouldDirty: true, shouldValidate: true });
                         form.setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
                         form.setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('latitude', location.latitude, { shouldDirty: true });
+                        form.setValue('longitude', location.longitude, { shouldDirty: true });
                       }}
                       labels={{
                         region: t('search.region'),

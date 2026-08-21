@@ -37,6 +37,8 @@ export function EditListingClient() {
     stateCode: 'SP',
     city: '',
     district: '',
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   });
   const [attributes, setAttributes] = useState<ListingAttributes>({});
   const [attributeErrors, setAttributeErrors] = useState<CategoryFieldErrors>({});
@@ -68,6 +70,8 @@ export function EditListingClient() {
       stateCode: listing.location.stateCode || 'SP',
       city: listing.location.city || '',
       district: listing.location.district || '',
+      latitude: listing.location.latitude,
+      longitude: listing.location.longitude,
     });
     setAttributes(listing.attributes ?? {});
   }, [listing]);
@@ -88,6 +92,8 @@ export function EditListingClient() {
           stateCode: form.stateCode,
           city: form.city.trim(),
           district: form.district.trim(),
+          latitude: form.latitude,
+          longitude: form.longitude,
         },
         images: replacementPhotos.length ? replacementPhotos : undefined,
         attributes,
@@ -166,7 +172,7 @@ export function EditListingClient() {
                 <h2 className="text-lg font-black">{t('selling.new.step.location')}</h2>
                 <div className="mt-4">
                   <LocationFields
-                    value={{ stateCode: form.stateCode, city: form.city, district: form.district }}
+                    value={{ stateCode: form.stateCode, city: form.city, district: form.district, latitude: form.latitude, longitude: form.longitude }}
                     onChange={(location) => setForm((current) => ({ ...current, ...location }))}
                     labels={{
                       region: t('search.region'),
