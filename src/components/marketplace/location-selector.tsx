@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 
-import { brazilLocations } from "@/mocks/data";
+import { brazilLocations } from "@/data/brazil-locations";
 import { useLocale } from "@/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import {

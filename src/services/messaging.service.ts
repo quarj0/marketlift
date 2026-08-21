@@ -1,134 +1,105 @@
-import { listings, sellers } from "@/mocks/data";
-import type { Conversation, Message, SendMessagePayload } from "@/types";
-const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms));
-const conversations: Conversation[] = [
-  {
-    id: "c1",
-    participant: sellers[0],
-    listing: listings[0],
-    lastMessage: "Yes, it is still available. You can inspect it tomorrow.",
-    lastMessageAt: "10:42",
-    unread: 2,
-  },
-  {
-    id: "c2",
-    participant: sellers[1],
-    listing: listings[1],
-    lastMessage: "I can send more photos of the device.",
-    lastMessageAt: "Yesterday",
-    unread: 0,
-  },
-  {
-    id: "c3",
-    participant: sellers[2],
-    listing: listings[2],
-    lastMessage: "The documents are all up to date.",
-    lastMessageAt: "Mon",
-    unread: 0,
-  },
-];
-const messages: Record<string, Message[]> = {
-  c1: [
-    {
-      id: "m1",
-      conversationId: "c1",
-      sender: "me",
-      text: "Hi, is the Honda Civic still available?",
-      createdAt: "10:38",
-      read: true,
-    },
-    {
-      id: "m2",
-      conversationId: "c1",
-      sender: "seller",
-      text: "Yes, it is still available. You can inspect it tomorrow.",
-      createdAt: "10:42",
-      read: true,
-    },
-  ],
-  c2: [
-    {
-      id: "m3",
-      conversationId: "c2",
-      sender: "seller",
-      text: "I can send more photos of the device.",
-      createdAt: "Yesterday",
-      read: true,
-    },
-  ],
-  c3: [
-    {
-      id: "m4",
-      conversationId: "c3",
-      sender: "seller",
-      text: "The documents are all up to date.",
-      createdAt: "Mon",
-      read: true,
-    },
-  ],
-};
+import { graphqlRequest } from '@/lib/api-client';
+import { realtimeClient, RealtimeUnavailableError } from '@/lib/realtime-client';
+import { mapConversation, mapMessage } from '@/lib/api-mappers';
+import { uploadFile } from '@/services/upload.service';
+import type { SendMessagePayload } from '@/types';
+
+const CONVERSATION_FIELDS = `
+  id
+  participant { id name avatarUrl verifiedSeller isSeller }
+  listing { id slug title price primaryImage status }
+  lastMessage
+  lastMessageAt
+  unread
+  archived
+  blocked
+`;
+
+const MESSAGE_FIELDS = `
+  id
+  conversationId
+  senderId
+  sender
+  text
+  createdAt
+  read
+  attachment { type url name mimeType size }
+`;
+
 export const messagingService = {
   async getConversations() {
-    await delay();
-
-    return conversations;
+    const data = await graphqlRequest<{ myConversations: any[] }>(`
+      query MyConversations {
+        myConversations { ${CONVERSATION_FIELDS} }
+      }
+    `);
+    return (data.myConversations || []).map(mapConversation);
   },
 
   async getMessages(id: string) {
-    await delay();
+    const data = await graphqlRequest<{ messages: any[] }>(`
+      query ConversationMessages($id: ID!) {
+        messages(conversationId: $id, limit: 100) { ${MESSAGE_FIELDS} }
+      }
+    `, { id });
+    return (data.messages || []).map(mapMessage);
+  },
 
-    return messages[id] ?? [];
+  async startConversation(listingId: string) {
+    const data = await graphqlRequest<{ startConversation: any }>(`
+      mutation StartConversation($listingId: ID!) {
+        startConversation(listingId: $listingId) { ${CONVERSATION_FIELDS} }
+      }
+    `, { listingId });
+    return mapConversation(data.startConversation);
   },
 
   async sendMessage(id: string, payload: SendMessagePayload) {
-    await delay(180);
+    const text = payload.text?.trim() || '';
+    if (!text && !payload.image) throw new Error('A message or image is required.');
 
-    const text = payload.text?.trim() ?? "";
-
-    if (!text && !payload.image) {
-      throw new Error("A message or image is required.");
-    }
-
-    const attachment = payload.image
-      ? {
-          type: "image" as const,
-          url: URL.createObjectURL(payload.image),
-          name: payload.image.name,
-          mimeType: payload.image.type,
-          size: payload.image.size,
-        }
+    const uploadId = payload.image
+      ? await uploadFile(payload.image, 'message_image')
       : undefined;
 
-    const message: Message = {
-      id: `m-${Date.now()}`,
-      conversationId: id,
-      sender: "me",
-      text,
-      createdAt: "Now",
-      read: false,
-      attachment,
-    };
-
-    (messages[id] ??= []).push(message);
-
-    const conversation = conversations.find((item) => item.id === id);
-
-    if (conversation) {
-      conversation.lastMessage = text || (payload.image ? "📷 Photo" : "");
-
-      conversation.lastMessageAt = "Now";
+    try {
+      await realtimeClient.command('message.send', {
+        conversationId: id,
+        text,
+        ...(uploadId ? { uploadId } : {}),
+      });
+      return null;
+    } catch (error) {
+      if (!(error instanceof RealtimeUnavailableError)) throw error;
     }
 
-    return message;
+    const data = await graphqlRequest<{ sendMessage: any }>(`
+      mutation SendMessage($input: SendMessageInput!) {
+        sendMessage(input: $input) { ${MESSAGE_FIELDS} }
+      }
+    `, {
+      input: {
+        conversationId: id,
+        text: text || null,
+        uploadId: uploadId || null,
+      },
+    });
+    return mapMessage(data.sendMessage);
   },
 
   async markRead(id: string) {
-    const conversation = conversations.find((item) => item.id === id);
-
-    if (conversation) {
-      conversation.unread = 0;
+    try {
+      await realtimeClient.command('conversation.read', { conversationId: id });
+      return true;
+    } catch (error) {
+      if (!(error instanceof RealtimeUnavailableError)) throw error;
     }
 
-    return true;
+    const data = await graphqlRequest<{ markConversationRead: boolean }>(`
+      mutation MarkConversationRead($id: ID!) {
+        markConversationRead(conversationId: $id)
+      }
+    `, { id });
+    return data.markConversationRead;
   },
 };

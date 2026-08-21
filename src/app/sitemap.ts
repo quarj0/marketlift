@@ -1,20 +1,33 @@
-import type { MetadataRoute } from "next";
-import { listings, sellers } from "@/mocks/data";
-export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://marketlift.com.br";
+import type { MetadataRoute } from 'next';
+import { API_BASE_URL } from '@/lib/api-client';
+
+type SearchResult = { slug: string; createdAt: string };
+type SearchResponse = { results?: SearchResult[] };
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://marketlift.com.br';
+  let listings: SearchResult[] = [];
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/search/listings/?pageSize=50&sort=newest`, {
+      next: { revalidate: 3600 },
+    });
+    if (response.ok) {
+      const body = (await response.json()) as SearchResponse;
+      listings = body.results ?? [];
+    }
+  } catch {
+    // Static routes remain valid when the API is temporarily unavailable during a build.
+  }
+
   return [
-    { url: base, changeFrequency: "daily", priority: 1 },
-    { url: `${base}/search`, changeFrequency: "hourly", priority: 0.9 },
-    ...listings.map((l) => ({
-      url: `${base}/listing/${l.slug}`,
-      lastModified: new Date(l.createdAt),
-      changeFrequency: "daily" as const,
+    { url: base, changeFrequency: 'daily', priority: 1 },
+    { url: `${base}/search`, changeFrequency: 'hourly', priority: 0.9 },
+    ...listings.map((listing) => ({
+      url: `${base}/listing/${listing.slug}`,
+      lastModified: new Date(listing.createdAt),
+      changeFrequency: 'daily' as const,
       priority: 0.8,
-    })),
-    ...sellers.map((s) => ({
-      url: `${base}/seller/${s.id}`,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
     })),
   ];
 }

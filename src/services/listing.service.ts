@@ -1,95 +1,79 @@
-import { listings, sellers } from "@/mocks/data";
-import type { SearchFilters } from "@/types";
-const delay = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms));
+import { apiRequest, graphqlRequest } from '@/lib/api-client';
+import { mapListing } from '@/lib/api-mappers';
+import { LISTING_FIELDS } from '@/lib/graphql-fragments';
+import type { SearchFilters } from '@/types';
+
+function paramsFromFilters(filters: SearchFilters) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.state) params.set('state', filters.state);
+  if (filters.city) params.set('city', filters.city);
+  if (filters.district) params.set('district', filters.district);
+  if (filters.minPrice !== undefined) params.set('minPrice', String(filters.minPrice));
+  if (filters.maxPrice !== undefined) params.set('maxPrice', String(filters.maxPrice));
+  if (filters.condition) params.set('condition', filters.condition);
+  if (filters.sellerType) params.set('sellerType', filters.sellerType);
+  if (filters.verifiedOnly) params.set('verifiedOnly', 'true');
+  if (filters.dateListed) params.set('dateListed', filters.dateListed);
+  if (filters.sort) params.set('sort', filters.sort);
+  params.set('pageSize', '50');
+  return params;
+}
+
+type SearchResponse = { results?: any[]; items?: any[]; count?: number; totalCount?: number };
 
 export const listingService = {
   async getListings(filters: SearchFilters = {}) {
-    await delay();
-    let result = [...listings];
-    if (filters.q) {
-      const q = filters.q.toLowerCase();
-      result = result.filter(
-        (i) =>
-          i.title.toLowerCase().includes(q) ||
-          i.description.toLowerCase().includes(q),
-      );
-    }
-    if (filters.category)
-      result = result.filter((i) => i.category === filters.category);
-    if (filters.state)
-      result = result.filter((i) => i.location.stateCode === filters.state);
-    if (filters.city)
-      result = result.filter((i) => i.location.city === filters.city);
-    if (filters.district)
-      result = result.filter((i) =>
-        i.location.district
-          ?.toLowerCase()
-          .includes(filters.district!.toLowerCase()),
-      );
-    if (filters.condition)
-      result = result.filter((i) => i.condition === filters.condition);
-    if (filters.sellerType) {
-      const ids = new Set(
-        sellers
-          .filter((s) => (s.type ?? "individual") === filters.sellerType)
-          .map((s) => s.id),
-      );
-      result = result.filter((i) => ids.has(i.sellerId));
-    }
-    if (filters.verifiedOnly) {
-      const ids = new Set(sellers.filter((s) => s.verified).map((s) => s.id));
-      result = result.filter((i) => ids.has(i.sellerId));
-    }
-    if (filters.minPrice !== undefined)
-      result = result.filter((i) => i.price >= filters.minPrice!);
-    if (filters.maxPrice !== undefined)
-      result = result.filter((i) => i.price <= filters.maxPrice!);
-    if (filters.dateListed) {
-      const days =
-        filters.dateListed === "today"
-          ? 1
-          : filters.dateListed === "week"
-            ? 7
-            : 30;
-      const cutoff = Date.now() - days * 86400000;
-      result = result.filter((i) => +new Date(i.createdAt) >= cutoff);
-    }
-    if (filters.sort === "price_asc") result.sort((a, b) => a.price - b.price);
-    if (filters.sort === "price_desc") result.sort((a, b) => b.price - a.price);
-    if (filters.sort === "newest")
-      result.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    if (!filters.sort || filters.sort === "relevant")
-      result.sort(
-        (a, b) => Number(b.featured) - Number(a.featured) || b.views - a.views,
-      );
-    return result;
+    const params = paramsFromFilters(filters);
+    const data = await apiRequest<SearchResponse>(`/api/v1/search/listings/?${params.toString()}`);
+    const rows = data.results ?? data.items ?? [];
+    return rows.map((row: any) => mapListing({
+      ...row,
+      seller: row.seller || { id: row.sellerId, name: 'Seller', verified: false, sellerType: 'individual', rating: 0, reviews: 0, activeListings: 0, memberSince: row.createdAt, responseRate: 0, location: row.location },
+      status: 'published',
+      categorySchemaVersion: row.categorySchemaVersion || 1,
+      attributes: row.attributes || {},
+    }));
   },
+
   async getListing(slug: string) {
-    await delay();
-    return listings.find((i) => i.slug === slug || i.id === slug) ?? null;
+    const data = await graphqlRequest<{ listing: any | null }>(
+      `query Listing($id: String!) { listing(id: $id) { ${LISTING_FIELDS} } }`,
+      { id: slug },
+    );
+    return data.listing ? mapListing(data.listing) : null;
   },
+
   async getSimilar(slug: string, limit = 4) {
-    await delay(120);
-    const source = listings.find((i) => i.slug === slug || i.id === slug);
-    return source
-      ? listings
-          .filter((i) => i.id !== source.id && i.category === source.category)
-          .slice(0, limit)
-      : [];
+    const data = await graphqlRequest<{ similarListings: any[] }>(
+      `query SimilarListings($id: String!, $limit: Int!) { similarListings(listingId: $id, limit: $limit) { ${LISTING_FIELDS} } }`,
+      { id: slug, limit },
+    );
+    return data.similarListings.map(mapListing);
   },
-  async getFeatured() {
-    await delay(120);
-    return listings.filter((i) => i.featured);
+
+  async getFeatured(limit = 8) {
+    const data = await graphqlRequest<{ featuredListings: any[] }>(
+      `query FeaturedListings($limit: Int!) { featuredListings(limit: $limit) { ${LISTING_FIELDS} } }`,
+      { limit },
+    );
+    return data.featuredListings.map(mapListing);
   },
+
   async getRecent(limit = 8) {
-    await delay(140);
-    return [...listings]
-      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-      .slice(0, limit);
+    const data = await graphqlRequest<{ recentListings: any[] }>(
+      `query RecentListings($limit: Int!) { recentListings(limit: $limit) { ${LISTING_FIELDS} } }`,
+      { limit },
+    );
+    return data.recentListings.map(mapListing);
   },
-  async getNearby(stateCode = "SP", limit = 8) {
-    await delay(160);
-    const nearby = listings.filter((i) => i.location.stateCode === stateCode);
-    return (nearby.length ? nearby : listings).slice(0, limit);
+
+  async getNearby(stateCode = 'SP', limit = 8) {
+    const data = await graphqlRequest<{ nearbyListings: any[] }>(
+      `query NearbyListings($stateCode: String!, $limit: Int!) { nearbyListings(stateCode: $stateCode, limit: $limit) { ${LISTING_FIELDS} } }`,
+      { stateCode, limit },
+    );
+    return data.nearbyListings.map(mapListing);
   },
 };

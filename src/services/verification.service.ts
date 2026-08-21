@@ -1,36 +1,34 @@
-import type { VerificationSubmission } from "@/types";
-const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
-let submission: VerificationSubmission | undefined;
-const mask = (cpf: string) => `***.***.***-${cpf.replace(/\D/g, "").slice(-2)}`;
+import { graphqlRequest } from '@/lib/api-client';
+import { mapVerification } from '@/lib/api-mappers';
+
+const VERIFICATION_FIELDS = `
+  id sellerId sellerName cpfMasked legalName birthDate documentType
+  documentFrontUrl documentBackUrl selfieUrl status riskLevel riskFlags
+  automatedChecks providerResult submittedAt reviewStartedAt decidedAt decisionNote
+`;
+
 export const verificationService = {
   async getStatus() {
-    await delay(220);
-    return submission ?? null;
+    const data = await graphqlRequest<{ mySellerVerification: any | null }>(`
+      query MySellerVerification {
+        mySellerVerification { ${VERIFICATION_FIELDS} }
+      }
+    `);
+    return data.mySellerVerification ? mapVerification(data.mySellerVerification) : null;
   },
+
   async submit(input: { cpf: string; fullName: string; birthDate: string }) {
-    await delay(550);
-    submission = {
-      id: `ver-${Date.now()}`,
-      cpfMasked: mask(input.cpf),
-      fullName: input.fullName,
-      birthDate: input.birthDate,
-      status: "pending",
-      submittedAt: new Date().toISOString(),
-      providerResult: "Identity checks queued",
-      riskFlags: [],
-    };
-    return submission;
-  },
-  async simulateResult(result: "verified" | "rejected") {
-    await delay(800);
-    if (!submission) throw new Error("No verification");
-    submission.status = result;
-    submission.providerResult =
-      result === "verified"
-        ? "Identity matched successfully"
-        : "Identity information could not be confirmed";
-    submission.riskFlags =
-      result === "rejected" ? ["Identity data mismatch"] : [];
-    return submission;
+    const data = await graphqlRequest<{ submitSellerVerification: any }>(`
+      mutation SubmitSellerVerification($input: VerificationSubmissionInput!) {
+        submitSellerVerification(input: $input) { ${VERIFICATION_FIELDS} }
+      }
+    `, {
+      input: {
+        cpf: input.cpf,
+        legalName: input.fullName,
+        birthDate: input.birthDate,
+      },
+    });
+    return mapVerification(data.submitSellerVerification);
   },
 };

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Profile image unavailable</title>
+  <desc id="desc">A neutral profile placeholder.</desc>
+  <rect width="256" height="256" rx="128" fill="#f1f5f9"/>
+  <circle cx="128" cy="96" r="46" fill="#94a3b8"/>
+  <path d="M48 226c7-48 38-74 80-74s73 26 80 74" fill="#94a3b8"/>
+</svg>

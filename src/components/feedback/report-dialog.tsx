@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLocale } from "@/providers/locale-provider";
 import type { ReportReason } from "@/types";
+import { socialService } from "@/services/social.service";
 
 type ReportTargetType = "listing" | "seller" | "message";
 
@@ -40,21 +41,6 @@ const reportReasons: Array<{
   { value: "duplicate", labelKey: "report.reason.duplicate", descriptionKey: "report.reason.duplicateBody" },
   { value: "other", labelKey: "report.reason.other", descriptionKey: "report.reason.otherBody" },
 ];
-
-async function submitMockReport(input: {
-  targetType: ReportTargetType;
-  targetId: string;
-  reason: ReportReason;
-  description: string;
-}) {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  return {
-    id: `report-${Date.now()}`,
-    ...input,
-    status: "open" as const,
-  };
-}
 
 export function ReportDialog({
   targetType,
@@ -91,9 +77,10 @@ export function ReportDialog({
     mutationFn: () => {
       if (!reason) throw new Error(t("report.chooseReason"));
 
-      return submitMockReport({
+      return socialService.report({
         targetType,
         targetId,
+        reporter: '',
         reason,
         description: description.trim(),
       });

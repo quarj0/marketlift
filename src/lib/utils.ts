@@ -40,7 +40,7 @@ export function formatBRL(value: number): string {
  * 3 days ago
  *
  * If the value isn't a valid date, return it unchanged.
- * This is useful while some mock data still uses labels such
+ * This supports legacy human-readable labels such
  * as "Yesterday" or "Mon".
  */
 export function formatRelativeDate(value: string | Date, locale: "en" | "pt-BR" = "en"): string {

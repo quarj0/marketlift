@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/providers/auth-provider";
 import { LocaleProvider } from "@/providers/locale-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { RealtimeProvider } from "@/providers/realtime-provider";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -102,8 +103,10 @@ export default function RootLayout({
             <SkipLink />
             <QueryProvider>
               <AuthProvider>
-                <PwaRegister />
-                <AccessController>{children}</AccessController>
+                <RealtimeProvider>
+                  <PwaRegister />
+                  <AccessController>{children}</AccessController>
+                </RealtimeProvider>
               </AuthProvider>
             </QueryProvider>
           </LocaleProvider>

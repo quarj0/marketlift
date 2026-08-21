@@ -8,7 +8,7 @@ import { paymentService } from '@/services/payment.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
-import type { PaymentMethod } from '@/types';
+import type { Payment, PaymentMethod } from '@/types';
 
 const money = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -22,17 +22,40 @@ export function CheckoutClient() {
   const cycle = searchParams.get('cycle') === 'yearly' ? 'yearly' : 'monthly';
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [status, setStatus] = useState<'idle' | 'pending' | 'paid' | 'failed'>('idle');
+  const [payment, setPayment] = useState<Payment | null>(null);
   const amount = plan ? (cycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice) : 0;
 
   async function pay() {
     if (!plan) return;
     setStatus('pending');
     try {
-      const payment = await paymentService.createPayment({ purpose: 'subscription', amount, method });
-      await paymentService.confirmPayment(payment.id);
-      await paymentService.activatePlan(plan.id, cycle);
-      await queryClient.invalidateQueries({ queryKey: ['seller-subscription'] });
-      setStatus('paid');
+      const created = await paymentService.createSubscriptionPayment({
+        planId: plan.id,
+        billingCycle: cycle,
+        method,
+      });
+      setPayment(created);
+      if (created.status === 'paid') {
+        await queryClient.invalidateQueries({ queryKey: ['seller-subscription'] });
+        setStatus('paid');
+      }
+    } catch {
+      setStatus('failed');
+    }
+  }
+
+  async function refreshPayment() {
+    if (!payment) return;
+    setStatus('pending');
+    try {
+      const refreshed = await paymentService.refreshPayment(payment.id);
+      setPayment(refreshed);
+      if (refreshed.status === 'paid') {
+        await queryClient.invalidateQueries({ queryKey: ['seller-subscription'] });
+        setStatus('paid');
+      } else if (refreshed.status === 'failed' || refreshed.status === 'cancelled') {
+        setStatus('failed');
+      }
     } catch {
       setStatus('failed');
     }
@@ -54,6 +77,9 @@ export function CheckoutClient() {
     ['card', t('payments.checkout.method.card'), CreditCard],
     ['boleto', t('payments.checkout.method.boleto'), FileText],
   ] as const;
+  const pixCode = payment?.checkoutData?.qr_code;
+  const ticketUrl = payment?.checkoutData?.ticket_url;
+  const boletoCode = payment?.checkoutData?.barcode_content;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
@@ -61,40 +87,50 @@ export function CheckoutClient() {
         <div className="flex items-center gap-2"><ShieldCheck className="size-5 text-brand-600" /><h2 className="text-xl font-black">{t('payments.checkout.title')}</h2></div>
         <p className="mt-1 text-sm text-slate-500">{t('payments.checkout.body')}</p>
 
-        <div className="mt-6 grid grid-cols-3 gap-2">
-          {methods.map(([id, label, Icon]) => (
-            <button type="button" key={id} aria-pressed={method === id} onClick={() => setMethod(id)} className={`rounded-2xl border p-4 text-left ${method === id ? 'border-brand-500 bg-brand-50' : 'hover:bg-slate-50'}`}>
-              <Icon className="size-5" /><p className="mt-2 text-sm font-black">{label}</p>
-            </button>
-          ))}
-        </div>
+        {!payment && (
+          <>
+            <div className="mt-6 grid grid-cols-3 gap-2">
+              {methods.map(([id, label, Icon]) => (
+                <button type="button" key={id} aria-pressed={method === id} onClick={() => setMethod(id)} className={`rounded-2xl border p-4 text-left ${method === id ? 'border-brand-500 bg-brand-50' : 'hover:bg-slate-50'}`}>
+                  <Icon className="size-5" /><p className="mt-2 text-sm font-black">{label}</p>
+                </button>
+              ))}
+            </div>
 
-        {method === 'pix' && (
+            {method === 'card' && (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <label className="sm:col-span-2"><span className="mb-1 block text-sm font-bold">{t('payments.checkout.cardNumber')}</span><Input placeholder="0000 0000 0000 0000" autoComplete="cc-number" /></label>
+                <label className="sm:col-span-2"><span className="mb-1 block text-sm font-bold">{t('payments.checkout.cardName')}</span><Input autoComplete="cc-name" /></label>
+                <label><span className="mb-1 block text-sm font-bold">{t('payments.checkout.expiry')}</span><Input placeholder="MM/YY" autoComplete="cc-exp" /></label>
+                <label><span className="mb-1 block text-sm font-bold">{t('payments.checkout.cvv')}</span><Input placeholder="123" autoComplete="cc-csc" /></label>
+              </div>
+            )}
+
+            {method === 'boleto' && (
+              <div className="mt-6 rounded-2xl bg-slate-50 p-6"><FileText className="size-8 text-brand-700" /><h3 className="mt-3 font-black">{t('payments.checkout.boleto')}</h3><p className="mt-1 text-sm text-slate-500">{t('payments.checkout.boletoBody')}</p></div>
+            )}
+          </>
+        )}
+
+        {payment && payment.status === 'pending' && (
           <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-            <div className="mx-auto grid aspect-square w-44 place-items-center rounded-xl border-8 border-white bg-[linear-gradient(45deg,#111_25%,transparent_25%,transparent_75%,#111_75%),linear-gradient(45deg,#111_25%,transparent_25%,transparent_75%,#111_75%)] bg-[length:20px_20px] bg-[position:0_0,10px_10px]"><span className="rounded bg-white px-2 py-1 text-xs font-black">{t('payments.checkout.pixQr')}</span></div>
-            <p className="mt-4 text-center text-sm text-slate-500">{t('payments.checkout.pixBody')}</p>
-            <Button variant="outline" className="mt-3 w-full" onClick={() => navigator.clipboard?.writeText('000201MARKETLIFT-PIX-MOCK')}><Copy className="size-4" />{t('payments.checkout.copyPix')}</Button>
+            <p className="font-black">{t('payments.checkout.pending')}</p>
+            <p className="mt-1 text-sm text-slate-500">{t('payments.checkout.pendingBody', { reference: payment.reference })}</p>
+            {pixCode && <Button variant="outline" className="mt-4 w-full" onClick={() => navigator.clipboard?.writeText(pixCode)}><Copy className="size-4" />{t('payments.checkout.copyPix')}</Button>}
+            {boletoCode && <Button variant="outline" className="mt-3 w-full" onClick={() => navigator.clipboard?.writeText(boletoCode)}><Copy className="size-4" />{t('payments.checkout.copyBoleto')}</Button>}
+            {ticketUrl && <Button asChild variant="outline" className="mt-3 w-full"><a href={ticketUrl} target="_blank" rel="noreferrer">{t('payments.checkout.openPayment')}</a></Button>}
           </div>
-        )}
-
-        {method === 'card' && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <label className="sm:col-span-2"><span className="mb-1 block text-sm font-bold">{t('payments.checkout.cardNumber')}</span><Input placeholder="0000 0000 0000 0000" /></label>
-            <label className="sm:col-span-2"><span className="mb-1 block text-sm font-bold">{t('payments.checkout.cardName')}</span><Input placeholder="Lucas Almeida" /></label>
-            <label><span className="mb-1 block text-sm font-bold">{t('payments.checkout.expiry')}</span><Input placeholder="MM/YY" /></label>
-            <label><span className="mb-1 block text-sm font-bold">{t('payments.checkout.cvv')}</span><Input placeholder="123" /></label>
-          </div>
-        )}
-
-        {method === 'boleto' && (
-          <div className="mt-6 rounded-2xl bg-slate-50 p-6"><FileText className="size-8 text-brand-700" /><h3 className="mt-3 font-black">{t('payments.checkout.boleto')}</h3><p className="mt-1 text-sm text-slate-500">{t('payments.checkout.boletoBody')}</p></div>
         )}
 
         {status === 'failed' && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{t('payments.checkout.failed')}</p>}
 
-        <Button className="mt-6 w-full" size="lg" onClick={pay} disabled={status === 'pending' || !plan}>
-          {status === 'pending' ? t('payments.checkout.confirming') : t('payments.checkout.pay', { amount: money(amount) })}
-        </Button>
+        {!payment ? (
+          <Button className="mt-6 w-full" size="lg" onClick={pay} disabled={status === 'pending' || !plan}>
+            {status === 'pending' ? t('payments.checkout.confirming') : t('payments.checkout.pay', { amount: money(amount) })}
+          </Button>
+        ) : payment.status === 'pending' ? (
+          <Button className="mt-6 w-full" size="lg" onClick={refreshPayment}>{t('payments.checkout.checkStatus')}</Button>
+        ) : null}
       </section>
 
       <aside className="h-fit rounded-3xl border bg-white p-6 shadow-sm">

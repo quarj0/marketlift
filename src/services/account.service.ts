@@ -1,230 +1,161 @@
-import { listings } from "@/mocks/data";
+import { persistLocale } from '@/i18n/config';
+import { graphqlRequest } from '@/lib/api-client';
+import { LISTING_FIELDS } from '@/lib/graphql-fragments';
 import {
-  normalizeLocale,
-  persistLocale,
-  readStoredLocale,
-} from "@/i18n/config";
+  mapAccountProfile,
+  mapAccountReview,
+  mapListing,
+} from '@/lib/api-mappers';
 import type {
   AccountOverview,
   AccountProfile,
   AccountReview,
   AccountSettings,
-} from "@/types";
+} from '@/types';
 
-const delay = (ms = 300) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+const ACCOUNT_PROFILE_FIELDS = `
+  id
+  name
+  email
+  phone
+  avatarUrl
+  bio
+  location { state stateCode city district }
+  emailVerified
+  phoneVerified
+  memberSince
+`;
 
-const SETTINGS_STORAGE_KEY =
-  "marketlift-account-settings";
+const ACCOUNT_SETTINGS_FIELDS = `
+  language
+  currency
+  emailMessages
+  emailListingUpdates
+  emailRecommendations
+  pushMessages
+  pushListingUpdates
+  marketingEmails
+  showPhoneToSellers
+  showOnlineStatus
+`;
 
-let profile: AccountProfile = {
-  id: "user-demo",
-  fullName: "Lucas Martins",
-  email: "lucas@demo.marketlift",
-  phone: "+55 11 99999-4321",
-  bio: "I use Marketlift to find good deals around São Paulo.",
-  location: {
-    state: "São Paulo",
-    stateCode: "SP",
-    city: "São Paulo",
-    district: "Vila Mariana",
-  },
-  memberSince: "March 2026",
-  emailVerified: true,
-  phoneVerified: true,
-};
-
-const defaultSettings: AccountSettings = {
-  language: "en",
-  currency: "BRL",
-  emailMessages: true,
-  emailListingUpdates: true,
-  emailRecommendations: false,
-  pushMessages: true,
-  pushListingUpdates: true,
-  marketingEmails: false,
-  showPhoneToSellers: false,
-  showOnlineStatus: true,
-};
-
-let settings: AccountSettings = {
-  ...defaultSettings,
-};
-
-let myReviews: AccountReview[] = [
-  {
-    id: "my-rv-1",
-    sellerId: "seller-1",
-    sellerName: "AutoPrime SP",
-    reviewerName: "Lucas Martins",
-    rating: 5,
-    comment:
-      "Clear communication and the vehicle matched the description. The seller was punctual and professional.",
-    date: "2026-08-10",
-    sellerReply:
-      "Thanks, Lucas. It was a pleasure doing business with you!",
-    listingTitle: "Honda Civic 2018 EXL",
-  },
-  {
-    id: "my-rv-2",
-    sellerId: "seller-2",
-    sellerName: "Tech House Brasil",
-    reviewerName: "Lucas Martins",
-    rating: 4,
-    comment:
-      "Fast responses and everything was as described. Pickup was easy to arrange.",
-    date: "2026-07-22",
-    listingTitle: "iPhone 15 Pro 256 GB",
-  },
-];
-
-function readStoredSettings(): AccountSettings | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const value = window.localStorage.getItem(
-      SETTINGS_STORAGE_KEY,
-    );
-
-    if (!value) return null;
-
-    const stored = JSON.parse(value) as Partial<AccountSettings> & {
-      language?: string;
-    };
-
-    return {
-      ...defaultSettings,
-      ...stored,
-      // The navbar switcher is the source of truth for the current
-      // device language, including for signed-out visitors.
-      language: readStoredLocale(),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function persistSettings(value: AccountSettings) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(
-    SETTINGS_STORAGE_KEY,
-    JSON.stringify(value),
-  );
-}
+const REVIEW_FIELDS = `
+  id
+  sellerId
+  sellerName
+  sellerAvatar
+  reviewerId
+  reviewerName
+  listingId
+  listingTitle
+  rating
+  comment
+  date
+  sellerReply
+`;
 
 export const accountService = {
   async getOverview(): Promise<AccountOverview> {
-    await delay();
+    const data = await graphqlRequest<{ myAccountOverview: any }>(`
+      query MyAccountOverview {
+        myAccountOverview {
+          savedCount
+          unreadMessages
+          reviewsCount
+          recentlyViewed { ${LISTING_FIELDS} }
+          savedListings { ${LISTING_FIELDS} }
+        }
+      }
+    `);
 
     return {
-      savedCount: 6,
-      unreadMessages: 3,
-      reviewsCount: myReviews.length,
-      recentlyViewed: listings.slice(0, 4),
-      savedListings: [
-        listings[0],
-        listings[2],
-        listings[6],
-      ],
+      savedCount: Number(data.myAccountOverview.savedCount || 0),
+      unreadMessages: Number(data.myAccountOverview.unreadMessages || 0),
+      reviewsCount: Number(data.myAccountOverview.reviewsCount || 0),
+      recentlyViewed: (data.myAccountOverview.recentlyViewed || []).map(mapListing),
+      savedListings: (data.myAccountOverview.savedListings || []).map(mapListing),
     };
   },
 
   async getSaved() {
-    await delay();
-
-    return [
-      listings[0],
-      listings[2],
-      listings[6],
-      listings[8],
-    ];
+    const data = await graphqlRequest<{ mySavedListings: any[] }>(`
+      query MySavedListings {
+        mySavedListings { ${LISTING_FIELDS} }
+      }
+    `);
+    return (data.mySavedListings || []).map(mapListing);
   },
 
   async getProfile(): Promise<AccountProfile> {
-    await delay();
-
-    return {
-      ...profile,
-      location: { ...profile.location },
-    };
+    const data = await graphqlRequest<{ me: any }>(`
+      query MyProfile {
+        me { ${ACCOUNT_PROFILE_FIELDS} }
+      }
+    `);
+    return mapAccountProfile(data.me);
   },
 
-  async updateProfile(
-    input: Partial<AccountProfile>,
-  ): Promise<AccountProfile> {
-    await delay(450);
-
-    profile = {
-      ...profile,
-      ...input,
-      location: input.location
-        ? {
-            ...profile.location,
-            ...input.location,
-          }
-        : profile.location,
+  async updateProfile(input: Partial<AccountProfile>): Promise<AccountProfile> {
+    const variables = {
+      input: {
+        ...(input.fullName !== undefined ? { fullName: input.fullName } : {}),
+        ...(input.email !== undefined ? { email: input.email } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone } : {}),
+        ...(input.bio !== undefined ? { bio: input.bio } : {}),
+        ...(input.location
+          ? {
+              state: input.location.state,
+              stateCode: input.location.stateCode,
+              city: input.location.city,
+              district: input.location.district || null,
+            }
+          : {}),
+      },
     };
-
-    return {
-      ...profile,
-      location: { ...profile.location },
-    };
+    const data = await graphqlRequest<{ updateMyProfile: any }>(`
+      mutation UpdateMyProfile($input: AccountProfileInput!) {
+        updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
+      }
+    `, variables);
+    return mapAccountProfile(data.updateMyProfile);
   },
 
   async getSettings(): Promise<AccountSettings> {
-    await delay();
-
-    const stored = readStoredSettings();
-
-    if (stored) {
-      settings = stored;
-    }
-
-    settings = {
-      ...settings,
-      language: readStoredLocale(),
-    };
-
-    return { ...settings };
+    const data = await graphqlRequest<{ myAccountSettings: AccountSettings }>(`
+      query MyAccountSettings {
+        myAccountSettings { ${ACCOUNT_SETTINGS_FIELDS} }
+      }
+    `);
+    return data.myAccountSettings;
   },
 
-  async updateSettings(
-    input: Partial<AccountSettings>,
-  ): Promise<AccountSettings> {
-    await delay(350);
+  async updateSettings(input: Partial<AccountSettings>): Promise<AccountSettings> {
+    const { currency: _currency, ...settingsInput } = input;
+    const data = await graphqlRequest<{ updateMyAccountSettings: AccountSettings }>(`
+      mutation UpdateMyAccountSettings($input: AccountSettingsInput!) {
+        updateMyAccountSettings(input: $input) { ${ACCOUNT_SETTINGS_FIELDS} }
+      }
+    `, { input: settingsInput });
 
-    settings = {
-      ...settings,
-      ...input,
-      language: input.language
-        ? normalizeLocale(input.language)
-        : settings.language,
-    };
-
-    persistSettings(settings);
-
-    if (input.language) {
-      persistLocale(settings.language);
-    }
-
-    return { ...settings };
+    if (input.language) persistLocale(input.language);
+    return data.updateMyAccountSettings;
   },
 
   async getMyReviews(): Promise<AccountReview[]> {
-    await delay();
-    return [...myReviews];
+    const data = await graphqlRequest<{ myReviews: any[] }>(`
+      query MyReviews {
+        myReviews { ${REVIEW_FIELDS} }
+      }
+    `);
+    return (data.myReviews || []).map(mapAccountReview);
   },
 
   async deleteReview(id: string) {
-    await delay(250);
-
-    myReviews = myReviews.filter(
-      (review) => review.id !== id,
-    );
-
-    return { success: true };
+    const data = await graphqlRequest<{ deleteMyReview: boolean }>(`
+      mutation DeleteMyReview($id: ID!) {
+        deleteMyReview(reviewId: $id)
+      }
+    `, { id });
+    return { success: data.deleteMyReview };
   },
 };

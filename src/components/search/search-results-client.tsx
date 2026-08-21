@@ -5,7 +5,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Grid2X2, List, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { listingService } from '@/services/listing.service';
-import { sellers, categories, brazilLocations } from '@/mocks/data';
+import { brazilLocations } from '@/data/brazil-locations';
+import { categoryService } from '@/services/category.service';
 import { ListingCard } from '@/components/listings/listing-card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -13,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
 import type { ListingCondition, SearchFilters, SellerType } from '@/types';
 
-const sellerMap = new Map(sellers.map((seller) => [seller.id, seller]));
 const toNum = (value: string | null) => value && !Number.isNaN(Number(value)) ? Number(value) : undefined;
 
 function useFilters(): SearchFilters {
@@ -42,6 +42,13 @@ export function SearchResultsClient() {
   const { t, categoryName, locale } = useLocale();
   const [mobileFilters, setMobileFilters] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
+
+  const categoriesQuery = useQuery({
+    queryKey: ['categories'],
+    queryFn: categoryService.getCategories,
+    staleTime: 5 * 60_000,
+  });
+  const categories = categoriesQuery.data ?? [];
 
   const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['listings', filters],

@@ -22,10 +22,12 @@ const money = (value: number) =>
   }).format(value);
 
 export function PromotionModal({
+  listingId,
   listingTitle,
   onClose,
   onSuccess,
 }: {
+  listingId: string;
   listingTitle: string;
   onClose: () => void;
   onSuccess: (promotion: PromotionOption) => void;
@@ -38,20 +40,24 @@ export function PromotionModal({
   const [selected, setSelected] = useState<PromotionOption>();
   const [paying, setPaying] = useState(false);
   const [done, setDone] = useState(false);
+  const [pendingReference, setPendingReference] = useState('');
 
   async function buy() {
     if (!selected) return;
 
     setPaying(true);
     try {
-      const payment = await paymentService.createPayment({
-        purpose: 'promotion',
-        amount: selected.price,
+      const payment = await paymentService.createPromotionPayment({
+        listingId,
+        promotionId: selected.id,
         method: 'pix',
       });
-      await paymentService.confirmPayment(payment.id);
-      setDone(true);
-      onSuccess(selected);
+      if (payment.status === 'paid') {
+        setDone(true);
+        onSuccess(selected);
+      } else {
+        setPendingReference(payment.reference);
+      }
     } finally {
       setPaying(false);
     }
@@ -151,6 +157,12 @@ export function PromotionModal({
             <div className="mt-6 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
               {t('payments.promotion.notice')}
             </div>
+
+            {pendingReference && (
+              <div className="mt-3 rounded-xl bg-brand-50 p-3 text-sm font-semibold text-brand-800">
+                {t('payments.promotion.pending', { reference: pendingReference })}
+              </div>
+            )}
 
             <Button
               className="mt-4 w-full"

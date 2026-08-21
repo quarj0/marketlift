@@ -39,6 +39,7 @@ import {
 import { socialService } from "@/services/social.service";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
+import { useRealtime } from "@/providers/realtime-provider";
 import type { Location } from "@/types";
 
 export function MarketplaceHeader() {
@@ -53,6 +54,7 @@ export function MarketplaceHeader() {
   });
 
   const { user, hydrated, isAuthenticated, canSell, logout } = useAuth();
+  const { unreadMessageCount, unreadNotificationCount } = useRealtime();
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -156,22 +158,32 @@ export function MarketplaceHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
+                className="relative hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
                 asChild
               >
-                <Link href="/messages" aria-label={t("nav.messages")}>
+                <Link href="/messages" aria-label={`${t("nav.messages")}: ${unreadMessageCount}`}>
                   <MessageCircle className="size-5" aria-hidden="true" />
+                  {unreadMessageCount > 0 && (
+                    <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-[#02122f]" aria-hidden="true">
+                      {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                    </span>
+                  )}
                 </Link>
               </Button>
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
+                className="relative hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
                 asChild
               >
-                <Link href="/notifications" aria-label={t("nav.notifications")}>
+                <Link href="/notifications" aria-label={`${t("nav.notifications")}: ${unreadNotificationCount}`}>
                   <Bell className="size-5" aria-hidden="true" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-[#02122f]" aria-hidden="true">
+                      {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                    </span>
+                  )}
                 </Link>
               </Button>
             </>
@@ -381,7 +393,7 @@ export function MarketplaceHeader() {
                 onClick={() => setMenuOpen(false)}
                 className="min-h-20 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
               >
-                {t("nav.messages")}
+                {t("nav.messages")}{unreadMessageCount > 0 ? ` (${unreadMessageCount > 99 ? "99+" : unreadMessageCount})` : ""}
               </Link>
             )}
 
@@ -391,7 +403,7 @@ export function MarketplaceHeader() {
                 onClick={() => setMenuOpen(false)}
                 className="min-h-20 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
               >
-                {t("nav.notifications")}
+                {t("nav.notifications")}{unreadNotificationCount > 0 ? ` (${unreadNotificationCount > 99 ? "99+" : unreadNotificationCount})` : ""}
               </Link>
             )}
 

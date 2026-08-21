@@ -1,174 +1,196 @@
-import { listings, sellers } from '@/mocks/data';
-import type { MarketplaceReport, NotificationItem, Review } from '@/types';
+import { graphqlRequest } from '@/lib/api-client';
+import { realtimeClient, RealtimeUnavailableError } from '@/lib/realtime-client';
+import { LISTING_FIELDS, SELLER_FIELDS } from '@/lib/graphql-fragments';
+import {
+  mapListing,
+  mapNotification,
+  mapReview,
+  mapSeller,
+} from '@/lib/api-mappers';
+import type { MarketplaceReport, Review } from '@/types';
 
-const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
-const saved = new Set<string>();
-const followed = new Set<string>();
-let reviews: Review[] = [
-  {
-    id: 'rv1',
-    sellerId: 'seller-1',
-    reviewerName: 'Lucas Almeida',
-    rating: 5,
-    comment: 'Great communication and the car matched the listing.',
-    date: '2026-08-10',
-    sellerReply: 'Thanks, Lucas. Enjoy the car!',
-  },
-  {
-    id: 'rv2',
-    sellerId: 'seller-1',
-    reviewerName: 'Camila Rocha',
-    rating: 4,
-    comment: 'Professional seller and quick responses.',
-    date: '2026-07-29',
-  },
-  {
-    id: 'rv3',
-    sellerId: 'seller-2',
-    reviewerName: 'Rafael Lima',
-    rating: 5,
-    comment: 'Very helpful and easy to deal with.',
-    date: '2026-08-05',
-  },
-];
-let notifications: NotificationItem[] = [
-  {
-    id: 'n1',
-    type: 'message',
-    title: 'New message from AutoPrime SP',
-    body: 'Is 3pm good for you?',
-    createdAt: '10 min ago',
-    read: false,
-    href: '/messages',
-  },
-  {
-    id: 'n2',
-    type: 'listing',
-    title: 'Listing published',
-    body: 'Your iPhone 15 Pro listing passed automated validation and is now live.',
-    createdAt: '2 hours ago',
-    read: false,
-    href: '/selling/listings',
-  },
-  {
-    id: 'n3',
-    type: 'payment',
-    title: 'Payment confirmed',
-    body: 'Your Pro subscription payment was confirmed.',
-    createdAt: 'Yesterday',
-    read: true,
-    href: '/selling/payments',
-  },
-  {
-    id: 'n4',
-    type: 'verification',
-    title: 'Verification approved',
-    body: 'Your seller profile is now verified.',
-    createdAt: '2 days ago',
-    read: true,
-    href: '/selling/verification',
-  },
-];
-const reports: MarketplaceReport[] = [];
+const REVIEW_FIELDS = `
+  id sellerId sellerName sellerAvatar reviewerId reviewerName
+  listingId listingTitle rating comment date sellerReply
+`;
+
+const REPORT_FIELDS = `
+  id reference targetType targetId targetLabel reason statement priority status
+  reporterName assignedTo internalNote decisionReason createdAt decidedAt
+`;
+
+function mapReport(raw: any): MarketplaceReport {
+  return {
+    id: String(raw.id),
+    targetType: raw.targetType,
+    targetId: String(raw.targetId),
+    reporter: raw.reporterName || '',
+    reason: raw.reason,
+    description: raw.statement || '',
+    createdAt: raw.createdAt,
+    status:
+      raw.status === 'dismissed'
+        ? 'dismissed'
+        : raw.status === 'resolved'
+          ? 'actioned'
+          : 'open',
+  } as MarketplaceReport;
+}
 
 export const socialService = {
   async getSaved() {
-    await delay();
-    return listings.filter((listing) => saved.has(listing.id));
+    const data = await graphqlRequest<{ mySavedListings: any[] }>(`
+      query MySavedListings {
+        mySavedListings { ${LISTING_FIELDS} }
+      }
+    `);
+    return (data.mySavedListings || []).map(mapListing);
   },
 
   async getSavedIds() {
-    await delay(60);
-    return Array.from(saved);
+    const data = await graphqlRequest<{ mySavedListings: Array<{ id: string }> }>(`
+      query MySavedListingIds { mySavedListings { id } }
+    `);
+    return (data.mySavedListings || []).map((listing) => String(listing.id));
   },
 
   async toggleSaved(id: string) {
-    await delay(80);
-    if (saved.has(id)) saved.delete(id);
-    else saved.add(id);
-    return saved.has(id);
+    const savedIds = await this.getSavedIds();
+    const isSaved = savedIds.includes(id);
+    const data = await graphqlRequest<Record<'saveListing' | 'unsaveListing', boolean>>(`
+      mutation ToggleSaved($id: ID!) {
+        ${isSaved ? 'unsaveListing' : 'saveListing'}(listingId: $id)
+      }
+    `, { id });
+    return isSaved ? !data.unsaveListing : Boolean(data.saveListing);
   },
 
   async toggleFollowSeller(id: string) {
-    await delay(80);
-    if (followed.has(id)) followed.delete(id);
-    else followed.add(id);
-    return followed.has(id);
+    const current = await graphqlRequest<{ seller: { isFollowed: boolean } | null }>(`
+      query SellerFollowState($id: ID!) { seller(id: $id) { isFollowed } }
+    `, { id });
+    const isFollowed = Boolean(current.seller?.isFollowed);
+    const data = await graphqlRequest<Record<'followSeller' | 'unfollowSeller', { isFollowed: boolean }>>(`
+      mutation ToggleSellerFollow($id: ID!) {
+        ${isFollowed ? 'unfollowSeller' : 'followSeller'}(sellerId: $id) { isFollowed }
+      }
+    `, { id });
+    return isFollowed ? Boolean(data.unfollowSeller?.isFollowed) : Boolean(data.followSeller?.isFollowed);
   },
 
   async getSellerProfile(id: string) {
-    await delay();
-    const seller = sellers.find((item) => item.id === id);
-    if (!seller) return null;
+    const data = await graphqlRequest<{
+      seller: any | null;
+      listings: any[];
+      sellerReviews: any[];
+    }>(`
+      query SellerProfile($id: ID!, $sellerId: ID!) {
+        seller(id: $id) { ${SELLER_FIELDS} }
+        listings(filters: { sellerId: $sellerId }, limit: 100) { ${LISTING_FIELDS} }
+        sellerReviews(sellerId: $id, limit: 100) { ${REVIEW_FIELDS} }
+      }
+    `, { id, sellerId: id });
+
+    if (!data.seller) return null;
     return {
-      seller,
-      listings: listings.filter((listing) => listing.sellerId === id),
-      reviews: reviews.filter((review) => review.sellerId === id),
+      seller: mapSeller(data.seller),
+      listings: (data.listings || []).map(mapListing),
+      reviews: (data.sellerReviews || []).map(mapReview),
     };
   },
 
   async getReviews(sellerId: string) {
-    await delay();
-    return reviews.filter((review) => review.sellerId === sellerId);
+    const data = await graphqlRequest<{ sellerReviews: any[] }>(`
+      query SellerReviews($sellerId: ID!) {
+        sellerReviews(sellerId: $sellerId, limit: 100) { ${REVIEW_FIELDS} }
+      }
+    `, { sellerId });
+    return (data.sellerReviews || []).map(mapReview);
   },
 
   async addReview(input: Omit<Review, 'id' | 'date'>) {
-    await delay();
-    const review = {
-      ...input,
-      id: `rv-${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-    };
-    reviews.unshift(review);
-    return review;
+    const data = await graphqlRequest<{ createReview: any }>(`
+      mutation CreateReview($input: CreateReviewInput!) {
+        createReview(input: $input) { ${REVIEW_FIELDS} }
+      }
+    `, {
+      input: {
+        sellerId: input.sellerId,
+        rating: input.rating,
+        comment: input.comment,
+      },
+    });
+    return mapReview(data.createReview);
   },
 
   async replyReview(id: string, reply: string) {
-    await delay();
-    reviews = reviews.map((review) =>
-      review.id === id ? { ...review, sellerReply: reply } : review,
-    );
-    return reviews.find((review) => review.id === id)!;
+    const data = await graphqlRequest<{ replyToReview: any }>(`
+      mutation ReplyToReview($id: ID!, $reply: String!) {
+        replyToReview(reviewId: $id, reply: $reply) { ${REVIEW_FIELDS} }
+      }
+    `, { id, reply });
+    return mapReview(data.replyToReview);
   },
 
   async getNotifications() {
-    await delay();
-    return notifications;
+    const data = await graphqlRequest<{ notifications: any[] }>(`
+      query Notifications {
+        notifications(limit: 100) { id type title body createdAt read href data }
+      }
+    `);
+    return (data.notifications || []).map(mapNotification);
   },
 
   async markRead(id: string) {
-    await delay(50);
-    notifications = notifications.map((notification) =>
-      notification.id === id ? { ...notification, read: true } : notification,
-    );
-    return true;
+    try {
+      await realtimeClient.command('notification.read', { notificationId: id });
+      return true;
+    } catch (error) {
+      if (!(error instanceof RealtimeUnavailableError)) throw error;
+    }
+
+    const data = await graphqlRequest<{ markNotificationRead: boolean }>(`
+      mutation MarkNotificationRead($id: ID!) {
+        markNotificationRead(notificationId: $id)
+      }
+    `, { id });
+    return data.markNotificationRead;
   },
 
   async markAllRead() {
-    await delay(100);
-    notifications = notifications.map((notification) => ({
-      ...notification,
-      read: true,
-    }));
+    try {
+      await realtimeClient.command('notification.read_all');
+      return true;
+    } catch (error) {
+      if (!(error instanceof RealtimeUnavailableError)) throw error;
+    }
+
+    await graphqlRequest<{ markAllNotificationsRead: number }>(`
+      mutation MarkAllNotificationsRead { markAllNotificationsRead }
+    `);
     return true;
   },
 
-  async report(
-    input: Omit<MarketplaceReport, 'id' | 'createdAt' | 'status'>,
-  ) {
-    await delay();
-    const report: MarketplaceReport = {
-      ...input,
-      id: `rep-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      status: 'open',
-    };
-    reports.unshift(report);
-    return report;
+  async report(input: Omit<MarketplaceReport, 'id' | 'createdAt' | 'status'>) {
+    const data = await graphqlRequest<{ createReport: any }>(`
+      mutation CreateReport($input: ReportInput!) {
+        createReport(input: $input) { ${REPORT_FIELDS} }
+      }
+    `, {
+      input: {
+        targetType: input.targetType,
+        targetId: input.targetId,
+        reason: input.reason,
+        statement: input.description,
+      },
+    });
+    return mapReport(data.createReport);
   },
 
   async getReports() {
-    await delay();
-    return [...reports];
+    const data = await graphqlRequest<{ myReports: any[] }>(`
+      query MyReports { myReports(limit: 100) { ${REPORT_FIELDS} } }
+    `);
+    return (data.myReports || []).map(mapReport);
   },
 };

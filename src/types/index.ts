@@ -218,6 +218,11 @@ export interface Payment {
   status: PaymentStatus;
   createdAt: string;
   reference: string;
+  checkoutData?: Record<string, string>;
+  planId?: string;
+  billingCycle?: BillingCycle;
+  listingId?: string;
+  promotionId?: string;
 }
 
 export type PromotionType = 'featured' | 'top_search' | 'urgent' | 'homepage';

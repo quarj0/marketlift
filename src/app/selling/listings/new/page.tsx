@@ -26,7 +26,7 @@ import {
 } from '@/components/selling/category-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { categories, brazilLocations } from '@/mocks/data';
+import { brazilLocations } from '@/data/brazil-locations';
 import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
 import type { ListingAttributes } from '@/types';
@@ -43,7 +43,7 @@ type Form = {
   city: string;
   district: string;
 };
-type PhotoPreview = { name: string; url: string };
+type PhotoPreview = { name: string; url: string; file: File };
 
 const defaultValues: Form = {
   category: '',
@@ -91,6 +91,9 @@ export default function NewListingPage() {
     city: z.string().min(1),
     district: z.string().min(2, t('selling.new.validation.district')),
   }), [t]);
+
+  const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: categoryService.getCategories, staleTime: 5 * 60_000 });
+  const categories = categoriesQuery.data ?? [];
 
   const [step, setStep] = useState(0);
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
@@ -172,7 +175,7 @@ export default function NewListingPage() {
     const remaining = Math.max(0, 10 - photos.length);
     const items = Array.from(files)
       .slice(0, remaining)
-      .map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
+      .map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
     setPhotos((current) => [...current, ...items]);
   };
 
@@ -222,7 +225,7 @@ export default function NewListingPage() {
       category: data.category,
       condition: categoryConfig.condition.enabled ? data.condition : undefined,
       negotiable: data.negotiable,
-      images: photos.map((photo) => photo.url),
+      images: photos.map((photo) => photo.file),
       location: {
         state: selectedState?.name ?? data.state,
         stateCode: data.state,

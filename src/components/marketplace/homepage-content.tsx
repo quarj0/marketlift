@@ -290,7 +290,7 @@ export function HomepageContent() {
 
   const featuredQuery = useQuery({
     queryKey: ["listings", "featured"],
-    queryFn: listingService.getFeatured,
+    queryFn: () => listingService.getFeatured(),
   });
 
   const recentQuery = useQuery({

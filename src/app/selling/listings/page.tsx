@@ -152,6 +152,7 @@ export default function SellerListings() {
 
       {promoting && (
         <PromotionModal
+          listingId={promoting.id}
           listingTitle={promoting.title}
           onClose={() => setPromoting(undefined)}
           onSuccess={(promotion: PromotionOption) => setActivePromos((current) => ({ ...current, [promoting.id]: promotion.name }))}

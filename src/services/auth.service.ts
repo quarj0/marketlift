@@ -1,147 +1,96 @@
+import { apiRequest, graphqlRequest } from '@/lib/api-client';
+import { mapUser } from '@/lib/api-mappers';
 import type { User } from '@/types';
 
-const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
-const SESSION_KEY = 'marketlift-demo-session';
+export type PendingRegistration = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  requiresVerification: boolean;
+};
 
-function emitAuthChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('marketlift-auth-change'));
-  }
-}
-
-function parseSessionSnapshot(snapshot: string): User | null {
-  if (!snapshot) return null;
-  try {
-    return JSON.parse(snapshot) as User;
-  } catch {
-    return null;
-  }
-}
-
-function demoUser(emailOrPhone?: string): User {
-  const email = emailOrPhone?.includes('@')
-    ? emailOrPhone
-    : 'marketlift@demo.marketlift';
-  const phone =
-    emailOrPhone && !emailOrPhone.includes('@')
-      ? emailOrPhone
-      : '+55 11 99999-4321';
-  const newUserDemo = email.toLowerCase().startsWith('new@');
-
-  return {
-    id: newUserDemo ? 'new-demo-user' : 'marketlift-demo-user',
-    name: newUserDemo ? 'Ana Souza' : 'Lucas Martins',
-    email,
-    phone,
-    ...(newUserDemo
-      ? {}
-      : {
-          sellerProfile: {
-            sellerId: 'seller-1',
-            activatedAt: '2026-04-12T10:00:00.000Z',
-            verified: false,
-          },
-        }),
-  };
-}
+type SessionResponse = { authenticated: boolean; user: any | null };
 
 export const authService = {
+  async getSession(): Promise<User | null> {
+    const response = await apiRequest<SessionResponse>('/api/v1/auth/session/');
+    return response.authenticated && response.user ? mapUser(response.user) : null;
+  },
+
   async login(input: { emailOrPhone: string; password: string }) {
-    await delay();
-    const user = demoUser(input.emailOrPhone);
-    this.setSession(user);
-    return user;
+    const response = await apiRequest<{ authenticated: boolean; user: any }>('/api/v1/auth/login/', {
+      method: 'POST',
+      json: input,
+      csrf: true,
+    });
+    return mapUser(response.user);
   },
 
-  async register(input: { fullName: string; email: string; phone: string }) {
-    await delay();
-    return {
-      id: `user-${Date.now()}`,
-      name: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      requiresVerification: true,
-    };
+  async register(input: {
+    fullName: string;
+    email: string;
+    phone: string;
+    password: string;
+    terms: boolean;
+  }): Promise<PendingRegistration> {
+    return apiRequest<PendingRegistration>('/api/v1/auth/register/', {
+      method: 'POST',
+      json: {
+        fullName: input.fullName,
+        email: input.email,
+        phone: input.phone,
+        password: input.password,
+        terms: input.terms,
+      },
+      csrf: true,
+    });
   },
 
-  async verifyOtp(code: string, user?: Partial<User>) {
-    await delay();
-    const success = code === '123456' || (/^\d{6}$/.test(code) && code !== '000000');
-
-    if (success) {
-      this.setSession({
-        id: user?.id || `user-${Date.now()}`,
-        name: user?.name || 'New Marketlift User',
-        email: user?.email || 'user@marketlift.demo',
-        phone: user?.phone,
-      });
-    }
-
-    return { success };
+  async verifyOtp(code: string, pending?: Partial<PendingRegistration>) {
+    if (!pending?.id) return { success: false };
+    const response = await apiRequest<{ success: boolean; user: any }>('/api/v1/auth/verify-email/', {
+      method: 'POST',
+      json: { userId: pending.id, code },
+      csrf: true,
+    });
+    return { success: response.success, user: response.user ? mapUser(response.user) : null };
   },
 
   async activateSelling() {
-    await delay(450);
-    const current = this.getSession();
-    if (!current) throw new Error('Authentication required');
-    if (current.sellerProfile) return current;
-
-    const next: User = {
-      ...current,
-      sellerProfile: {
-        sellerId: `seller-${current.id}`,
-        activatedAt: new Date().toISOString(),
-        verified: false,
-      },
-    };
-
-    this.setSession(next);
-    return next;
+    const data = await graphqlRequest<{ activateSelling: any }>(
+      `mutation ActivateSelling { activateSelling { id name avatarUrl verified sellerType isSuspended rating reviews positiveReviewPercent responseRate activeListings followerCount isFollowed memberSince location { state stateCode city district } } }`,
+    );
+    const session = await this.getSession();
+    if (!session) throw new Error('Authentication required');
+    return session;
   },
 
-  async resendOtp() {
-    await delay(250);
-    return { success: true };
+  async resendOtp(userId?: string) {
+    return apiRequest<{ success: boolean }>('/api/v1/auth/resend-verification/', {
+      method: 'POST',
+      json: { userId },
+      csrf: true,
+    });
   },
 
   async requestPasswordReset(identifier: string) {
-    await delay();
-    return {
-      success: true,
-      maskedDestination: identifier.includes('@')
-        ? identifier.replace(/(^.).*(@.*$)/, '$1***$2')
-        : '***-***-4321',
-    };
+    return apiRequest<{ success: boolean; maskedDestination?: string }>('/api/v1/auth/password-reset/request/', {
+      method: 'POST',
+      json: { identifier },
+      csrf: true,
+    });
   },
 
   async resetPassword(input: { token: string; password: string }) {
-    await delay();
-    return { success: Boolean(input.token) && input.password.length >= 8 };
+    return apiRequest<{ success: boolean }>('/api/v1/auth/password-reset/confirm/', {
+      method: 'POST',
+      json: input,
+      csrf: true,
+    });
   },
 
-  setSession(user: User) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-      emitAuthChange();
-    }
-    return user;
-  },
-
-  getSessionSnapshot() {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem(SESSION_KEY) ?? '';
-  },
-
-  parseSessionSnapshot,
-
-  getSession(): User | null {
-    return parseSessionSnapshot(this.getSessionSnapshot());
-  },
-
-  logout() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(SESSION_KEY);
-      emitAuthChange();
-    }
+  async logout() {
+    await apiRequest<void>('/api/v1/auth/logout/', { method: 'POST', csrf: true });
   },
 };

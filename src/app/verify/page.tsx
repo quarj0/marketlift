@@ -46,23 +46,31 @@ function Verify() {
       pending = JSON.parse(sessionStorage.getItem('marketlift-pending-user') || '{}');
     } catch {}
 
-    const result = await authService.verifyOtp(digits.join(''), pending);
-    setWorking(false);
-
-    if (!result.success) {
+    try {
+      const result = await authService.verifyOtp(digits.join(''), pending);
+      if (!result.success) {
+        setError(t('auth.verify.invalid'));
+        return;
+      }
+      sessionStorage.removeItem('marketlift-pending-user');
+      router.push(params.get('returnTo') || '/account');
+      router.refresh();
+    } catch {
       setError(t('auth.verify.invalid'));
-      return;
+    } finally {
+      setWorking(false);
     }
-
-    router.push(params.get('returnTo') || '/account');
-    router.refresh();
   }
 
   async function resend() {
     setResending(true);
-    await authService.resendOtp();
-    setResending(false);
-    setSeconds(30);
+    try {
+      const pending = JSON.parse(sessionStorage.getItem('marketlift-pending-user') || '{}') as { id?: string };
+      await authService.resendOtp(pending.id);
+      setSeconds(30);
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -74,11 +82,6 @@ function Verify() {
         <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-50 text-brand-700">
           {channel === 'email' ? <Mail /> : <Smartphone />}
         </span>
-
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          {t('auth.verify.mock')}{' '}
-          <strong className="rounded bg-slate-100 px-1.5 py-1 font-black tracking-widest">123456</strong>.
-        </p>
 
         <div className="mt-6 flex justify-center gap-1.5 sm:gap-2" role="group" aria-label={t('auth.verify.codeGroup')}>
           {digits.map((digit, index) => (

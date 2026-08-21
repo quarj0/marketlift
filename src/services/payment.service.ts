@@ -1,154 +1,109 @@
-import type {
-  BillingCycle,
-  Payment,
-  PaymentMethod,
-  PromotionOption,
-  SellerPlan,
-} from '@/types';
+import { graphqlRequest } from '@/lib/api-client';
+import { mapPayment, mapPlan, mapPromotion } from '@/lib/api-mappers';
+import type { BillingCycle, PaymentMethod } from '@/types';
 
-const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
+const PAYMENT_FIELDS = `
+  id reference sellerId sellerName purpose method status amount currency provider
+  providerOrderId providerStatus providerStatusDetail checkoutData planId billingCycle
+  listingId promotionId createdAt paidAt failedAt refundedAt
+`;
 
-export const sellerPlans: SellerPlan[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    listingLimit: 5,
-    promotionCredits: 0,
-    visibilityWeight: 1,
-    features: ['5 active listings', 'Standard visibility', 'Basic seller profile'],
-  },
-  {
-    id: 'basic',
-    name: 'Basic',
-    monthlyPrice: 39.9,
-    yearlyPrice: 399,
-    listingLimit: 25,
-    promotionCredits: 0,
-    visibilityWeight: 1.1,
-    features: ['25 active listings', 'Up to 10 photos', 'Basic performance statistics'],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    monthlyPrice: 89.9,
-    yearlyPrice: 899,
-    listingLimit: 100,
-    promotionCredits: 4,
-    visibilityWeight: 1.35,
-    recommended: true,
-    features: [
-      '100 active listings',
-      'Priority visibility',
-      '4 featured credits / month',
-      'Seller analytics',
-      'Verified seller tools',
-    ],
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    monthlyPrice: 199.9,
-    yearlyPrice: 1999,
-    listingLimit: 300,
-    promotionCredits: 12,
-    visibilityWeight: 1.6,
-    features: [
-      '300+ active listings',
-      'Business storefront',
-      'Advanced analytics',
-      'Priority support',
-      '12 featured credits / month',
-    ],
-  },
-];
-
-export const promotionOptions: PromotionOption[] = [
-  {
-    id: 'featured',
-    name: 'Featured',
-    description: 'Stand out with a premium Featured badge and stronger placement.',
-    durationDays: 7,
-    price: 19.9,
-  },
-  {
-    id: 'top_search',
-    name: 'Top of Search',
-    description: 'Move higher in relevant search results for more discovery.',
-    durationDays: 3,
-    price: 14.9,
-  },
-  {
-    id: 'urgent',
-    name: 'Urgent',
-    description: 'Add an Urgent badge to attract buyers who are ready to act.',
-    durationDays: 7,
-    price: 9.9,
-  },
-  {
-    id: 'homepage',
-    name: 'Homepage Featured',
-    description: 'Eligible for premium placement on the Marketlift homepage.',
-    durationDays: 3,
-    price: 29.9,
-  },
-];
-
-const payments: Payment[] = [];
-let activePlan = { planId: 'pro', cycle: 'monthly' as BillingCycle };
+const PLAN_FIELDS = `
+  id name monthlyPrice yearlyPrice listingLimit promotionCredits features
+  visibilityWeight recommended active sortOrder
+`;
 
 export const paymentService = {
   async getPlans() {
-    await delay();
-    return sellerPlans;
+    const data = await graphqlRequest<{ sellerPlans: any[] }>(`
+      query SellerPlans { sellerPlans { ${PLAN_FIELDS} } }
+    `);
+    return (data.sellerPlans || []).map(mapPlan);
   },
 
   async getSubscription() {
-    await delay(180);
-    return activePlan;
+    const data = await graphqlRequest<{ mySubscription: any | null; mySellerPlan: any | null }>(`
+      query MySubscription {
+        mySubscription { id billingCycle status plan { ${PLAN_FIELDS} } }
+        mySellerPlan { ${PLAN_FIELDS} }
+      }
+    `);
+    const plan = data.mySubscription?.plan || data.mySellerPlan;
+    if (!plan) return null;
+    return {
+      planId: plan.id as string,
+      cycle: (data.mySubscription?.billingCycle || 'monthly') as BillingCycle,
+    };
   },
 
-  async createPayment(input: {
-    purpose: 'subscription' | 'promotion';
-    amount: number;
+  async createSubscriptionPayment(input: {
+    planId: string;
+    billingCycle: BillingCycle;
     method: PaymentMethod;
   }) {
-    await delay(500);
-    const payment: Payment = {
-      id: `pay-${Date.now()}`,
-      purpose: input.purpose,
-      amount: input.amount,
-      method: input.method,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      reference: `ML-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
-    };
-    payments.unshift(payment);
-    return payment;
+    const data = await graphqlRequest<{ createSubscriptionPayment: any }>(`
+      mutation CreateSubscriptionPayment(
+        $planId: String!
+        $billingCycle: String!
+        $method: String!
+        $idempotencyKey: String!
+      ) {
+        createSubscriptionPayment(
+          planId: $planId
+          billingCycle: $billingCycle
+          method: $method
+          idempotencyKey: $idempotencyKey
+        ) { ${PAYMENT_FIELDS} }
+      }
+    `, { ...input, idempotencyKey: crypto.randomUUID() });
+    return mapPayment(data.createSubscriptionPayment);
   },
 
-  async confirmPayment(id: string) {
-    await delay(850);
-    const payment = payments.find((item) => item.id === id);
-    if (!payment) throw new Error('Payment not found');
-    payment.status = 'paid';
-    return payment;
+  async createPromotionPayment(input: {
+    listingId: string;
+    promotionId: string;
+    method: PaymentMethod;
+  }) {
+    const data = await graphqlRequest<{ createPromotionPayment: any }>(`
+      mutation CreatePromotionPayment(
+        $listingId: ID!
+        $promotionId: String!
+        $method: String!
+        $idempotencyKey: String!
+      ) {
+        createPromotionPayment(
+          listingId: $listingId
+          promotionId: $promotionId
+          method: $method
+          idempotencyKey: $idempotencyKey
+        ) { ${PAYMENT_FIELDS} }
+      }
+    `, { ...input, idempotencyKey: crypto.randomUUID() });
+    return mapPayment(data.createPromotionPayment);
   },
 
-  async activatePlan(planId: string, cycle: BillingCycle) {
-    await delay(220);
-    activePlan = { planId, cycle };
-    return activePlan;
+  async refreshPayment(id: string) {
+    const data = await graphqlRequest<{ refreshPayment: any }>(`
+      mutation RefreshPayment($id: ID!) {
+        refreshPayment(id: $id) { ${PAYMENT_FIELDS} }
+      }
+    `, { id });
+    return mapPayment(data.refreshPayment);
   },
 
   async getPayments() {
-    await delay();
-    return [...payments];
+    const data = await graphqlRequest<{ myPayments: any[] }>(`
+      query MyPayments { myPayments(limit: 100) { ${PAYMENT_FIELDS} } }
+    `);
+    return (data.myPayments || []).map(mapPayment);
   },
 
   async getPromotions() {
-    await delay(180);
-    return promotionOptions;
+    const data = await graphqlRequest<{ promotionOptions: any[] }>(`
+      query PromotionOptions {
+        promotionOptions { id name description durationDays price }
+      }
+    `);
+    return (data.promotionOptions || []).map(mapPromotion);
   },
 };

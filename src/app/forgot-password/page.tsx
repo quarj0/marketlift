@@ -31,7 +31,7 @@ export default function ForgotPassword() {
 
   async function submit(data: Data) {
     const result = await authService.requestPasswordReset(data.identifier);
-    setSent(result.maskedDestination);
+    setSent(result.maskedDestination || data.identifier);
   }
 
   return (
@@ -45,9 +45,6 @@ export default function ForgotPassword() {
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {t('auth.forgot.sentBody', { destination: sent })}
           </p>
-          <Button className="mt-6 w-full" asChild>
-            <Link href="/reset-password?token=demo-reset-token">{t('auth.forgot.demo')}</Link>
-          </Button>
         </div>
       ) : (
         <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>

@@ -7,7 +7,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { authService } from '@/services/auth.service';
 import type { User } from '@/types';
@@ -17,60 +16,44 @@ type AuthContextValue = {
   hydrated: boolean;
   isAuthenticated: boolean;
   canSell: boolean;
-  refreshSession: () => void;
+  refreshSession: () => Promise<void>;
   activateSelling: () => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function subscribeToAuth(callback: () => void) {
-  window.addEventListener('storage', callback);
-  window.addEventListener('marketlift-auth-change', callback);
-
-  return () => {
-    window.removeEventListener('storage', callback);
-    window.removeEventListener('marketlift-auth-change', callback);
-  };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const sessionSnapshot = useSyncExternalStore(
-    subscribeToAuth,
-    authService.getSessionSnapshot,
-    () => '',
-  );
-
-  // Keep the server render and the browser's first render identical.
-  // This is especially important when the subtree is streamed behind Suspense.
+  const [user, setUser] = useState<User | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
+  const refreshSession = useCallback(async () => {
+    try {
+      setUser(await authService.getSession());
+    } catch {
+      setUser(null);
+    } finally {
       setHydrated(true);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  const user = useMemo(
-    () => authService.parseSessionSnapshot(sessionSnapshot),
-    [sessionSnapshot],
-  );
-
-  const refreshSession = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('marketlift-auth-change'));
     }
   }, []);
 
-  const logout = useCallback(() => {
-    authService.logout();
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
+
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
+    }
   }, []);
 
-  const activateSelling = useCallback(async () => authService.activateSelling(), []);
+  const activateSelling = useCallback(async () => {
+    const next = await authService.activateSelling();
+    setUser(next);
+    return next;
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

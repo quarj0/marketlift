@@ -1,26 +1,23 @@
-import { categories, categoryConfigurations, getCategoryConfiguration } from '@/mocks/category-config';
+import { graphqlRequest } from '@/lib/api-client';
+import { mapCategory } from '@/lib/api-mappers';
+import { CATEGORY_FIELDS } from '@/lib/graphql-fragments';
 import type { CategoryConfiguration } from '@/types';
 
-const delay = (ms = 140) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Frontend boundary for category metadata.
- * Replace these mock implementations with Django REST/GraphQL calls later;
- * components should continue consuming the same CategoryConfiguration shape.
- */
 export const categoryService = {
   async getCategories() {
-    await delay();
-    return categories;
+    const data = await graphqlRequest<{ categories: any[] }>(`query Categories { categories { ${CATEGORY_FIELDS} } }`);
+    return data.categories.map(mapCategory);
   },
 
   async getConfiguration(categoryId: string): Promise<CategoryConfiguration | null> {
-    await delay();
-    return getCategoryConfiguration(categoryId);
+    const data = await graphqlRequest<{ category: any | null }>(
+      `query Category($id: String!) { category(id: $id) { ${CATEGORY_FIELDS} } }`,
+      { id: categoryId },
+    );
+    return data.category ? mapCategory(data.category) : null;
   },
 
   async getConfigurations(): Promise<CategoryConfiguration[]> {
-    await delay();
-    return categoryConfigurations;
+    return this.getCategories();
   },
 };

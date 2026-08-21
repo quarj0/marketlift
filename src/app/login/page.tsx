@@ -38,10 +38,7 @@ function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      emailOrPhone: 'marketlift@demo.marketlift',
-      password: 'marketlift',
-    },
+    defaultValues: { emailOrPhone: '', password: '' },
   });
 
   async function onSubmit(data: FormData) {
@@ -122,11 +119,6 @@ function LoginForm() {
           <ArrowRight className="size-4" />
         </Button>
       </form>
-
-      <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-xs leading-5 text-slate-500">
-        <strong className="text-slate-700">{t('auth.login.demo')}</strong>{' '}
-        {t('auth.login.demoBody')} <code className="font-bold text-slate-700">new@demo.marketlift</code>.
-      </div>
 
       <p className="mt-6 text-center text-sm text-slate-600">
         {t('auth.login.new')}{' '}

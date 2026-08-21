@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { ChevronDown, Grid3X3 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-import { categories } from "@/mocks/data";
+import { categoryService } from "@/services/category.service";
 import { useLocale } from "@/providers/locale-provider";
 
 export function CategoryNav() {
   const { t, categoryName } = useLocale();
-  const primary = categories.slice(0, 8);
+  const query = useQuery({ queryKey: ['categories'], queryFn: categoryService.getCategories, staleTime: 5 * 60_000 });
+  const primary = (query.data ?? []).slice(0, 8);
 
   return (
     <div className="hidden border-t bg-white lg:block">
