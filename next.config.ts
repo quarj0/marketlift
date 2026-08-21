@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  output: "standalone",
   poweredByHeader: false,
   async headers() {
     return [
