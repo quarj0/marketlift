@@ -1,6 +1,11 @@
 import { graphqlRequest } from '@/lib/api-client';
 import { realtimeClient, RealtimeUnavailableError } from '@/lib/realtime-client';
-import { mapConversation, mapMessage } from '@/lib/api-mappers';
+import {
+  mapConversation,
+  mapMessage,
+  type ApiConversation,
+  type ApiMessage,
+} from '@/lib/api-mappers';
 import { uploadFile } from '@/services/upload.service';
 import type { SendMessagePayload } from '@/types';
 
@@ -28,7 +33,7 @@ const MESSAGE_FIELDS = `
 
 export const messagingService = {
   async getConversations() {
-    const data = await graphqlRequest<{ myConversations: any[] }>(`
+    const data = await graphqlRequest<{ myConversations: ApiConversation[] }>(`
       query MyConversations {
         myConversations { ${CONVERSATION_FIELDS} }
       }
@@ -37,7 +42,7 @@ export const messagingService = {
   },
 
   async getMessages(id: string) {
-    const data = await graphqlRequest<{ messages: any[] }>(`
+    const data = await graphqlRequest<{ messages: ApiMessage[] }>(`
       query ConversationMessages($id: ID!) {
         messages(conversationId: $id, limit: 100) { ${MESSAGE_FIELDS} }
       }
@@ -46,7 +51,7 @@ export const messagingService = {
   },
 
   async startConversation(listingId: string) {
-    const data = await graphqlRequest<{ startConversation: any }>(`
+    const data = await graphqlRequest<{ startConversation: ApiConversation }>(`
       mutation StartConversation($listingId: ID!) {
         startConversation(listingId: $listingId) { ${CONVERSATION_FIELDS} }
       }
@@ -73,7 +78,7 @@ export const messagingService = {
       if (!(error instanceof RealtimeUnavailableError)) throw error;
     }
 
-    const data = await graphqlRequest<{ sendMessage: any }>(`
+    const data = await graphqlRequest<{ sendMessage: ApiMessage }>(`
       mutation SendMessage($input: SendMessageInput!) {
         sendMessage(input: $input) { ${MESSAGE_FIELDS} }
       }

@@ -9,6 +9,7 @@ import { listingService } from "@/services/listing.service";
 import { brazilLocations, brazilRegions } from "@/data/brazil-locations";
 import { locationService } from "@/services/location.service";
 import { categoryService } from "@/services/category.service";
+import { releaseFeatures } from "@/lib/release-features";
 import { ListingCard } from "@/components/listings/listing-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,7 +55,7 @@ function useFilters(): SearchFilters {
     maxPrice: toNum(params.get("maxPrice")),
     condition: (params.get("condition") || "") as ListingCondition | "",
     sellerType: (params.get("sellerType") || "") as SellerType | "",
-    verifiedOnly: params.get("verified") === "1",
+    verifiedOnly: releaseFeatures.cpfVerification && params.get("verified") === "1",
     dateListed: (params.get("date") || "") as SearchFilters["dateListed"],
     sort: (params.get("sort") || "relevant") as SearchFilters["sort"],
   };
@@ -451,7 +452,7 @@ export function SearchResultsClient() {
           <option value="month">{t("search.last30")}</option>
         </select>
       </div>
-      <label className="flex items-center gap-2 text-sm">
+      {releaseFeatures.cpfVerification && <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={!!filters.verifiedOnly}
@@ -461,7 +462,7 @@ export function SearchResultsClient() {
           className="size-4 accent-brand-600"
         />
         {t("search.verifiedOnly")}
-      </label>
+      </label>}
       <Button variant="outline" className="w-full" onClick={clear}>
         <RotateCcw className="size-4" />
         {t("search.reset")}

@@ -31,6 +31,7 @@ import { ListingCard } from "@/components/listings/listing-card";
 import { SearchBar } from "@/components/search/search-bar";
 import { SellerCard } from "@/components/seller/seller-card";
 import { Button } from "@/components/ui/button";
+import { releaseFeatures } from "@/lib/release-features";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarketplaceLocation } from "@/providers/marketplace-location-provider";
 import { listingService } from "@/services/listing.service";
@@ -252,6 +253,7 @@ export function HomepageContent() {
   const sellersQuery = useQuery({
     queryKey: ["sellers"],
     queryFn: () => sellerService.getVerified(),
+    enabled: releaseFeatures.cpfVerification,
   });
 
   const allSellersQuery = useQuery({
@@ -286,7 +288,7 @@ export function HomepageContent() {
     nearbyQuery.isError ||
     featuredQuery.isError ||
     recentQuery.isError ||
-    sellersQuery.isError ||
+    (releaseFeatures.cpfVerification && sellersQuery.isError) ||
     categoriesQuery.isError;
 
   return (
@@ -523,7 +525,7 @@ export function HomepageContent() {
         )}
       </section>
 
-      <section className="border-y bg-slate-100/70 py-12 lg:py-16">
+      {releaseFeatures.cpfVerification && <section className="border-y bg-slate-100/70 py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow={t("home.trusted")}
@@ -553,7 +555,7 @@ export function HomepageContent() {
             </div>
           )}
         </div>
-      </section>
+      </section>}
 
       <section className="bg-ink-950 py-14 text-white lg:py-20">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:px-8">

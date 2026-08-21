@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AuthRequiredDialog } from '@/components/auth/auth-required-dialog';
 import { formatBRL, formatRelativeDate } from '@/lib/utils';
+import { releaseFeatures } from '@/lib/release-features';
 import { useAuth } from '@/providers/auth-provider';
 import { useLocale } from '@/providers/locale-provider';
 import { socialService } from '@/services/social.service';
@@ -118,7 +119,7 @@ export function ListingCard({
             {formatRelativeDate(listing.createdAt, locale)}
           </div>
 
-          {seller?.verified && (
+          {releaseFeatures.cpfVerification && seller?.verified && (
             <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-700 sm:text-xs">
               <ShieldCheck className="size-4" />
               {t('listing.verifiedSeller')}

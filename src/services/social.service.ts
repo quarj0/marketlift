@@ -6,6 +6,10 @@ import {
   mapNotification,
   mapReview,
   mapSeller,
+  type ApiListing,
+  type ApiNotification,
+  type ApiReview,
+  type ApiSeller,
 } from '@/lib/api-mappers';
 import type { MarketplaceReport, Review } from '@/types';
 
@@ -19,7 +23,18 @@ const REPORT_FIELDS = `
   reporterName assignedTo internalNote decisionReason createdAt decidedAt
 `;
 
-function mapReport(raw: any): MarketplaceReport {
+type ApiMarketplaceReport = {
+  id: string;
+  targetType: MarketplaceReport['targetType'];
+  targetId: string;
+  reporterName?: string | null;
+  reason: MarketplaceReport['reason'];
+  statement?: string | null;
+  createdAt: string;
+  status: string;
+};
+
+function mapReport(raw: ApiMarketplaceReport): MarketplaceReport {
   return {
     id: String(raw.id),
     targetType: raw.targetType,
@@ -34,12 +49,12 @@ function mapReport(raw: any): MarketplaceReport {
         : raw.status === 'resolved'
           ? 'actioned'
           : 'open',
-  } as MarketplaceReport;
+  };
 }
 
 export const socialService = {
   async getSaved() {
-    const data = await graphqlRequest<{ mySavedListings: any[] }>(`
+    const data = await graphqlRequest<{ mySavedListings: ApiListing[] }>(`
       query MySavedListings {
         mySavedListings { ${LISTING_FIELDS} }
       }
@@ -80,9 +95,9 @@ export const socialService = {
 
   async getSellerProfile(id: string) {
     const data = await graphqlRequest<{
-      seller: any | null;
-      listings: any[];
-      sellerReviews: any[];
+      seller: ApiSeller | null;
+      listings: ApiListing[];
+      sellerReviews: ApiReview[];
     }>(`
       query SellerProfile($id: ID!, $sellerId: ID!) {
         seller(id: $id) { ${SELLER_FIELDS} }
@@ -100,7 +115,7 @@ export const socialService = {
   },
 
   async getReviews(sellerId: string) {
-    const data = await graphqlRequest<{ sellerReviews: any[] }>(`
+    const data = await graphqlRequest<{ sellerReviews: ApiReview[] }>(`
       query SellerReviews($sellerId: ID!) {
         sellerReviews(sellerId: $sellerId, limit: 100) { ${REVIEW_FIELDS} }
       }
@@ -109,7 +124,7 @@ export const socialService = {
   },
 
   async addReview(input: Omit<Review, 'id' | 'date'>) {
-    const data = await graphqlRequest<{ createReview: any }>(`
+    const data = await graphqlRequest<{ createReview: ApiReview }>(`
       mutation CreateReview($input: CreateReviewInput!) {
         createReview(input: $input) { ${REVIEW_FIELDS} }
       }
@@ -124,7 +139,7 @@ export const socialService = {
   },
 
   async replyReview(id: string, reply: string) {
-    const data = await graphqlRequest<{ replyToReview: any }>(`
+    const data = await graphqlRequest<{ replyToReview: ApiReview }>(`
       mutation ReplyToReview($id: ID!, $reply: String!) {
         replyToReview(reviewId: $id, reply: $reply) { ${REVIEW_FIELDS} }
       }
@@ -133,7 +148,7 @@ export const socialService = {
   },
 
   async getNotifications() {
-    const data = await graphqlRequest<{ notifications: any[] }>(`
+    const data = await graphqlRequest<{ notifications: ApiNotification[] }>(`
       query Notifications {
         notifications(limit: 100) { id type title body createdAt read href data }
       }
@@ -172,7 +187,7 @@ export const socialService = {
   },
 
   async report(input: Omit<MarketplaceReport, 'id' | 'createdAt' | 'status'>) {
-    const data = await graphqlRequest<{ createReport: any }>(`
+    const data = await graphqlRequest<{ createReport: ApiMarketplaceReport }>(`
       mutation CreateReport($input: ReportInput!) {
         createReport(input: $input) { ${REPORT_FIELDS} }
       }
@@ -188,7 +203,7 @@ export const socialService = {
   },
 
   async getReports() {
-    const data = await graphqlRequest<{ myReports: any[] }>(`
+    const data = await graphqlRequest<{ myReports: ApiMarketplaceReport[] }>(`
       query MyReports { myReports(limit: 100) { ${REPORT_FIELDS} } }
     `);
     return (data.myReports || []).map(mapReport);

@@ -1,23 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Figtree } from "next/font/google";
 
 import "./globals.css";
 
 import { AccessController } from "@/components/auth/access-controller";
 import { PwaRegister } from "@/components/pwa-register";
 import { SkipLink } from "@/components/i18n/skip-link";
-import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/providers/auth-provider";
 import { LocaleProvider } from "@/providers/locale-provider";
 import { MarketplaceLocationProvider } from "@/providers/marketplace-location-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
-
-const figtree = Figtree({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -96,7 +89,7 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={cn("font-sans", figtree.variable)}
+      className="font-sans"
     >
       <body>
         <Suspense fallback={<AppPrerenderFallback />}>

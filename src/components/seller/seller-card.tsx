@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MapPin, ShieldCheck, Star } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { releaseFeatures } from '@/lib/release-features';
 import { useLocale } from '@/providers/locale-provider';
 import type { Seller } from '@/types';
 
@@ -18,7 +19,7 @@ export function SellerCard({ seller }: { seller: Seller }) {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <h3 className="truncate font-bold">{seller.name}</h3>
-            {seller.verified && <ShieldCheck className="size-4 shrink-0 text-brand-600" aria-label={t('seller.verified')} />}
+            {releaseFeatures.cpfVerification && seller.verified && <ShieldCheck className="size-4 shrink-0 text-brand-600" aria-label={t('seller.verified')} />}
           </div>
           <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
             <MapPin className="size-3.5" />

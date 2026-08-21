@@ -38,7 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refreshSession();
+    const timeoutId = window.setTimeout(() => {
+      void refreshSession();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [refreshSession]);
 
   const logout = useCallback(async () => {

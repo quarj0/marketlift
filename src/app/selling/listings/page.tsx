@@ -12,6 +12,7 @@ import { sellingService } from '@/services/selling.service';
 import { Button } from '@/components/ui/button';
 import { useLocale } from '@/providers/locale-provider';
 import type { ListingStatus, PromotionOption, SellerListing } from '@/types';
+import { releaseFeatures } from '@/lib/release-features';
 
 type Filter = 'all' | ListingStatus;
 type RowAction = { id: string; action: 'status' | 'delete' } | null;
@@ -117,7 +118,7 @@ export default function SellerListings() {
                       <div className="col-span-2 mt-1 grid grid-cols-3 gap-2 sm:col-span-1 sm:mt-0 sm:flex sm:flex-wrap sm:justify-end">
                         <Button size="sm" variant="outline" asChild><Link href={`/listing/${listing.slug}`}>{t('selling.listings.view')}</Link></Button>
                         <Button size="sm" variant="outline" asChild><Link href={`/selling/listings/${listing.id}/edit`}><Pencil className="size-4" /><span className="hidden min-[360px]:inline">{t('selling.listings.edit')}</span></Link></Button>
-                        <Button size="sm" variant="outline" type="button" onClick={() => setPromoting(listing)}><Rocket className="size-4" /><span className="hidden min-[360px]:inline">{t('selling.listings.promote')}</span></Button>
+                        <Button size="sm" variant="outline" type="button" disabled={!releaseFeatures.payments} title={!releaseFeatures.payments?t('common.upcoming'):undefined} onClick={() => setPromoting(listing)}><Rocket className="size-4" /><span className="hidden min-[360px]:inline">{releaseFeatures.payments?t('selling.listings.promote'):t('common.upcoming')}</span></Button>
                         <Button
                           size="sm" variant="ghost" type="button" className="col-span-2 sm:col-span-1"
                           loading={statusBusy}
@@ -150,7 +151,7 @@ export default function SellerListings() {
         </div>
       </main>
 
-      {promoting && (
+      {releaseFeatures.payments && promoting && (
         <PromotionModal
           listingId={promoting.id}
           listingTitle={promoting.title}

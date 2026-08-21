@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { resolveApiUrl } from '@/lib/api-client';
-import { mapNotification } from '@/lib/api-mappers';
+import { mapNotification, type ApiNotification } from '@/lib/api-mappers';
 import { realtimeClient, type RealtimeEvent } from '@/lib/realtime-client';
 import { useAuth } from '@/providers/auth-provider';
 import type { Conversation, Message, NotificationItem } from '@/types';
@@ -21,7 +21,21 @@ const RealtimeContext = createContext<RealtimeContextValue>({
   unreadNotificationCount: 0,
 });
 
-function mapRealtimeMessage(raw: any, userId: string): Message {
+type RealtimeMessagePayload = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text?: string | null;
+  createdAt: string;
+  attachment?: {
+    url: string;
+    name?: string | null;
+    mimeType?: string | null;
+    size?: number | null;
+  } | null;
+};
+
+function mapRealtimeMessage(raw: RealtimeMessagePayload, userId: string): Message {
   return {
     id: String(raw.id),
     conversationId: String(raw.conversationId),
@@ -39,6 +53,27 @@ function mapRealtimeMessage(raw: any, userId: string): Message {
         }
       : undefined,
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRealtimeMessage(value: unknown): value is RealtimeMessagePayload {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.conversationId === 'string'
+    && typeof value.senderId === 'string'
+    && typeof value.createdAt === 'string';
+}
+
+function isNotification(value: unknown): value is ApiNotification {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.type === 'string'
+    && typeof value.title === 'string'
+    && typeof value.body === 'string'
+    && typeof value.createdAt === 'string';
 }
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
@@ -69,7 +104,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (event.type === 'message.created' && data.message) {
+      if (event.type === 'message.created' && isRealtimeMessage(data.message)) {
         const next = mapRealtimeMessage(data.message, user.id);
         queryClient.setQueryData<Message[]>(['messages', next.conversationId], (current) => {
           if (!current) return current;
@@ -101,7 +136,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (event.type === 'notification.created' && data.notification) {
+      if (event.type === 'notification.created' && isNotification(data.notification)) {
         const notification = mapNotification(data.notification);
         queryClient.setQueryData<NotificationItem[]>(['notifications'], (current) => {
           if (!current) return current;

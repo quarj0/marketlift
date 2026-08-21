@@ -12,6 +12,7 @@ import { SellingSidebar } from '@/components/selling/selling-sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getBrazilState } from '@/data/brazil-locations';
+import { releaseFeatures } from '@/lib/release-features';
 import { useAuth } from '@/providers/auth-provider';
 import { useLocale } from '@/providers/locale-provider';
 import { accountService } from '@/services/account.service';
@@ -161,7 +162,7 @@ export default function SellingProfilePage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-xl font-black">{seller.name}</h2>
-                        {seller.verified && <BadgeCheck className="size-5 text-brand-600" aria-label={t('selling.profile.verified')} />}
+                        {releaseFeatures.cpfVerification && seller.verified && <BadgeCheck className="size-5 text-brand-600" aria-label={t('selling.profile.verified')} />}
                       </div>
                       {locationLabel && <p className="mt-1 text-sm text-slate-500">{locationLabel}</p>}
                       <Button variant="outline" size="sm" className="mt-3" asChild>

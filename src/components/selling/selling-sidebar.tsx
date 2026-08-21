@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+import { releaseFeatures } from "@/lib/release-features";
 
 function isActive(pathname: string, href: string) {
   if (href === "/selling") return pathname === "/selling";
@@ -91,6 +92,7 @@ export function SellingSidebar() {
         <nav className="space-y-1">
           {items.map(([href, label, Icon]) => {
             const active = isActive(pathname, href);
+            const upcoming = (!releaseFeatures.payments && ["/selling/plan", "/selling/payments"].includes(href)) || (!releaseFeatures.cpfVerification && href === "/selling/verification");
             return (
               <Link
                 key={href}
@@ -104,7 +106,8 @@ export function SellingSidebar() {
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden="true" />
-                {label}
+                <span className="flex-1">{label}</span>
+                {upcoming && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-800">{t("common.upcoming")}</span>}
               </Link>
             );
           })}
@@ -144,6 +147,7 @@ export function SellingSidebar() {
           >
             {items.map(([href, label, Icon]) => {
               const active = isActive(pathname, href);
+              const upcoming = (!releaseFeatures.payments && ["/selling/plan", "/selling/payments"].includes(href)) || (!releaseFeatures.cpfVerification && href === "/selling/verification");
               return (
                 <Link
                   key={href}
@@ -159,6 +163,7 @@ export function SellingSidebar() {
                 >
                   <Icon className="size-5" aria-hidden="true" />
                   <span>{label}</span>
+                  {upcoming && <span className="mt-1 text-[9px] font-black uppercase tracking-wide text-amber-700">{t("common.upcoming")}</span>}
                 </Link>
               );
             })}

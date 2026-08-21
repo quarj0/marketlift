@@ -1,5 +1,5 @@
 import { graphqlRequest } from '@/lib/api-client';
-import { mapVerification } from '@/lib/api-mappers';
+import { mapVerification, type ApiVerification } from '@/lib/api-mappers';
 
 const VERIFICATION_FIELDS = `
   id sellerId sellerName cpfMasked legalName birthDate documentType
@@ -9,7 +9,7 @@ const VERIFICATION_FIELDS = `
 
 export const verificationService = {
   async getStatus() {
-    const data = await graphqlRequest<{ mySellerVerification: any | null }>(`
+    const data = await graphqlRequest<{ mySellerVerification: ApiVerification | null }>(`
       query MySellerVerification {
         mySellerVerification { ${VERIFICATION_FIELDS} }
       }
@@ -18,7 +18,7 @@ export const verificationService = {
   },
 
   async submit(input: { cpf: string; fullName: string; birthDate: string }) {
-    const data = await graphqlRequest<{ submitSellerVerification: any }>(`
+    const data = await graphqlRequest<{ submitSellerVerification: ApiVerification }>(`
       mutation SubmitSellerVerification($input: VerificationSubmissionInput!) {
         submitSellerVerification(input: $input) { ${VERIFICATION_FIELDS} }
       }
