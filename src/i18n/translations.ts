@@ -55,6 +55,7 @@ const en: Dictionary = {
   "location.useMine": "Use my location",
   "location.search": "Search state or city",
   "location.recent": "Recent locations",
+  "location.suggestions": "Suggestions",
   "location.citiesIn": "Cities in {state}",
 
   "home.localBadge": "Local buying and selling, made simpler",
@@ -236,6 +237,7 @@ const ptBR: Dictionary = {
   "location.useMine": "Usar minha localização",
   "location.search": "Buscar estado ou cidade",
   "location.recent": "Localizações recentes",
+  "location.suggestions": "Sugestões",
   "location.citiesIn": "Cidades em {state}",
 
   "home.localBadge": "Compra e venda local, de forma mais simples",

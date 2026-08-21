@@ -33,6 +33,7 @@ import {
 } from "@/components/feedback/async-states";
 import { ReportDialog } from "@/components/feedback/report-dialog";
 import { messagingService } from "@/services/messaging.service";
+import { formatBRL, formatConversationTimestamp, formatMessageTimestamp } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -57,10 +58,8 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
   const [selectedId, setSelectedId] = useState(initialId ?? "");
   const [text, setText] = useState("");
-  const [blockedOverride, setBlockedOverride] = useState<boolean | null>(null);
+  const [blocked, setBlocked] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const [sendConfirmed, setSendConfirmed] = useState(false);
 
   const [attachment, setAttachment] = useState<SelectedAttachment | null>(null);
 
@@ -76,30 +75,18 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
   const current = conversations.data?.find(
     (conversation) => conversation.id === activeId,
   );
-  const blocked = blockedOverride ?? current?.blocked ?? false;
-  const listingUnavailable =
-    current?.listing.status === "removed" ||
-    current?.listing.status === "rejected";
-  const composerDisabled = blocked || listingUnavailable;
 
   const messages = useQuery({
     queryKey: ["messages", activeId],
     queryFn: () => messagingService.getMessages(activeId),
-    enabled: Boolean(activeId && current),
+    enabled: Boolean(activeId),
   });
 
   useEffect(() => {
-    if (activeId && current?.id === activeId) {
-      void messagingService.markRead(activeId).catch(() => undefined);
+    if (activeId) {
+      void messagingService.markRead(activeId);
     }
-  }, [activeId, current?.id]);
-
-  useEffect(() => {
-    if (!initialId || !conversations.data?.length || current) return;
-
-    const fallbackId = conversations.data[0].id;
-    router.replace(`/messages/${fallbackId}`);
-  }, [conversations.data, current, initialId, router]);
+  }, [activeId]);
 
   useEffect(() => {
     return () => {
@@ -161,9 +148,6 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
     clearAttachment();
     setText("");
     setReportOpen(false);
-    setBlockedOverride(null);
-    setSendError(null);
-    setSendConfirmed(false);
 
     if (window.innerWidth < 1024) {
       router.push(`/messages/${conversationId}`);
@@ -180,13 +164,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
         image: attachment?.file,
       }),
 
-    onMutate: () => {
-      setSendError(null);
-      setSendConfirmed(false);
-    },
-
     onSuccess: async () => {
       setText("");
+      clearAttachment();
 
       await queryClient.invalidateQueries({
         queryKey: ["messages", activeId],
@@ -195,17 +175,6 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
       await queryClient.invalidateQueries({
         queryKey: ["conversations"],
       });
-
-      clearAttachment();
-      setSendConfirmed(true);
-    },
-
-    onError: (error) => {
-      setSendError(
-        error instanceof Error && error.message
-          ? error.message
-          : t("messages.sendError"),
-      );
     },
   });
 
@@ -281,7 +250,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <span className="shrink-0 text-[11px] text-slate-400">
-                      {tr(conversation.lastMessageAt)}
+                      {formatConversationTimestamp(conversation.lastMessageAt, locale)}
                     </span>
                   </div>
 
@@ -290,9 +259,11 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   </p>
 
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate text-[11px] font-semibold text-slate-400">
-                      {conversation.listing.title}
-                    </span>
+                    {conversation.listing ? (
+                      <span className="min-w-0 truncate text-[11px] font-semibold text-slate-400">
+                        {conversation.listing.title}
+                      </span>
+                    ) : <span />}
 
                     {conversation.unread > 0 && (
                       <span className="grid size-5 shrink-0 place-items-center rounded-full bg-blue-700 text-[10px] font-black text-white">
@@ -347,9 +318,11 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   )}
                 </div>
 
-                <p className="truncate text-xs text-slate-500">
-                  {current.listing.title}
-                </p>
+                {current.listing && (
+                  <p className="truncate text-xs text-slate-500">
+                    {current.listing.title}
+                  </p>
+                )}
               </div>
 
               {/* Conversation menu */}
@@ -368,7 +341,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem
                     onSelect={() => {
-                      setBlockedOverride(!blocked);
+                      setBlocked((value) => !value);
                     }}
                     className={
                       blocked
@@ -473,7 +446,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                             : "text-slate-400"
                         }`}
                       >
-                        {tr(message.createdAt)}
+                        {formatMessageTimestamp(message.createdAt, locale)}
 
                         {message.sender === "me" && (
                           <CheckCheck
@@ -499,34 +472,31 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
             {/* Composer */}
             <div className="border-t bg-white p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
               {/* Listing */}
-              <div className="mb-2 flex min-w-0 items-center gap-3 rounded-xl border bg-slate-50 p-2">
-                <Image
-                  src={current.listing.images[0]}
-                  width={40}
-                  height={40}
-                  unoptimized
-                  className="size-10 shrink-0 rounded-lg object-cover"
-                  alt={current.listing.title}
-                />
+              {current.listing && (
+                <Link
+                  href={`/listing/${current.listing.slug}`}
+                  className="mb-2 flex min-w-0 items-center gap-3 rounded-xl border bg-slate-50 p-2 transition hover:bg-slate-100"
+                >
+                  <Image
+                    src={current.listing.images[0]}
+                    width={40}
+                    height={40}
+                    unoptimized
+                    className="size-10 shrink-0 rounded-lg object-cover"
+                    alt={current.listing.title}
+                  />
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold">
-                    {current.listing.title}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold">
+                      {current.listing.title}
+                    </p>
 
-                  <p className="text-xs font-black text-blue-700">
-                    R$ {current.listing.price.toLocaleString("pt-BR")}
-                  </p>
-                </div>
-
-                {current.listing.slug && !listingUnavailable && (
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href={`/listing/${current.listing.slug}`}>
-                      {t("messages.viewListing")}
-                    </Link>
-                  </Button>
-                )}
-              </div>
+                    <p className="text-xs font-black text-blue-700">
+                      {formatBRL(current.listing.price)}
+                    </p>
+                  </div>
+                </Link>
+              )}
 
               {/* Attachment preview */}
               {attachment && (
@@ -585,7 +555,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
                   if (
                     (!text.trim() && !attachment) ||
-                    composerDisabled ||
+                    blocked ||
                     send.isPending
                   ) {
                     return;
@@ -602,7 +572,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
-                    disabled={composerDisabled || send.isPending}
+                    disabled={blocked || send.isPending}
                     onChange={handleImageChange}
                   />
 
@@ -611,7 +581,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     variant="ghost"
                     size="icon"
                     className="shrink-0"
-                    disabled={composerDisabled || send.isPending}
+                    disabled={blocked || send.isPending}
                     onClick={() => imageInputRef.current?.click()}
                     aria-label={t("messages.attach")}
                     title={t("messages.attach")}
@@ -622,16 +592,10 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
                 <Input
                   value={text}
-                  disabled={composerDisabled || send.isPending}
-                  onChange={(event) => {
-                    setText(event.target.value);
-                    setSendError(null);
-                    setSendConfirmed(false);
-                  }}
+                  disabled={blocked || send.isPending}
+                  onChange={(event) => setText(event.target.value)}
                   placeholder={
-                    listingUnavailable
-                      ? t("messages.unavailablePlaceholder")
-                      : blocked
+                    blocked
                       ? t("messages.blockedPlaceholder")
                       : attachment
                         ? t("messages.placeholderImage")
@@ -645,9 +609,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   size="icon"
                   className="shrink-0 sm:w-auto sm:px-4"
                   disabled={
-                    (!text.trim() && !attachment) ||
-                    send.isPending ||
-                    composerDisabled
+                    (!text.trim() && !attachment) || send.isPending || blocked
                   }
                   loading={send.isPending}
                   loadingText=""
@@ -662,25 +624,6 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
               <p className="mt-1.5 pl-1 text-[10px] text-slate-400">
                 {t("messages.fileHint")}
               </p>
-
-              {sendError && (
-                <p className="mt-2 text-xs font-medium text-rose-700" role="alert">
-                  {t("messages.sendError")} {sendError}
-                </p>
-              )}
-
-              {sendConfirmed && (
-                <p className="mt-2 text-xs font-medium text-emerald-700" role="status">
-                  {t("messages.sendConfirmed")}
-                </p>
-              )}
-
-              {listingUnavailable && (
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800" role="status">
-                  <TriangleAlert className="size-4 shrink-0" />
-                  {t("messages.unavailableNotice")}
-                </div>
-              )}
 
               {blocked && (
                 <div className="mt-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">

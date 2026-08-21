@@ -97,3 +97,83 @@ export function formatRelativeDate(value: string | Date, locale: "en" | "pt-BR" 
 
   return formatter.format(years, "year");
 }
+
+export function formatReadableDate(
+  value: string | Date,
+  locale: "en" | "pt-BR" = "en",
+  dateStyle: "full" | "long" | "medium" | "short" = "medium",
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return typeof value === "string" ? value : "";
+  return new Intl.DateTimeFormat(locale === "pt-BR" ? "pt-BR" : "en-US", {
+    dateStyle,
+  }).format(date);
+}
+
+/**
+ * Compact chat timestamp that keeps the clock readable without exposing raw ISO
+ * values. Today shows the time, yesterday is labelled, and older messages show
+ * a localized calendar date plus time.
+ */
+export function formatMessageTimestamp(
+  value: string | Date,
+  locale: "en" | "pt-BR" = "en",
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yesterdayKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
+  const intlLocale = locale === "pt-BR" ? "pt-BR" : "en-US";
+  const time = new Intl.DateTimeFormat(intlLocale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  if (dateKey === todayKey) return time;
+  if (dateKey === yesterdayKey) {
+    return `${locale === "pt-BR" ? "Ontem" : "Yesterday"}, ${time}`;
+  }
+
+  return new Intl.DateTimeFormat(intlLocale, {
+    day: "2-digit",
+    month: "short",
+    ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatConversationTimestamp(
+  value: string | Date,
+  locale: "en" | "pt-BR" = "en",
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+  if (sameDay) {
+    return new Intl.DateTimeFormat(locale === "pt-BR" ? "pt-BR" : "en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  }
+
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const isYesterday = date.getFullYear() === yesterday.getFullYear()
+    && date.getMonth() === yesterday.getMonth()
+    && date.getDate() === yesterday.getDate();
+  if (isYesterday) return locale === "pt-BR" ? "Ontem" : "Yesterday";
+
+  return new Intl.DateTimeFormat(locale === "pt-BR" ? "pt-BR" : "en-US", {
+    day: "2-digit",
+    month: "short",
+    ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+  }).format(date);
+}

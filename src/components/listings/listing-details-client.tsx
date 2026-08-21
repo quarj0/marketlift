@@ -21,7 +21,7 @@ import { useState } from "react";
 import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
 import { socialService } from "@/services/social.service";
-import { formatBRL, formatRelativeDate } from "@/lib/utils";
+import { formatBRL, formatReadableDate, formatRelativeDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ListingCard } from "./listing-card";
@@ -369,7 +369,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                   </div>
                   <div>
                     <strong className="block text-sm text-slate-900">
-                      {seller.memberSince}
+                      {formatReadableDate(seller.memberSince, locale)}
                     </strong>
                     {t("listing.memberSinceLabel")}
                   </div>
@@ -385,14 +385,16 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                     <MessageCircle className="size-4" />
                     {t("listing.messageSeller")}
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setPhoneVisible(true)}
-                  >
-                    <Phone className="size-4" />
-                    {phoneVisible ? "+55 11 99876-4321" : t("listing.showContact")}
-                  </Button>
+                  {seller.phone && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setPhoneVisible(true)}
+                    >
+                      <Phone className="size-4" />
+                      {phoneVisible ? seller.phone : t("listing.showContact")}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     className="w-full"

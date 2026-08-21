@@ -6,6 +6,7 @@ import {
   mapAccountReview,
   mapListing,
 } from '@/lib/api-mappers';
+import { uploadFile } from '@/services/upload.service';
 import type {
   AccountOverview,
   AccountProfile,
@@ -117,6 +118,16 @@ export const accountService = {
         updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
       }
     `, variables);
+    return mapAccountProfile(data.updateMyProfile);
+  },
+
+  async updateAvatar(file: File): Promise<AccountProfile> {
+    const avatarUploadId = await uploadFile(file, 'avatar');
+    const data = await graphqlRequest<{ updateMyProfile: any }>(`
+      mutation UpdateMyAvatar($input: AccountProfileInput!) {
+        updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
+      }
+    `, { input: { avatarUploadId } });
     return mapAccountProfile(data.updateMyProfile);
   },
 

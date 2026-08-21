@@ -2,6 +2,7 @@ export const SELLER_FIELDS = `
   id
   name
   avatarUrl
+  phone
   verified
   sellerType
   isSuspended

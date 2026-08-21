@@ -60,6 +60,39 @@ export const sellingService = {
     return data.myListings.map(mapSellerListing);
   },
 
+  async getListing(id: string) {
+    const listings = await this.getListings();
+    return listings.find((listing) => listing.id === id || listing.slug === id) ?? null;
+  },
+
+  async updateListing(id: string, input: Omit<CreateListingInput, 'images'> & { images?: File[] }) {
+    const imageUploadIds = input.images?.length
+      ? await Promise.all(input.images.map((file) => uploadFile(file, 'listing_image')))
+      : undefined;
+    const payload: Record<string, unknown> = {
+      categoryId: input.category,
+      title: input.title,
+      description: input.description,
+      state: input.location.state,
+      stateCode: input.location.stateCode,
+      city: input.location.city,
+      district: input.location.district || '',
+      price: input.price,
+      condition: input.condition || '',
+      negotiable: input.negotiable,
+      attributes: input.attributes || input.specifications || {},
+    };
+    if (imageUploadIds) payload.imageUploadIds = imageUploadIds;
+
+    const data = await graphqlRequest<{ updateListing: any }>(
+      `mutation UpdateListing($id: ID!, $input: ListingInput!) {
+        updateListing(listingId: $id, input: $input) { ${LISTING_FIELDS} }
+      }`,
+      { id, input: payload },
+    );
+    return mapSellerListing(data.updateListing);
+  },
+
   async setStatus(id: string, status: SellerListing['status']) {
     if (status === 'published') {
       const data = await graphqlRequest<{ publishListing: any }>(

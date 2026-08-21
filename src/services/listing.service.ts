@@ -7,6 +7,7 @@ function paramsFromFilters(filters: SearchFilters) {
   const params = new URLSearchParams();
   if (filters.q) params.set('q', filters.q);
   if (filters.category) params.set('category', filters.category);
+  if (filters.region) params.set('region', filters.region);
   if (filters.state) params.set('state', filters.state);
   if (filters.city) params.set('city', filters.city);
   if (filters.district) params.set('district', filters.district);

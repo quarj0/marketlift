@@ -7,7 +7,7 @@ import type { SendMessagePayload } from '@/types';
 const CONVERSATION_FIELDS = `
   id
   participant { id name avatarUrl verifiedSeller isSeller }
-  listing { id slug title price primaryImage status }
+  listing { id slug title price primaryImage status deleted }
   lastMessage
   lastMessageAt
   unread

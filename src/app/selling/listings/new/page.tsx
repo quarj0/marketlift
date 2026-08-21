@@ -26,7 +26,8 @@ import {
 } from '@/components/selling/category-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { brazilLocations } from '@/data/brazil-locations';
+import { LocationFields } from '@/components/location/location-fields';
+import { getBrazilState } from '@/data/brazil-locations';
 import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
 import type { ListingAttributes } from '@/types';
@@ -108,7 +109,7 @@ export default function NewListingPage() {
   });
 
   const values = useWatch({ control: form.control });
-  const selectedState = brazilLocations.find((item) => item.code === values.state);
+  const selectedState = getBrazilState(values.state);
   const selectedCategory = categories.find((category) => category.id === values.category);
   const categoryName = selectedCategory ? localizedCategoryName(selectedCategory.id, selectedCategory.name) : t('selling.new.step.details');
 
@@ -399,28 +400,35 @@ export default function NewListingPage() {
                 <section>
                   <h2 className="text-xl font-black">{t('selling.new.step.location')}</h2>
                   <p className="mt-1 text-sm text-slate-500">{t('selling.new.locationBody')}</p>
-                  <div className="mt-5 grid gap-4 sm:grid-cols-3">
-                    <Field label={t('selling.new.state')}>
-                      <select
-                        {...form.register('state')}
-                        onChange={(event) => {
-                          form.setValue('state', event.target.value);
-                          const state = brazilLocations.find((item) => item.code === event.target.value);
-                          form.setValue('city', state?.cities[0] ?? '');
-                        }}
-                        className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
-                      >
-                        {brazilLocations.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}
-                      </select>
-                    </Field>
-                    <Field label={t('selling.new.city')}>
-                      <select {...form.register('city')} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
-                        {selectedState?.cities.map((city) => <option key={city}>{city}</option>)}
-                      </select>
-                    </Field>
-                    <Field label={t('selling.new.district')} error={form.formState.errors.district?.message}>
-                      <Input {...form.register('district')} placeholder={t('selling.new.districtPlaceholder')} />
-                    </Field>
+                  <div className="mt-5">
+                    <LocationFields
+                      value={{
+                        stateCode: values.state ?? 'SP',
+                        city: values.city ?? '',
+                        district: values.district ?? '',
+                      }}
+                      onChange={(location) => {
+                        form.setValue('state', location.stateCode, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
+                      }}
+                      labels={{
+                        region: t('search.region'),
+                        state: t('selling.new.state'),
+                        city: t('selling.new.city'),
+                        district: t('selling.new.district'),
+                      }}
+                      placeholders={{
+                        city: t('selling.new.city'),
+                        district: t('selling.new.districtPlaceholder'),
+                      }}
+                      errors={{
+                        stateCode: form.formState.errors.state?.message,
+                        city: form.formState.errors.city?.message,
+                        district: form.formState.errors.district?.message,
+                      }}
+                      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    />
                   </div>
                 </section>
               )}

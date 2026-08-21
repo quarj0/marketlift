@@ -31,6 +31,7 @@ export interface Seller {
   id: string;
   name: string;
   avatar: string;
+  phone?: string;
   location: Location;
   verified: boolean;
   rating: number;
@@ -100,7 +101,6 @@ export interface Listing {
   specifications?: Record<string, string | number>;
   attributes?: ListingAttributes;
   categorySchemaVersion?: number;
-  status?: ListingStatus;
 }
 
 export interface Category {
@@ -112,6 +112,7 @@ export interface Category {
 export interface SearchFilters {
   q?: string;
   category?: string;
+  region?: string;
   state?: string;
   city?: string;
   district?: string;
@@ -239,11 +240,10 @@ export interface PromotionOption {
 export interface Conversation {
   id: string;
   participant: Seller;
-  listing: Listing;
+  listing?: Listing;
   lastMessage: string;
   lastMessageAt: string;
   unread: number;
-  blocked: boolean;
 }
 
 export interface MessageAttachment {
