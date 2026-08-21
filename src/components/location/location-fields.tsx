@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LoaderCircle, LocateFixed } from 'lucide-react';
 
@@ -64,10 +64,7 @@ export function LocationFields({
   const debouncedCity = useDebouncedValue(value.city, 250);
   const debouncedDistrict = useDebouncedValue(value.district, 250);
 
-  const states = useMemo(
-    () => brazilLocations.filter((state) => state.regionCode === regionCode),
-    [regionCode],
-  );
+  const states = brazilLocations.filter((state) => state.regionCode === regionCode);
 
   const citiesQuery = useQuery({
     queryKey: ['location-cities', selectedState?.code, debouncedCity],

@@ -5,6 +5,9 @@ import {
   mapAccountProfile,
   mapAccountReview,
   mapListing,
+  type ApiAccountProfile,
+  type ApiListing,
+  type ApiReview,
 } from '@/lib/api-mappers';
 import { uploadFile } from '@/services/upload.service';
 import type {
@@ -57,7 +60,13 @@ const REVIEW_FIELDS = `
 
 export const accountService = {
   async getOverview(): Promise<AccountOverview> {
-    const data = await graphqlRequest<{ myAccountOverview: any }>(`
+    const data = await graphqlRequest<{ myAccountOverview: {
+      savedCount?: number;
+      unreadMessages?: number;
+      reviewsCount?: number;
+      recentlyViewed?: ApiListing[];
+      savedListings?: ApiListing[];
+    } }>(`
       query MyAccountOverview {
         myAccountOverview {
           savedCount
@@ -79,7 +88,7 @@ export const accountService = {
   },
 
   async getSaved() {
-    const data = await graphqlRequest<{ mySavedListings: any[] }>(`
+    const data = await graphqlRequest<{ mySavedListings: ApiListing[] }>(`
       query MySavedListings {
         mySavedListings { ${LISTING_FIELDS} }
       }
@@ -88,7 +97,7 @@ export const accountService = {
   },
 
   async getProfile(): Promise<AccountProfile> {
-    const data = await graphqlRequest<{ me: any }>(`
+    const data = await graphqlRequest<{ me: ApiAccountProfile }>(`
       query MyProfile {
         me { ${ACCOUNT_PROFILE_FIELDS} }
       }
@@ -113,7 +122,7 @@ export const accountService = {
           : {}),
       },
     };
-    const data = await graphqlRequest<{ updateMyProfile: any }>(`
+    const data = await graphqlRequest<{ updateMyProfile: ApiAccountProfile }>(`
       mutation UpdateMyProfile($input: AccountProfileInput!) {
         updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
       }
@@ -123,7 +132,7 @@ export const accountService = {
 
   async updateAvatar(file: File): Promise<AccountProfile> {
     const avatarUploadId = await uploadFile(file, 'avatar');
-    const data = await graphqlRequest<{ updateMyProfile: any }>(`
+    const data = await graphqlRequest<{ updateMyProfile: ApiAccountProfile }>(`
       mutation UpdateMyAvatar($input: AccountProfileInput!) {
         updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
       }
@@ -141,7 +150,8 @@ export const accountService = {
   },
 
   async updateSettings(input: Partial<AccountSettings>): Promise<AccountSettings> {
-    const { currency: _currency, ...settingsInput } = input;
+    const settingsInput = { ...input };
+    delete settingsInput.currency;
     const data = await graphqlRequest<{ updateMyAccountSettings: AccountSettings }>(`
       mutation UpdateMyAccountSettings($input: AccountSettingsInput!) {
         updateMyAccountSettings(input: $input) { ${ACCOUNT_SETTINGS_FIELDS} }
@@ -153,7 +163,7 @@ export const accountService = {
   },
 
   async getMyReviews(): Promise<AccountReview[]> {
-    const data = await graphqlRequest<{ myReviews: any[] }>(`
+    const data = await graphqlRequest<{ myReviews: ApiReview[] }>(`
       query MyReviews {
         myReviews { ${REVIEW_FIELDS} }
       }

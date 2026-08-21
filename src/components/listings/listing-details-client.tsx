@@ -22,6 +22,7 @@ import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
 import { socialService } from "@/services/social.service";
 import { formatBRL, formatReadableDate, formatRelativeDate } from "@/lib/utils";
+import { releaseFeatures } from "@/lib/release-features";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ListingCard } from "./listing-card";
@@ -346,7 +347,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 font-black">
                       <span className="truncate">{seller.name}</span>
-                      {seller.verified && (
+                      {releaseFeatures.cpfVerification && seller.verified && (
                         <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
                       )}
                     </div>

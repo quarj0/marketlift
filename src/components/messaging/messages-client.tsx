@@ -32,6 +32,7 @@ import {
   PageLoading,
 } from "@/components/feedback/async-states";
 import { ReportDialog } from "@/components/feedback/report-dialog";
+import { releaseFeatures } from "@/lib/release-features";
 import { messagingService } from "@/services/messaging.service";
 import { formatBRL, formatConversationTimestamp, formatMessageTimestamp } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
@@ -310,7 +311,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     {current.participant.name}
                   </p>
 
-                  {current.participant.verified && (
+                  {releaseFeatures.cpfVerification && current.participant.verified && (
                     <ShieldCheck
                       className="size-4 shrink-0 text-emerald-600"
                       aria-label={t("messages.verified")}

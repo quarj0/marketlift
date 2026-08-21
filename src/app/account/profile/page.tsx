@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Mail, MapPin, Phone, ShieldCheck, UserRound } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AccountSidebar } from '@/components/account/account-sidebar';
@@ -58,9 +58,14 @@ export default function ProfilePage() {
     handleSubmit,
     reset,
     formState: { errors, isDirty },
-    watch,
+    control,
     setValue,
   } = useForm<ProfileForm>({ resolver: zodResolver(profileSchema) });
+
+  const [stateCode = '', city = '', district = ''] = useWatch({
+    control,
+    name: ['stateCode', 'city', 'district'],
+  });
 
   useEffect(() => {
     if (!profileQuery.data) return;
@@ -191,9 +196,9 @@ export default function ProfilePage() {
                         </div>
                         <LocationFields
                           value={{
-                            stateCode: watch('stateCode') || profileQuery.data.location.stateCode || 'SP',
-                            city: watch('city') || '',
-                            district: watch('district') || '',
+                            stateCode: stateCode || profileQuery.data.location.stateCode || 'SP',
+                            city,
+                            district,
                           }}
                           onChange={(location) => {
                             setValue('stateCode', location.stateCode, { shouldDirty: true, shouldValidate: true });

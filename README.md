@@ -10,17 +10,10 @@ Consumer marketplace frontend for Marketlift, built with Next.js, TypeScript, Ta
 - Private selling tools live under `/selling`.
 - Ordinary listings publish immediately after automated validation.
 - `under_review` is exceptional and reserved for risk signals, reports or future category rules.
-- Seller identity verification is optional by default and never exposes CPF publicly.
+- CPF/provider-backed seller identity verification is marked **Upcoming** and disabled for the initial release.
 - Buyers and sellers arrange product payment and delivery independently in V1.
-- Mercado Pago-ready checkout is only for Marketlift subscriptions, boosts, promotions and service fees.
-- The internal administration product is intentionally excluded from this repository and will be developed/deployed separately (for example `dash.marketlift.br`).
-
-## Demo authentication
-
-- `marketlift@demo.marketlift` — registered account with selling already enabled.
-- `new@demo.marketlift` — registered account without selling enabled, useful for testing the Start Selling flow.
-- Any password with at least 6 characters works in the mock frontend.
-- OTP demo code: `123456`.
+- Marketlift subscriptions, checkout, boosts, promotions and all other service payments are marked **Upcoming** until the payment provider is integrated and certified.
+- The internal administration product is deployed separately at `admin.marketlift.com.br`.
 
 ## Development
 
@@ -34,3 +27,10 @@ Production check:
 ```bash
 pnpm build
 ```
+
+## Production configuration
+
+Copy `.env.production.example` into the deployment provider and keep both
+release flags set to `false`. The production defaults target
+`https://marketlift.com.br` and `https://api.marketlift.com.br`; explicitly set
+the values in the deployment environment so configuration remains auditable.

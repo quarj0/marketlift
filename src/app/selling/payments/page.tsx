@@ -7,10 +7,12 @@ import { SellingSidebar } from '@/components/selling/selling-sidebar';
 import { EmptyState, InlineError, PageLoading } from '@/components/feedback/async-states';
 import { useLocale } from '@/providers/locale-provider';
 import { paymentService } from '@/services/payment.service';
+import { UpcomingFeature } from '@/components/feedback/upcoming-feature';
+import { releaseFeatures } from '@/lib/release-features';
 
 export default function PaymentsPage() {
   const { t, locale } = useLocale();
-  const query = useQuery({ queryKey: ['seller-payments'], queryFn: paymentService.getPayments });
+  const query = useQuery({ queryKey: ['seller-payments'], queryFn: paymentService.getPayments, enabled: releaseFeatures.payments });
   const dateLocale = locale === 'pt-BR' ? 'pt-BR' : 'en-US';
 
   return (
@@ -24,6 +26,8 @@ export default function PaymentsPage() {
         <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
           <SellingSidebar />
           <section className="min-w-0">
+            {!releaseFeatures.payments && <UpcomingFeature feature="payments" />}
+            {releaseFeatures.payments && <>
             {query.isLoading && <PageLoading label={t('selling.payments.loading')} />}
             {query.isError && <InlineError title={t('selling.payments.error')} description={t('selling.payments.errorBody')} onRetry={() => query.refetch()} />}
             {!query.isLoading && !query.isError && query.data?.length === 0 && <EmptyState title={t('selling.payments.empty')} description={t('selling.payments.emptyBody')} href="/selling/plan" action={t('selling.payments.plans')} />}
@@ -47,6 +51,7 @@ export default function PaymentsPage() {
                 </div>
               </div>
             )}
+            </>}
           </section>
         </div>
       </main>

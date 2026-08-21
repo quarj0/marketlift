@@ -15,6 +15,7 @@ import {
 import { sellingService } from '@/services/selling.service';
 import { Button } from '@/components/ui/button';
 import { useLocale } from '@/providers/locale-provider';
+import { releaseFeatures } from '@/lib/release-features';
 
 export function SellingDashboardClient() {
   const { t, tr, locale } = useLocale();
@@ -186,9 +187,7 @@ export function SellingDashboardClient() {
           <p className="mt-3 text-xs leading-5 text-slate-500">
             {t('selling.dashboard.planBody')}
           </p>
-          <Button asChild variant="outline" className="mt-5 w-full">
-            <Link href="/selling/plan">{t('selling.dashboard.managePlan')}</Link>
-          </Button>
+          {releaseFeatures.payments?<Button asChild variant="outline" className="mt-5 w-full"><Link href="/selling/plan">{t('selling.dashboard.managePlan')}</Link></Button>:<Button variant="outline" className="mt-5 w-full" disabled>{t('common.upcoming')}</Button>}
         </aside>
       </div>
     </div>

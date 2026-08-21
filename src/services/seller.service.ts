@@ -1,5 +1,5 @@
 import { graphqlRequest } from '@/lib/api-client';
-import { mapReview, mapSeller } from '@/lib/api-mappers';
+import { mapReview, mapSeller, type ApiReview, type ApiSeller } from '@/lib/api-mappers';
 import { SELLER_FIELDS } from '@/lib/graphql-fragments';
 import type { Review, Seller, SellerType } from '@/types';
 
@@ -31,7 +31,7 @@ export type SellerReputation = {
 
 export const sellerService = {
   async getSeller(id: string) {
-    const data = await graphqlRequest<{ seller: any | null }>(
+    const data = await graphqlRequest<{ seller: ApiSeller | null }>(
       `query Seller($id: ID!) { seller(id: $id) { ${SELLER_FIELDS} } }`,
       { id },
     );
@@ -39,12 +39,12 @@ export const sellerService = {
   },
 
   async getSellers() {
-    const data = await graphqlRequest<{ sellers: any[] }>(`query Sellers { sellers(limit: 100) { ${SELLER_FIELDS} } }`);
+    const data = await graphqlRequest<{ sellers: ApiSeller[] }>(`query Sellers { sellers(limit: 100) { ${SELLER_FIELDS} } }`);
     return data.sellers.map(mapSeller);
   },
 
   async getVerified(limit = 6) {
-    const data = await graphqlRequest<{ verifiedSellers: any[] }>(
+    const data = await graphqlRequest<{ verifiedSellers: ApiSeller[] }>(
       `query VerifiedSellers($limit: Int!) { verifiedSellers(limit: $limit) { ${SELLER_FIELDS} } }`,
       { limit },
     );
@@ -52,7 +52,7 @@ export const sellerService = {
   },
 
   async updateMyProfile(input: { displayName: string; sellerType: SellerType }): Promise<Seller> {
-    const data = await graphqlRequest<{ updateMySellerProfile: any }>(
+    const data = await graphqlRequest<{ updateMySellerProfile: ApiSeller }>(
       `mutation UpdateMySellerProfile($input: SellerProfileInput!) {
         updateMySellerProfile(input: $input) { ${SELLER_FIELDS} }
       }`,
@@ -62,7 +62,7 @@ export const sellerService = {
   },
 
   async getMyReviews(): Promise<Review[]> {
-    const data = await graphqlRequest<{ mySellerReviews: any[] }>(`
+    const data = await graphqlRequest<{ mySellerReviews: ApiReview[] }>(`
       query MySellerReviews {
         mySellerReviews { ${REVIEW_FIELDS} }
       }
@@ -71,7 +71,7 @@ export const sellerService = {
   },
 
   async getMyReputation(sellerId: string): Promise<SellerReputation> {
-    const data = await graphqlRequest<{ sellerReputation: any | null }>(`
+    const data = await graphqlRequest<{ sellerReputation: Partial<SellerReputation> | null }>(`
       query MySellerReputation($sellerId: ID!) {
         sellerReputation(sellerId: $sellerId) {
           average
@@ -99,7 +99,7 @@ export const sellerService = {
   },
 
   async replyToReview(reviewId: string, reply: string): Promise<Review> {
-    const data = await graphqlRequest<{ replyToReview: any }>(`
+    const data = await graphqlRequest<{ replyToReview: ApiReview }>(`
       mutation ReplyToReview($reviewId: ID!, $reply: String!) {
         replyToReview(reviewId: $reviewId, reply: $reply) { ${REVIEW_FIELDS} }
       }

@@ -1,5 +1,5 @@
 import { apiRequest, graphqlRequest } from '@/lib/api-client';
-import { mapUser } from '@/lib/api-mappers';
+import { mapUser, type ApiSeller, type ApiUser } from '@/lib/api-mappers';
 import type { User } from '@/types';
 
 export type PendingRegistration = {
@@ -10,7 +10,7 @@ export type PendingRegistration = {
   requiresVerification: boolean;
 };
 
-type SessionResponse = { authenticated: boolean; user: any | null };
+type SessionResponse = { authenticated: boolean; user: ApiUser | null };
 
 export const authService = {
   async getSession(): Promise<User | null> {
@@ -19,7 +19,7 @@ export const authService = {
   },
 
   async login(input: { emailOrPhone: string; password: string }) {
-    const response = await apiRequest<{ authenticated: boolean; user: any }>('/api/v1/auth/login/', {
+    const response = await apiRequest<{ authenticated: boolean; user: ApiUser }>('/api/v1/auth/login/', {
       method: 'POST',
       json: input,
       csrf: true,
@@ -49,7 +49,7 @@ export const authService = {
 
   async verifyOtp(code: string, pending?: Partial<PendingRegistration>) {
     if (!pending?.id) return { success: false };
-    const response = await apiRequest<{ success: boolean; user: any }>('/api/v1/auth/verify-email/', {
+    const response = await apiRequest<{ success: boolean; user: ApiUser | null }>('/api/v1/auth/verify-email/', {
       method: 'POST',
       json: { userId: pending.id, code },
       csrf: true,
@@ -58,7 +58,7 @@ export const authService = {
   },
 
   async activateSelling() {
-    const data = await graphqlRequest<{ activateSelling: any }>(
+    await graphqlRequest<{ activateSelling: ApiSeller }>(
       `mutation ActivateSelling { activateSelling { id name avatarUrl verified sellerType isSuspended rating reviews positiveReviewPercent responseRate activeListings followerCount isFollowed memberSince location { state stateCode city district } } }`,
     );
     const session = await this.getSession();
