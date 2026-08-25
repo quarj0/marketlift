@@ -24,7 +24,7 @@ const ACCOUNT_PROFILE_FIELDS = `
   phone
   avatarUrl
   bio
-  location { state stateCode city district }
+  location { countryCode state stateCode city district }
   emailVerified
   phoneVerified
   memberSince
@@ -114,6 +114,7 @@ export const accountService = {
         ...(input.bio !== undefined ? { bio: input.bio } : {}),
         ...(input.location
           ? {
+              countryCode: input.location.countryCode,
               state: input.location.state,
               stateCode: input.location.stateCode,
               city: input.location.city,

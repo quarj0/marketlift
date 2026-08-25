@@ -5,9 +5,11 @@ import { ShieldCheck } from "lucide-react";
 
 import { MarketliftLogo } from "@/components/marketplace/logo";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 export function MarketplaceFooter() {
   const { t } = useLocale();
+  const { market } = useMarket();
 
   const groups = [
     {
@@ -49,7 +51,7 @@ export function MarketplaceFooter() {
           <MarketliftLogo />
 
           <p className="mt-5 max-w-sm text-sm leading-6 text-slate-300">
-            {t("footer.description")}
+            {`A simple, trusted way to discover local products and connect with sellers in ${market.countryName}.`}
           </p>
 
           <div className="mt-5 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/6 p-4 text-sm text-slate-200">
@@ -88,7 +90,7 @@ export function MarketplaceFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>{t("footer.rights")}</p>
-          <p>{t("footer.region")}</p>
+          <p>{`${market.countryName} · ${market.currencySymbol} ${market.currency}`}</p>
         </div>
       </div>
     </footer>

@@ -13,13 +13,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
+import { useAuth } from '@/providers/auth-provider';
+import type { PaymentMethod } from '@/types';
 import type { PromotionOption } from '@/types';
-
-const money = (value: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
 
 export function PromotionModal({
   listingId,
@@ -33,9 +30,13 @@ export function PromotionModal({
   onSuccess: (promotion: PromotionOption) => void;
 }) {
   const { t, tr } = useLocale();
+  const { user } = useAuth();
+  const { market, enabledMarkets, formatMoney } = useMarket();
+  const sellerCountry = user?.countryCode || market.code;
+  const sellerMarket = enabledMarkets.find((item) => item.code === sellerCountry) || market;
   const query = useQuery({
-    queryKey: ['promotions'],
-    queryFn: paymentService.getPromotions,
+    queryKey: ['promotions', sellerCountry],
+    queryFn: () => paymentService.getPromotions(sellerCountry),
   });
   const [selected, setSelected] = useState<PromotionOption>();
   const [paying, setPaying] = useState(false);
@@ -50,13 +51,15 @@ export function PromotionModal({
       const payment = await paymentService.createPromotionPayment({
         listingId,
         promotionId: selected.id,
-        method: 'pix',
+        method: (sellerMarket.paymentMethods[0] || 'card') as PaymentMethod,
       });
       if (payment.status === 'paid') {
         setDone(true);
         onSuccess(selected);
       } else {
         setPendingReference(payment.reference);
+        const authorizationUrl = payment.checkoutData?.authorization_url;
+        if (authorizationUrl) window.location.assign(authorizationUrl);
       }
     } finally {
       setPaying(false);
@@ -148,7 +151,7 @@ export function PromotionModal({
                         count: promotion.durationDays,
                       })}
                     </span>
-                    <span className="font-black">{money(promotion.price)}</span>
+                    <span className="font-black">{formatMoney(promotion.price, promotion.currency || sellerMarket.currency)}</span>
                   </div>
                 </button>
               ))}
@@ -175,7 +178,7 @@ export function PromotionModal({
               {selected
                 ? t('payments.promotion.buy', {
                     name: tr(selected.name),
-                    amount: money(selected.price),
+                    amount: formatMoney(selected.price, selected.currency || sellerMarket.currency),
                   })
                 : t('payments.promotion.choose')}
             </Button>

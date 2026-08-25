@@ -10,6 +10,7 @@ import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 type SellingBenefit = {
   icon: LucideIcon;
@@ -38,6 +39,7 @@ const benefits: SellingBenefit[] = [
 export default function StartSellingPage() {
   const { canSell, activateSelling } = useAuth();
   const { t } = useLocale();
+  const { formatMoney } = useMarket();
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -161,7 +163,7 @@ export default function StartSellingPage() {
                     {t("selling.start.free")}
                   </p>
                   <p className="mt-2 text-3xl font-black text-brand-950">
-                    R$0
+                    {formatMoney(0)}
                   </p>
                   <p className="mt-1 text-sm text-brand-800">
                     {t("selling.start.freeBody")}

@@ -38,17 +38,19 @@ export const sellerService = {
     return data.seller ? mapSeller(data.seller) : null;
   },
 
-  async getSellers() {
+  async getSellers(countryCode?: string) {
     const data = await graphqlRequest<{ sellers: ApiSeller[] }>(`query Sellers { sellers(limit: 100) { ${SELLER_FIELDS} } }`);
-    return data.sellers.map(mapSeller);
+    const sellers = data.sellers.map(mapSeller);
+    return countryCode ? sellers.filter((seller) => seller.countryCode === countryCode) : sellers;
   },
 
-  async getVerified(limit = 6) {
+  async getVerified(limit = 6, countryCode?: string) {
     const data = await graphqlRequest<{ verifiedSellers: ApiSeller[] }>(
       `query VerifiedSellers($limit: Int!) { verifiedSellers(limit: $limit) { ${SELLER_FIELDS} } }`,
       { limit },
     );
-    return data.verifiedSellers.map(mapSeller);
+    const sellers = data.verifiedSellers.map(mapSeller);
+    return countryCode ? sellers.filter((seller) => seller.countryCode === countryCode) : sellers;
   },
 
   async updateMyProfile(input: { displayName: string; sellerType: SellerType }): Promise<Seller> {

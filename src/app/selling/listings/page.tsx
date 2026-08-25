@@ -11,6 +11,7 @@ import { PromotionModal } from '@/components/payments/promotion-modal';
 import { sellingService } from '@/services/selling.service';
 import { Button } from '@/components/ui/button';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import type { ListingStatus, PromotionOption, SellerListing } from '@/types';
 import { releaseFeatures } from '@/lib/release-features';
 
@@ -22,6 +23,7 @@ const filters: Filter[] = ['all', 'published', 'draft', 'under_review', 'paused'
 export default function SellerListings() {
   const queryClient = useQueryClient();
   const { t, tr } = useLocale();
+  const { formatMoney } = useMarket();
   const [filter, setFilter] = useState<Filter>('all');
   const [promoting, setPromoting] = useState<SellerListing>();
   const [activePromos, setActivePromos] = useState<Record<string, string>>({});
@@ -111,7 +113,7 @@ export default function SellerListings() {
                           <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">{t(`selling.status.${listing.status}`)}</span>
                           {activePromos[listing.id] && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">{tr(activePromos[listing.id])}</span>}
                         </div>
-                        <p className="mt-1 text-sm font-black text-brand-700">R$ {listing.price.toLocaleString('pt-BR')}</p>
+                        <p className="mt-1 text-sm font-black text-brand-700">{formatMoney(listing.price)}</p>
                         <p className="mt-1.5 text-[11px] leading-5 text-slate-500 sm:text-xs">{t('selling.listings.stats', { views: listing.views, favorites: listing.favorites, inquiries: listing.inquiries })}</p>
                       </div>
 

@@ -5,10 +5,33 @@ import { T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { ListingDetailsClient } from "@/components/listings/listing-details-client";
 import { listingService } from "@/services/listing.service";
+import { marketService, type MarketProfile } from "@/services/market.service";
 
 type ListingPageProps = {
   params: Promise<{ slug: string }>;
 };
+
+function fallbackMarket(countryCode?: string | null): MarketProfile {
+  const code=(countryCode||"GH").toUpperCase();
+  const profiles:Record<string,Pick<MarketProfile,"countryCode"|"countryName"|"locale"|"languageCode"|"currency"|"currencySymbol">>={
+    BR:{countryCode:"BR",countryName:"Brazil",locale:"pt-BR",languageCode:"pt",currency:"BRL",currencySymbol:"R$"},
+    GH:{countryCode:"GH",countryName:"Ghana",locale:"en-GH",languageCode:"en",currency:"GHS",currencySymbol:"GH₵"},
+    NG:{countryCode:"NG",countryName:"Nigeria",locale:"en-NG",languageCode:"en",currency:"NGN",currencySymbol:"₦"},
+    KE:{countryCode:"KE",countryName:"Kenya",locale:"en-KE",languageCode:"en",currency:"KES",currencySymbol:"KSh"},
+    ZA:{countryCode:"ZA",countryName:"South Africa",locale:"en-ZA",languageCode:"en",currency:"ZAR",currencySymbol:"R"},
+    CI:{countryCode:"CI",countryName:"Côte d’Ivoire",locale:"fr-CI",languageCode:"fr",currency:"XOF",currencySymbol:"FCFA"},
+  };
+  const base=profiles[code]||profiles.GH;
+  return {code,...base,paymentProvider:"disabled",paymentMethods:[],identityLabel:"Identity",identityKey:"identity",locationMode:code==="BR"?"catalog":"geocoder"};
+}
+
+async function listingMarket(countryCode?:string|null){
+  try{const capabilities=await marketService.getCapabilities();return capabilities.enabledMarkets.find((m)=>m.code===countryCode)||capabilities.active;}catch{return fallbackMarket(countryCode);}
+}
+
+function formatPrice(value:number, market:MarketProfile){
+  return new Intl.NumberFormat(market.locale,{style:"currency",currency:market.currency,maximumFractionDigits:market.currency==="XOF"?0:2}).format(value).replace(/\u00a0/g," ");
+}
 
 export async function generateMetadata({
   params,
@@ -24,9 +47,10 @@ export async function generateMetadata({
   }
 
   const description = listing.description.slice(0, 155);
+  const market = await listingMarket(listing.location.countryCode);
 
   return {
-    title: `${listing.title} — R$ ${listing.price.toLocaleString("pt-BR")}`,
+    title: `${listing.title} — ${formatPrice(listing.price, market)}`,
     description,
     alternates: { canonical: `/listing/${listing.slug}` },
     openGraph: {
@@ -65,8 +89,9 @@ function ListingFallback() {
 async function ListingContent({ params }: ListingPageProps) {
   const { slug } = await params;
   const listing = await listingService.getListing(slug);
+  const market = listing ? await listingMarket(listing.location.countryCode) : null;
 
-  const jsonLd = listing
+  const jsonLd = listing && market
     ? {
         "@context": "https://schema.org",
         "@type": "Product",
@@ -75,11 +100,11 @@ async function ListingContent({ params }: ListingPageProps) {
         image: listing.images,
         offers: {
           "@type": "Offer",
-          priceCurrency: "BRL",
+          priceCurrency: market.currency,
           price: listing.price,
           availability: "https://schema.org/InStock",
         },
-        areaServed: `${listing.location.city}, ${listing.location.stateCode}`,
+        areaServed: [listing.location.city, listing.location.stateCode, market.countryName].filter(Boolean).join(", "),
       }
     : null;
 

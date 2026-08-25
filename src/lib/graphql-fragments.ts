@@ -14,7 +14,8 @@ export const SELLER_FIELDS = `
   followerCount
   isFollowed
   memberSince
-  location { state stateCode city district }
+  countryCode
+  location { countryCode state stateCode city district }
 `;
 
 export const LISTING_FIELDS = `
@@ -27,7 +28,7 @@ export const LISTING_FIELDS = `
   categoryName
   categorySchemaVersion
   condition
-  location { state stateCode city district }
+  location { countryCode state stateCode city district }
   images
   seller { ${SELLER_FIELDS} }
   createdAt

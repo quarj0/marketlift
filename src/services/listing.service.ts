@@ -6,6 +6,7 @@ import type { Location, SearchFilters } from "@/types";
 function paramsFromFilters(filters: SearchFilters) {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
+  if (filters.countryCode) params.set("countryCode", filters.countryCode);
   if (filters.category) params.set("category", filters.category);
   const hasCoordinates =
     Number.isFinite(filters.latitude) && Number.isFinite(filters.longitude);
@@ -104,7 +105,11 @@ export const listingService = {
     return data.similarListings.map(mapListing);
   },
 
-  async getFeatured(limit = 8) {
+  async getFeatured(limit = 8, countryCode?: string) {
+    if (countryCode) {
+      const listings = await fetchListings({ countryCode, sort: "relevant" });
+      return listings.filter((listing) => listing.featured).slice(0, Math.max(1, limit));
+    }
     const data = await graphqlRequest<{ featuredListings: ApiListing[] }>(
       `query FeaturedListings($limit: Int!) { featuredListings(limit: $limit) { ${LISTING_FIELDS} } }`,
       { limit },
@@ -112,7 +117,11 @@ export const listingService = {
     return data.featuredListings.map(mapListing);
   },
 
-  async getRecent(limit = 8) {
+  async getRecent(limit = 8, countryCode?: string) {
+    if (countryCode) {
+      const listings = await fetchListings({ countryCode, sort: "newest" });
+      return listings.slice(0, Math.max(1, limit));
+    }
     const data = await graphqlRequest<{ recentListings: ApiListing[] }>(
       `query RecentListings($limit: Int!) { recentListings(limit: $limit) { ${LISTING_FIELDS} } }`,
       { limit },
@@ -126,12 +135,14 @@ export const listingService = {
     const listings = await fetchListings(
       hasCoordinates
         ? {
+            countryCode: location.countryCode,
             latitude: location.latitude,
             longitude: location.longitude,
             radiusKm: 25,
             sort: "distance",
           }
         : {
+            countryCode: location.countryCode,
             state: location.stateCode,
             city: location.city,
             district: location.district,

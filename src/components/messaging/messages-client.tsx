@@ -34,8 +34,9 @@ import {
 import { ReportDialog } from "@/components/feedback/report-dialog";
 import { releaseFeatures } from "@/lib/release-features";
 import { messagingService } from "@/services/messaging.service";
-import { formatBRL, formatConversationTimestamp, formatMessageTimestamp } from "@/lib/utils";
+import { formatConversationTimestamp, formatMessageTimestamp } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -56,6 +57,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
   const queryClient = useQueryClient();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { t, tr, locale } = useLocale();
+  const { formatMoney } = useMarket();
 
   const [selectedId, setSelectedId] = useState(initialId ?? "");
   const [text, setText] = useState("");
@@ -493,7 +495,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <p className="text-xs font-black text-blue-700">
-                      {formatBRL(current.listing.price)}
+                      {formatMoney(current.listing.price)}
                     </p>
                   </div>
                 </Link>

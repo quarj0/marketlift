@@ -33,6 +33,7 @@ export const authService = {
     phone: string;
     password: string;
     terms: boolean;
+    countryCode: string;
   }): Promise<PendingRegistration> {
     return apiRequest<PendingRegistration>('/api/v1/auth/register/', {
       method: 'POST',
@@ -42,6 +43,7 @@ export const authService = {
         phone: input.phone,
         password: input.password,
         terms: input.terms,
+        countryCode: input.countryCode,
       },
       csrf: true,
     });

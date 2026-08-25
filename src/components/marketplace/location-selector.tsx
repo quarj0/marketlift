@@ -1,33 +1,20 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Check,
-  ChevronRight,
-  LoaderCircle,
-  LocateFixed,
-  MapPin,
-  Search,
-  X,
-} from "lucide-react";
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Check, ChevronRight, LoaderCircle, LocateFixed, MapPin, Search } from 'lucide-react';
 
-import { brazilLocations } from "@/data/brazil-locations";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useCurrentLocation } from "@/hooks/use-current-location";
-import { locationService } from "@/services/location.service";
-import { useLocale } from "@/providers/locale-provider";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import type { Location } from "@/types";
+import { brazilLocations } from '@/data/brazil-locations';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useCurrentLocation } from '@/hooks/use-current-location';
+import { locationService } from '@/services/location.service';
+import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import type { Location } from '@/types';
 
 interface LocationSelectorProps {
   value?: Location;
@@ -36,114 +23,112 @@ interface LocationSelectorProps {
   onChange?: (location: Location) => void;
 }
 
-const RECENT_LOCATIONS_KEY = "marketlift.recentLocations";
+function recentKey(countryCode: string) {
+  return `marketlift.recentLocations.${countryCode}`;
+}
 
-function readRecentLocations(): Location[] {
-  if (typeof window === "undefined") return [];
+function readRecentLocations(countryCode: string): Location[] {
+  if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(RECENT_LOCATIONS_KEY) || "[]");
+    const parsed = JSON.parse(window.localStorage.getItem(recentKey(countryCode)) || '[]');
     return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
   } catch {
     return [];
   }
 }
 
+function persistRecent(countryCode: string, location: Location) {
+  if (typeof window === 'undefined') return;
+  const current = readRecentLocations(countryCode);
+  const next = [location, ...current.filter((item) =>
+    `${item.city}|${item.stateCode}|${item.district || ''}` !== `${location.city}|${location.stateCode}|${location.district || ''}`,
+  )].slice(0, 5);
+  try {
+    window.localStorage.setItem(recentKey(countryCode), JSON.stringify(next));
+  } catch {
+    // Recent locations are only a convenience.
+  }
+}
 
-export function LocationSelector({
-  value,
-  compact = false,
-  inverse = false,
-  onChange,
-}: LocationSelectorProps) {
+function locationLabel(location: Location) {
+  return [location.district, location.city, location.stateCode || location.state]
+    .filter(Boolean)
+    .join(', ');
+}
+
+export function LocationSelector({ value, compact = false, inverse = false, onChange }: LocationSelectorProps) {
   const { t } = useLocale();
+  const { market } = useMarket();
+  const country = market.code;
+  const isBrazil = country === 'BR';
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [searchDraft, setSearchDraft] = useState({ country, value: '' });
   const [recentLocations, setRecentLocations] = useState<Location[]>([]);
-  const [selectedState, setSelectedState] = useState(
-    value?.stateCode ?? "SP",
-  );
+  const [stateDraft, setStateDraft] = useState({
+    country,
+    code: value?.stateCode || (isBrazil ? 'SP' : ''),
+  });
+  const query = searchDraft.country === country ? searchDraft.value : '';
+  const selectedState = stateDraft.country === country
+    ? stateDraft.code
+    : value?.stateCode || (isBrazil ? 'SP' : '');
+  const setQuery = (next: string) => setSearchDraft({ country, value: next });
+  const setSelectedState = (code: string) => setStateDraft({ country, code });
   const debouncedQuery = useDebouncedValue(query, 250);
-  const { locate, locating, errorCode, clearError } = useCurrentLocation();
+  const { locate, locating, errorCode, clearError } = useCurrentLocation(country);
 
-  const current = value ?? {
-    state: "São Paulo",
-    stateCode: "SP",
-    city: "São Paulo",
-  };
 
-  const state =
-    brazilLocations.find((item) => item.code === selectedState) ??
-    brazilLocations[0];
+  const searchQuery = useQuery({
+    queryKey: ['location-selector-search', country, debouncedQuery],
+    queryFn: () => locationService.search(debouncedQuery, country),
+    enabled: debouncedQuery.trim().length >= 2,
+    staleTime: 5 * 60_000,
+  });
+
+  const state = isBrazil
+    ? brazilLocations.find((item) => item.code === selectedState) || brazilLocations[0]
+    : undefined;
+
+  const filteredStates = useMemo(() => {
+    if (!isBrazil || !query.trim()) return isBrazil ? brazilLocations : [];
+    const needle = query.trim().toLocaleLowerCase('pt-BR');
+    return brazilLocations.filter((item) =>
+      `${item.name} ${item.code}`.toLocaleLowerCase('pt-BR').includes(needle),
+    );
+  }, [isBrazil, query]);
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
-      setRecentLocations(readRecentLocations());
+      setRecentLocations(readRecentLocations(country));
       clearError();
       if (value?.stateCode) setSelectedState(value.stateCode);
     }
     setOpen(nextOpen);
   }
 
-  const cityQuery = useMemo(() => {
-    const normalized = debouncedQuery.trim().toLocaleLowerCase("pt-BR");
-    if (!normalized) return "";
-    const selectedStateMatches = `${state.name} ${state.code}`
-      .toLocaleLowerCase("pt-BR")
-      .includes(normalized);
-    return selectedStateMatches ? "" : debouncedQuery.trim();
-  }, [debouncedQuery, state.code, state.name]);
+  function choose(location: Location) {
+    const normalized = { ...location, countryCode: country };
+    persistRecent(country, normalized);
+    setRecentLocations(readRecentLocations(country));
+    onChange?.(normalized);
+    setQuery('');
+    setOpen(false);
+  }
 
-  const citiesQuery = useQuery({
-    queryKey: ["location-cities", state.code, cityQuery],
-    queryFn: () => locationService.getCities(state.code, cityQuery, 80),
-    enabled: open,
-    staleTime: 24 * 60 * 60_000,
-  });
-  const cities = citiesQuery.data?.length
-    ? citiesQuery.data
-    : [...state.cities].filter((city) =>
-        city.toLocaleLowerCase("pt-BR").includes(cityQuery.toLocaleLowerCase("pt-BR")),
-      );
-
-  const globalSearchQuery = useQuery({
-    queryKey: ["location-search", debouncedQuery],
-    queryFn: () => locationService.search(debouncedQuery),
-    enabled: open && debouncedQuery.trim().length >= 2,
-    staleTime: 5 * 60_000,
-  });
-
-  const filteredStates = useMemo(
-    () =>
-      brazilLocations.filter((item) =>
-        `${item.name} ${item.code}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-      ),
-    [query],
-  );
-
-  async function chooseCurrentLocation() {
+  async function chooseCurrent() {
     const resolved = await locate();
     if (resolved) choose(resolved);
   }
 
-  function choose(location: Location) {
-    onChange?.(location);
-    const next = [
-      location,
-      ...recentLocations.filter(
-        (item) => !(item.city === location.city && item.stateCode === location.stateCode),
-      ),
-    ].slice(0, 5);
-    setRecentLocations(next);
-    try {
-      window.localStorage.setItem(RECENT_LOCATIONS_KEY, JSON.stringify(next));
-    } catch {
-      // Private browsing/storage policies must not block location selection.
-    }
-    setOpen(false);
-    setQuery("");
-  }
+  const current = value;
+  const triggerText = current?.city || market.countryName;
+  const errorText = errorCode === 'denied'
+    ? t('location.denied')
+    : errorCode === 'unsupported'
+      ? t('location.unavailable')
+      : errorCode === 'outside_market'
+        ? `Your current location is outside ${market.countryName}.`
+        : t('location.failed');
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -151,215 +136,121 @@ export function LocationSelector({
         <button
           type="button"
           className={cn(
-            "inline-flex min-h-11 items-center gap-2 rounded-xl text-left transition focus-visible:ring-2 focus-visible:ring-brand-400",
-            compact ? "px-2.5 py-2" : "px-3 py-2",
-            inverse
-              ? "text-white hover:bg-white/10"
-              : "text-slate-700 hover:bg-slate-100",
+            'flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-left text-sm font-semibold transition hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-400',
+            inverse && 'text-white hover:bg-white/10',
+            compact && 'max-w-48',
           )}
-          aria-label={t("location.choose")}
         >
-          <MapPin
-            className={cn(
-              "size-4 shrink-0",
-              inverse ? "text-cyan-300" : "text-brand-700",
-            )}
-            aria-hidden="true"
-          />
-
-          <span className="min-w-0">
-            {!compact && (
-              <span
-                className={cn(
-                  "block text-[10px] font-bold uppercase tracking-wide",
-                  inverse ? "text-slate-300" : "text-slate-400",
-                )}
-              >
-                {t("search.location")}
-              </span>
-            )}
-
-            <span className="block max-w-36 truncate text-sm font-semibold">
-              {current.city}, {current.stateCode}
-            </span>
-          </span>
+          <MapPin className="size-4 shrink-0" aria-hidden="true" />
+          <span className="truncate">{triggerText}</span>
         </button>
       </DialogTrigger>
-
-      <DialogContent
-        showCloseButton={false}
-        className="top-auto bottom-0 left-0 max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-b-none rounded-t-3xl p-0 sm:top-1/2 sm:left-1/2 sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
-      >
-        <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
-          <div>
-            <DialogTitle className="text-lg font-black text-slate-950">
-              {t("location.dialogTitle")}
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-sm text-slate-500">
-              {t("location.dialogDescription")}
-            </DialogDescription>
-          </div>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setOpen(false)}
-            aria-label={t("location.close")}
-          >
-            <X className="size-5" aria-hidden="true" />
-          </Button>
-        </div>
-
-        <div className="overflow-y-auto p-5">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-              aria-hidden="true"
-            />
+      <DialogContent className="max-w-2xl p-0">
+        <div className="border-b p-5 sm:p-6">
+          <DialogTitle>{t('location.title')}</DialogTitle>
+          <DialogDescription className="mt-1">
+            Browse listings in {market.countryName} by city or area.
+          </DialogDescription>
+          <div className="relative mt-4">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("location.search")}
-              aria-label={t("location.search")}
-              className="pl-10"
+              placeholder={`Search ${market.countryName}`}
+              className="pl-9"
+              autoFocus
             />
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3 w-full justify-center"
-            onClick={chooseCurrentLocation}
-            disabled={locating}
-          >
-            {locating ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <LocateFixed className="size-4" aria-hidden="true" />
-            )}
-            {locating ? t("location.locating") : t("location.useMine")}
+          <Button type="button" variant="outline" className="mt-3" onClick={chooseCurrent} disabled={locating}>
+            {locating ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <LocateFixed className="size-4" aria-hidden="true" />}
+            {locating ? t('location.locating') : t('location.useMine')}
           </Button>
+          {errorCode && <p role="alert" className="mt-2 text-sm font-medium text-amber-800">{errorText}</p>}
+        </div>
 
-          {errorCode && (
-            <p
-              role="alert"
-              className="mt-2 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-900"
-            >
-              {t(
-                errorCode === "denied"
-                  ? "location.denied"
-                  : errorCode === "unsupported"
-                    ? "location.unavailable"
-                    : errorCode === "outside_brazil"
-                      ? "location.notInBrazil"
-                      : "location.failed",
-              )}
-            </p>
-          )}
-
-          {!query && recentLocations.length > 0 && (
-            <div className="mt-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                {t("location.recent")}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {recentLocations.map((location) => (
-                  <button
-                    type="button"
-                    key={`${location.city}-${location.stateCode}`}
-                    onClick={() => choose(location)}
-                    className="min-h-11 rounded-full border px-3 py-2 text-sm font-medium hover:border-brand-300 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-400"
-                  >
-                    {location.city}, {location.stateCode}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {query.trim().length >= 2 && (globalSearchQuery.data?.length ?? 0) > 0 && (
-            <div className="mt-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                {t("location.suggestions")}
-              </p>
+        <div className="max-h-[62vh] overflow-y-auto p-5 sm:p-6">
+          {query.trim().length >= 2 && (
+            <section>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('location.suggestions')}</p>
+              {searchQuery.isFetching && <p className="mt-3 text-sm text-slate-500">Searching…</p>}
               <div className="mt-2 grid gap-1 rounded-xl border p-1 sm:grid-cols-2">
-                {globalSearchQuery.data?.map((location) => (
+                {searchQuery.data?.map((location) => (
                   <button
                     type="button"
-                    key={`${location.city}-${location.stateCode}`}
+                    key={`${location.stateCode}-${location.city}-${location.district || ''}`}
                     onClick={() => choose(location)}
                     className="flex min-h-11 items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-400"
                   >
-                    <span>{location.city}, {location.stateCode}</span>
+                    <span>{locationLabel(location)}</span>
+                    <ChevronRight className="size-4 text-slate-300" aria-hidden="true" />
+                  </button>
+                ))}
+                {!searchQuery.isFetching && searchQuery.data?.length === 0 && (
+                  <p className="p-3 text-sm text-slate-500 sm:col-span-2">No matching locations found.</p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {!query.trim() && recentLocations.length > 0 && (
+            <section>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent</p>
+              <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                {recentLocations.map((location) => (
+                  <button
+                    type="button"
+                    key={`${location.stateCode}-${location.city}-${location.district || ''}`}
+                    onClick={() => choose(location)}
+                    className="flex min-h-11 items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span>{locationLabel(location)}</span>
+                    {current && locationLabel(current) === locationLabel(location) && <Check className="size-4 text-brand-700" aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {isBrazil && query.trim().length < 2 && state && (
+            <section className="mt-5 grid min-h-64 gap-5 sm:grid-cols-[0.9fr_1.1fr]">
+              <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
+                {filteredStates.map((item) => (
+                  <button
+                    type="button"
+                    key={item.code}
+                    onClick={() => setSelectedState(item.code)}
+                    aria-pressed={selectedState === item.code}
+                    className={cn(
+                      'flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm focus-visible:ring-2 focus-visible:ring-brand-400',
+                      selectedState === item.code ? 'bg-brand-50 font-bold text-brand-800' : 'hover:bg-slate-50',
+                    )}
+                  >
+                    <span>{item.name} <span className="text-slate-400">({item.code})</span></span>
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+              <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
+                {state.cities.map((city) => (
+                  <button
+                    type="button"
+                    key={city}
+                    onClick={() => choose({ countryCode: 'BR', state: state.name, stateCode: state.code, city })}
+                    className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span>{city}</span>
                     <ChevronRight className="size-4 text-slate-300" aria-hidden="true" />
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          <div className="mt-6 grid min-h-64 gap-5 sm:grid-cols-[0.9fr_1.1fr]">
-            <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
-              {filteredStates.map((item) => (
-                <button
-                  type="button"
-                  key={item.code}
-                  onClick={() => setSelectedState(item.code)}
-                  aria-pressed={selectedState === item.code}
-                  className={cn(
-                    "flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm focus-visible:ring-2 focus-visible:ring-brand-400",
-                    selectedState === item.code
-                      ? "bg-brand-50 font-bold text-brand-800"
-                      : "hover:bg-slate-50",
-                  )}
-                >
-                  <span>
-                    {item.name}{" "}
-                    <span className="text-slate-400">({item.code})</span>
-                  </span>
-
-                  {selectedState === item.code ? (
-                    <Check className="size-4" aria-hidden="true" />
-                  ) : (
-                    <ChevronRight
-                      className="size-4 text-slate-300"
-                      aria-hidden="true"
-                    />
-                  )}
-                </button>
-              ))}
+          {!isBrazil && !query.trim() && recentLocations.length === 0 && (
+            <div className="grid min-h-48 place-items-center rounded-xl border border-dashed text-center text-sm text-slate-500">
+              <div><MapPin className="mx-auto mb-2 size-6" aria-hidden="true" />Search for a city or area in {market.countryName}.</div>
             </div>
-
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                {t("location.citiesIn", { state: state.name })}
-              </p>
-
-              <div className="max-h-72 overflow-y-auto rounded-xl border p-1">
-                {cities.map((city) => (
-                    <button
-                      type="button"
-                      key={city}
-                      onClick={() =>
-                        choose({
-                          state: state.name,
-                          stateCode: state.code,
-                          city,
-                        })
-                      }
-                      className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-400"
-                    >
-                      {city}
-                      <ChevronRight
-                        className="size-4 text-slate-300"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

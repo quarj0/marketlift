@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { releaseFeatures } from "@/lib/release-features";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarketplaceLocation } from "@/providers/marketplace-location-provider";
+import { useMarket } from "@/providers/market-provider";
 import { listingService } from "@/services/listing.service";
 import { marketplaceService } from "@/services/marketplace.service";
 import { sellerService } from "@/services/seller.service";
@@ -243,6 +244,7 @@ function CategoryGrid({
 
 export function HomepageContent() {
   const { t } = useLocale();
+  const { market } = useMarket();
   const { location } = useMarketplaceLocation();
 
   const categoriesQuery = useQuery({
@@ -251,20 +253,21 @@ export function HomepageContent() {
   });
 
   const sellersQuery = useQuery({
-    queryKey: ["sellers"],
-    queryFn: () => sellerService.getVerified(),
+    queryKey: ["sellers", "verified", market.code],
+    queryFn: () => sellerService.getVerified(6, market.code),
     enabled: releaseFeatures.cpfVerification,
   });
 
   const allSellersQuery = useQuery({
-    queryKey: ["sellers", "all"],
-    queryFn: sellerService.getSellers,
+    queryKey: ["sellers", "all", market.code],
+    queryFn: () => sellerService.getSellers(market.code),
   });
 
   const nearbyQuery = useQuery({
     queryKey: [
       "listings",
       "nearby",
+      market.code,
       location.stateCode,
       location.city,
       location.district ?? "",
@@ -275,13 +278,13 @@ export function HomepageContent() {
   });
 
   const featuredQuery = useQuery({
-    queryKey: ["listings", "featured"],
-    queryFn: () => listingService.getFeatured(),
+    queryKey: ["listings", "featured", market.code],
+    queryFn: () => listingService.getFeatured(8, market.code),
   });
 
   const recentQuery = useQuery({
-    queryKey: ["listings", "recent"],
-    queryFn: () => listingService.getRecent(4),
+    queryKey: ["listings", "recent", market.code],
+    queryFn: () => listingService.getRecent(4, market.code),
   });
 
   const sectionError =
@@ -312,7 +315,7 @@ export function HomepageContent() {
               </h1>
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-brand-50 sm:text-lg">
-                {t("home.heroDescription")}
+                {`Find exactly what you want nearby in ${market.countryName}, with powerful search and clearer seller trust signals.`}
               </p>
 
               <div className="mt-8 max-w-5xl">

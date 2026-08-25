@@ -5,19 +5,22 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
-
 import { getBrazilState } from '@/data/brazil-locations';
+import { useMarket } from '@/providers/market-provider';
 import type { Location } from '@/types';
 
-const STORAGE_KEY = 'marketlift.marketplaceLocation';
-const DEFAULT_LOCATION: Location = {
-  state: 'São Paulo',
-  stateCode: 'SP',
-  city: 'São Paulo',
+const STORAGE_PREFIX = 'marketlift.marketplaceLocation';
+
+const DEFAULTS: Record<string, Location> = {
+  BR: { countryCode: 'BR', state: 'São Paulo', stateCode: 'SP', city: 'São Paulo' },
+  GH: { countryCode: 'GH', state: 'Greater Accra', stateCode: 'AA', city: 'Accra' },
+  NG: { countryCode: 'NG', state: 'Lagos', stateCode: 'LA', city: 'Lagos' },
+  KE: { countryCode: 'KE', state: 'Nairobi County', stateCode: '30', city: 'Nairobi' },
+  ZA: { countryCode: 'ZA', state: 'Gauteng', stateCode: 'GP', city: 'Johannesburg' },
+  CI: { countryCode: 'CI', state: 'Abidjan', stateCode: '', city: 'Abidjan' },
 };
 
 type MarketplaceLocationContextValue = {
@@ -25,81 +28,98 @@ type MarketplaceLocationContextValue = {
   setLocation: (location: Location) => void;
 };
 
-const MarketplaceLocationContext = createContext<MarketplaceLocationContextValue | null>(
-  null,
-);
+const MarketplaceLocationContext = createContext<MarketplaceLocationContextValue | null>(null);
 
-function normalizeStoredLocation(value: unknown): Location | null {
+function storageKey(countryCode: string) {
+  return `${STORAGE_PREFIX}.${countryCode}`;
+}
+
+function fallbackLocation(countryCode: string, countryName: string): Location {
+  return DEFAULTS[countryCode] || { countryCode, state: '', stateCode: '', city: countryName };
+}
+
+function normalizeLocation(value: unknown, countryCode: string): Location | null {
   if (!value || typeof value !== 'object') return null;
   const row = value as Partial<Location>;
-  const state = getBrazilState(String(row.stateCode || '').toUpperCase());
+  if (row.countryCode && row.countryCode.toUpperCase() !== countryCode) return null;
   const city = String(row.city || '').trim();
-  if (!state || !city) return null;
+  if (!city) return null;
+  let state = String(row.state || '').trim();
+  let stateCode = String(row.stateCode || '').trim().toUpperCase();
+  if (countryCode === 'BR') {
+    const brazilState = getBrazilState(stateCode);
+    if (!brazilState) return null;
+    state = brazilState.name;
+    stateCode = brazilState.code;
+  }
   const district = String(row.district || '').trim();
   const latitude = typeof row.latitude === 'number' ? row.latitude : Number.NaN;
   const longitude = typeof row.longitude === 'number' ? row.longitude : Number.NaN;
-  const hasCoordinates =
-    Number.isFinite(latitude) &&
-    Number.isFinite(longitude) &&
-    latitude >= -90 &&
-    latitude <= 90 &&
-    longitude >= -180 &&
-    longitude <= 180;
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
   return {
-    state: state.name,
-    stateCode: state.code,
+    countryCode,
+    state,
+    stateCode,
     city,
     ...(district ? { district } : {}),
     ...(hasCoordinates ? { latitude, longitude } : {}),
   };
 }
 
-export function MarketplaceLocationProvider({ children }: { children: ReactNode }) {
-  const [location, setLocationState] = useState<Location>(DEFAULT_LOCATION);
+function readInitialLocation(countryCode: string, countryName: string): Location {
+  let next = fallbackLocation(countryCode, countryName);
+  if (typeof window === 'undefined') return next;
+  try {
+    const raw = window.localStorage.getItem(storageKey(countryCode));
+    const stored = raw ? normalizeLocation(JSON.parse(raw), countryCode) : null;
+    if (stored) next = stored;
+  } catch {
+    // Invalid/stale local data falls back to the market default.
+  }
+  return next;
+}
 
-  useEffect(() => {
-    let frame = 0;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const stored = normalizeStoredLocation(JSON.parse(raw));
-      if (stored) {
-        frame = window.requestAnimationFrame(() => setLocationState(stored));
-      }
-    } catch {
-      // Storage restrictions or old invalid values must not block browsing.
-    }
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, []);
+function MarketplaceLocationProviderForMarket({
+  children,
+  countryCode,
+  countryName,
+}: {
+  children: ReactNode;
+  countryCode: string;
+  countryName: string;
+}) {
+  const [location, setLocationState] = useState<Location>(() => readInitialLocation(countryCode, countryName));
 
   const setLocation = useCallback((next: Location) => {
-    const normalized = normalizeStoredLocation(next);
+    const normalized = normalizeLocation({ ...next, countryCode }, countryCode);
     if (!normalized) return;
     setLocationState(normalized);
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      window.localStorage.setItem(storageKey(countryCode), JSON.stringify(normalized));
     } catch {
       // Private browsing/storage policies must not block location selection.
     }
-  }, []);
+  }, [countryCode]);
 
   const value = useMemo(() => ({ location, setLocation }), [location, setLocation]);
+  return <MarketplaceLocationContext.Provider value={value}>{children}</MarketplaceLocationContext.Provider>;
+}
 
+export function MarketplaceLocationProvider({ children }: { children: ReactNode }) {
+  const { market } = useMarket();
   return (
-    <MarketplaceLocationContext.Provider value={value}>
+    <MarketplaceLocationProviderForMarket
+      key={market.code}
+      countryCode={market.code}
+      countryName={market.countryName}
+    >
       {children}
-    </MarketplaceLocationContext.Provider>
+    </MarketplaceLocationProviderForMarket>
   );
 }
 
 export function useMarketplaceLocation() {
   const value = useContext(MarketplaceLocationContext);
-  if (!value) {
-    throw new Error(
-      'useMarketplaceLocation must be used inside MarketplaceLocationProvider.',
-    );
-  }
+  if (!value) throw new Error('useMarketplaceLocation must be used inside MarketplaceLocationProvider.');
   return value;
 }

@@ -8,21 +8,22 @@ import { PwaRegister } from "@/components/pwa-register";
 import { SkipLink } from "@/components/i18n/skip-link";
 import { AuthProvider } from "@/providers/auth-provider";
 import { LocaleProvider } from "@/providers/locale-provider";
+import { MarketProvider } from "@/providers/market-provider";
 import { MarketplaceLocationProvider } from "@/providers/marketplace-location-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 
 const siteDescription =
-  "Discover great local deals and trusted sellers across Brazil.";
+  "Discover local deals, trusted sellers and marketplace listings across supported countries.";
 
 export const metadata: Metadata = {
   title: {
-    default: "Marketlift — Buy & Sell in Brazil",
+    default: "Marketlift — Buy & Sell Locally",
     template: "%s | Marketlift",
   },
   description: siteDescription,
   manifest: "/manifest.webmanifest",
-  metadataBase: new URL("https://marketlift.com.br"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   applicationName: "Marketlift",
   creator: "Marketlift",
   publisher: "Marketlift",
@@ -47,34 +48,33 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Marketlift",
-    locale: "pt_BR",
-    title: "Marketlift — Buy & Sell in Brazil",
+    title: "Marketlift — Buy & Sell Locally",
     description: siteDescription,
     images: [
       {
         url: "/seo/marketlift-social-card.png",
         width: 1732,
         height: 908,
-        alt: "Marketlift — Buy, sell and grow across Brazil",
+        alt: "Marketlift — Buy, sell and grow locally",
       },
       {
         url: "/seo/marketlift-social-square.png",
         width: 1254,
         height: 1254,
-        alt: "Marketlift — Buy, sell and grow across Brazil",
+        alt: "Marketlift — Buy, sell and grow locally",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Marketlift — Buy & Sell in Brazil",
+    title: "Marketlift — Buy & Sell Locally",
     description: siteDescription,
     images: [
       {
         url: "/seo/marketlift-social-card.png",
         width: 1732,
         height: 908,
-        alt: "Marketlift — Buy, sell and grow across Brazil",
+        alt: "Marketlift — Buy, sell and grow locally",
       },
     ],
   },
@@ -141,19 +141,21 @@ export default function RootLayout({
     >
       <body>
         <Suspense fallback={<AppPrerenderFallback />}>
-          <LocaleProvider>
-            <SkipLink />
-            <QueryProvider>
-              <MarketplaceLocationProvider>
-                <AuthProvider>
-                  <RealtimeProvider>
-                    <PwaRegister />
-                    <AccessController>{children}</AccessController>
-                  </RealtimeProvider>
-                </AuthProvider>
-              </MarketplaceLocationProvider>
-            </QueryProvider>
-          </LocaleProvider>
+          <QueryProvider>
+            <MarketProvider>
+              <LocaleProvider>
+                <SkipLink />
+                <MarketplaceLocationProvider>
+                  <AuthProvider>
+                    <RealtimeProvider>
+                      <PwaRegister />
+                      <AccessController>{children}</AccessController>
+                    </RealtimeProvider>
+                  </AuthProvider>
+                </MarketplaceLocationProvider>
+              </LocaleProvider>
+            </MarketProvider>
+          </QueryProvider>
         </Suspense>
       </body>
     </html>

@@ -11,16 +11,17 @@ import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { SellingSidebar } from '@/components/selling/selling-sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getBrazilState } from '@/data/brazil-locations';
 import { releaseFeatures } from '@/lib/release-features';
 import { useAuth } from '@/providers/auth-provider';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import { accountService } from '@/services/account.service';
 import { sellerService } from '@/services/seller.service';
 import type { SellerType } from '@/types';
 
 export default function SellingProfilePage() {
   const { t } = useLocale();
+  const { market } = useMarket();
   const { user, hydrated, refreshSession } = useAuth();
   const queryClient = useQueryClient();
   const sellerId = user?.sellerProfile?.sellerId ?? '';
@@ -28,7 +29,8 @@ export default function SellingProfilePage() {
     displayName: '',
     sellerType: 'individual' as SellerType,
     phone: '',
-    stateCode: 'SP',
+    stateName: '',
+    stateCode: '',
     city: '',
     district: '',
     bio: '',
@@ -55,7 +57,8 @@ export default function SellingProfilePage() {
         displayName: seller.name || profile.fullName,
         sellerType: seller.type ?? 'individual',
         phone: profile.phone || '',
-        stateCode: profile.location.stateCode || 'SP',
+        stateName: profile.location.state || '',
+        stateCode: profile.location.stateCode || '',
         city: profile.location.city || '',
         district: profile.location.district || '',
         bio: profile.bio || '',
@@ -66,7 +69,6 @@ export default function SellingProfilePage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const state = getBrazilState(form.stateCode);
       const [seller, profile] = await Promise.all([
         sellerService.updateMyProfile({
           displayName: form.displayName.trim(),
@@ -76,7 +78,8 @@ export default function SellingProfilePage() {
           phone: form.phone.trim(),
           bio: form.bio.trim(),
           location: {
-            state: state?.name ?? form.stateCode,
+            countryCode: profileQuery.data?.location.countryCode || user?.countryCode || market.code,
+            state: form.stateName || form.stateCode,
             stateCode: form.stateCode,
             city: form.city.trim(),
             district: form.district.trim(),
@@ -198,8 +201,8 @@ export default function SellingProfilePage() {
 
                     <div className="sm:col-span-2">
                       <LocationFields
-                        value={{ stateCode: form.stateCode, city: form.city, district: form.district }}
-                        onChange={(location) => setForm((current) => ({ ...current, ...location }))}
+                        value={{ countryCode: profileQuery.data?.location.countryCode || user?.countryCode || market.code, state: form.stateName, stateCode: form.stateCode, city: form.city, district: form.district }}
+                        onChange={(location) => setForm((current) => ({ ...current, stateName: location.state || location.stateCode, stateCode: location.stateCode, city: location.city, district: location.district }))}
                         labels={{
                           region: t('search.region'),
                           state: t('selling.profile.state'),
@@ -207,6 +210,7 @@ export default function SellingProfilePage() {
                           district: t('account.profile.district'),
                         }}
                         placeholders={{ city: t('selling.profile.city'), district: t('account.profile.districtPlaceholder') }}
+                        countryCode={profileQuery.data?.location.countryCode || user?.countryCode || market.code}
                       />
                     </div>
 

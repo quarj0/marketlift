@@ -5,7 +5,7 @@ type SearchResult = { slug: string; createdAt: string };
 type SearchResponse = { results?: SearchResult[] };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://marketlift.com.br';
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://marketlift.com';
   let listings: SearchResult[] = [];
 
   try {

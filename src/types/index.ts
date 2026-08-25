@@ -7,6 +7,7 @@ export type VerificationStatus =
 export type SellerType = "individual" | "business";
 
 export interface Location {
+  countryCode?: string;
   state: string;
   stateCode: string;
   city: string;
@@ -27,6 +28,7 @@ export interface UserSellerProfile {
 
 export interface User {
   id: string;
+  countryCode?: string;
   name: string;
   email?: string;
   phone?: string;
@@ -35,6 +37,7 @@ export interface User {
 
 export interface Seller {
   id: string;
+  countryCode?: string;
   name: string;
   avatar: string;
   phone?: string;
@@ -122,6 +125,7 @@ export interface Category {
 
 export interface SearchFilters {
   q?: string;
+  countryCode?: string;
   category?: string;
   region?: string;
   state?: string;
@@ -175,7 +179,7 @@ export interface AccountProfile {
 
 export interface AccountSettings {
   language: "en" | "pt-BR";
-  currency: "BRL";
+  currency: string;
   emailMessages: boolean;
   emailListingUpdates: boolean;
   emailRecommendations: boolean;
@@ -211,12 +215,14 @@ export interface SellingDashboardData {
 }
 
 export type BillingCycle = "monthly" | "yearly";
-export type PaymentMethod = "pix" | "card" | "boleto";
+export type PaymentMethod = "pix" | "card" | "boleto" | "mobile_money" | "bank_transfer" | "ussd" | "eft";
 export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
 export interface SellerPlan {
   id: string;
   name: string;
+  countryCode?: string;
+  currency?: string;
   monthlyPrice: number;
   yearlyPrice: number;
   listingLimit: number;
@@ -228,6 +234,8 @@ export interface SellerPlan {
 
 export interface Payment {
   id: string;
+  currency?: string;
+  provider?: string;
   purpose: "subscription" | "promotion";
   amount: number;
   method: PaymentMethod;
@@ -247,6 +255,8 @@ export interface PromotionOption {
   id: PromotionType;
   name: string;
   description: string;
+  countryCode?: string;
+  currency?: string;
   durationDays: number;
   price: number;
 }
@@ -285,7 +295,10 @@ export interface SendMessagePayload {
 
 export interface VerificationSubmission {
   id: string;
-  cpfMasked: string;
+  countryCode?: string;
+  identityType?: string;
+  identityMasked: string;
+  cpfMasked?: string;
   fullName: string;
   birthDate: string;
   status: VerificationStatus;

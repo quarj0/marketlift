@@ -7,10 +7,11 @@ import { Heart, LoaderCircle, MapPin, ShieldCheck } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AuthRequiredDialog } from '@/components/auth/auth-required-dialog';
-import { formatBRL, formatRelativeDate } from '@/lib/utils';
+import { formatRelativeDate } from '@/lib/utils';
 import { releaseFeatures } from '@/lib/release-features';
 import { useAuth } from '@/providers/auth-provider';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import { socialService } from '@/services/social.service';
 import type { Listing, Seller } from '@/types';
 
@@ -26,6 +27,7 @@ export function ListingCard({
   const list = variant === 'list';
   const { isAuthenticated } = useAuth();
   const { t, locale } = useLocale();
+  const { formatMoney } = useMarket();
   const [authOpen, setAuthOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -102,7 +104,7 @@ export function ListingCard({
         </div>
 
         <div className="p-3 sm:p-4">
-          <p className="text-lg font-black tracking-tight text-slate-950 sm:text-xl">{formatBRL(listing.price)}</p>
+          <p className="text-lg font-black tracking-tight text-slate-950 sm:text-xl">{formatMoney(listing.price)}</p>
           <Link
             href={`/listing/${listing.slug}`}
             className={`mt-1 line-clamp-2 block font-semibold leading-5 text-slate-800 hover:text-brand-700 ${list ? 'text-lg' : 'min-h-10 text-sm sm:min-h-12 sm:text-base'}`}

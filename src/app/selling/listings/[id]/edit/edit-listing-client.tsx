@@ -17,14 +17,15 @@ import {
 } from '@/components/selling/category-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getBrazilState } from '@/data/brazil-locations';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
 import type { ListingAttributes, ListingCondition } from '@/types';
 
 export function EditListingClient() {
   const { t, tr } = useLocale();
+  const { market } = useMarket();
   const params = useParams<{ id: string }>();
   const listingId = params.id;
   const queryClient = useQueryClient();
@@ -34,7 +35,8 @@ export function EditListingClient() {
     price: 0,
     condition: 'Used' as ListingCondition,
     negotiable: false,
-    stateCode: 'SP',
+    stateName: '',
+    stateCode: '',
     city: '',
     district: '',
     latitude: undefined as number | undefined,
@@ -68,7 +70,8 @@ export function EditListingClient() {
         price: listing.price,
         condition: listing.condition ?? 'Used',
         negotiable: Boolean(listing.negotiable),
-        stateCode: listing.location.stateCode || 'SP',
+        stateName: listing.location.state || '',
+        stateCode: listing.location.stateCode || '',
         city: listing.location.city || '',
         district: listing.location.district || '',
         latitude: listing.location.latitude,
@@ -82,7 +85,6 @@ export function EditListingClient() {
   const mutation = useMutation({
     mutationFn: () => {
       if (!listing || !categoryQuery.data) throw new Error('Listing data is unavailable.');
-      const state = getBrazilState(form.stateCode);
       return sellingService.updateListing(listing.id, {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -91,7 +93,8 @@ export function EditListingClient() {
         condition: categoryQuery.data.condition.enabled ? form.condition : undefined,
         negotiable: form.negotiable,
         location: {
-          state: state?.name ?? listing.location.state,
+          countryCode: listing.location.countryCode || market.code,
+          state: form.stateName || listing.location.state || form.stateCode,
           stateCode: form.stateCode,
           city: form.city.trim(),
           district: form.district.trim(),
@@ -148,7 +151,7 @@ export function EditListingClient() {
                   <Input value={form.title} maxLength={90} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
                 </label>
                 <label>
-                  <span className="mb-1.5 block text-sm font-bold">{t('selling.edit.price')}</span>
+                  <span className="mb-1.5 block text-sm font-bold">{`${(categoryQuery.data?.pricing.label ? tr(categoryQuery.data.pricing.label) : t('selling.edit.price')).replace(/\s*\(R\$\)/gi, '')} (${market.currencySymbol})`}</span>
                   <Input type="number" min={0} step="0.01" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: Number(event.target.value) }))} />
                 </label>
                 {categoryQuery.data?.condition.enabled && (
@@ -175,8 +178,8 @@ export function EditListingClient() {
                 <h2 className="text-lg font-black">{t('selling.new.step.location')}</h2>
                 <div className="mt-4">
                   <LocationFields
-                    value={{ stateCode: form.stateCode, city: form.city, district: form.district, latitude: form.latitude, longitude: form.longitude }}
-                    onChange={(location) => setForm((current) => ({ ...current, ...location }))}
+                    value={{ countryCode: listing.location.countryCode || market.code, state: form.stateName, stateCode: form.stateCode, city: form.city, district: form.district, latitude: form.latitude, longitude: form.longitude }}
+                    onChange={(location) => setForm((current) => ({ ...current, stateName: location.state || location.stateCode, stateCode: location.stateCode, city: location.city, district: location.district, latitude: location.latitude, longitude: location.longitude }))}
                     labels={{
                       region: t('search.region'),
                       state: t('selling.new.state'),
@@ -184,6 +187,7 @@ export function EditListingClient() {
                       district: t('selling.edit.neighborhood'),
                     }}
                     placeholders={{ city: t('selling.edit.city'), district: t('selling.edit.neighborhood') }}
+                    countryCode={listing.location.countryCode || market.code}
                   />
                 </div>
               </div>

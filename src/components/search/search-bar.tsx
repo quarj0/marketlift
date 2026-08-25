@@ -11,10 +11,12 @@ import { getBrazilState } from '@/data/brazil-locations';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useLocale } from '@/providers/locale-provider';
 import { useMarketplaceLocation } from '@/providers/marketplace-location-provider';
+import { useMarket } from '@/providers/market-provider';
 import { locationService } from '@/services/location.service';
 import type { Location } from '@/types';
 
-function locationFromLabel(label: string): Location | null {
+function locationFromLabel(label: string, countryCode: string): Location | null {
+  if (countryCode !== 'BR') return null;
   const raw = label.trim();
   if (!raw) return null;
   const match = raw.match(/^(.*?)(?:,|\s)\s*([A-Za-z]{2})\s*$/);
@@ -36,11 +38,12 @@ export function SearchBar({
 }) {
   const router = useRouter();
   const { t } = useLocale();
+  const { market } = useMarket();
   const { location: marketplaceLocation } = useMarketplaceLocation();
   const activeLocation = location ?? marketplaceLocation;
   const datalistId = useId().replace(/:/g, '');
   const [q, setQ] = useState('');
-  const activeLocationLabel = `${activeLocation.city}, ${activeLocation.stateCode}`;
+  const activeLocationLabel = [activeLocation.city, activeLocation.stateCode || activeLocation.state].filter(Boolean).join(', ');
   const activeLocationKey = `${activeLocation.stateCode}:${activeLocation.city}:${activeLocation.district ?? ''}:${activeLocation.latitude ?? ''}:${activeLocation.longitude ?? ''}`;
   const [locationDraft, setLocationDraft] = useState<{ key: string; value: string } | null>(null);
   const localLocation = locationDraft?.key === activeLocationKey
@@ -49,8 +52,8 @@ export function SearchBar({
   const debouncedLocation = useDebouncedValue(localLocation, 250);
 
   const locationSuggestions = useQuery({
-    queryKey: ['search-bar-location-suggestions', debouncedLocation],
-    queryFn: () => locationService.search(debouncedLocation),
+    queryKey: ['search-bar-location-suggestions', market.code, debouncedLocation],
+    queryFn: () => locationService.search(debouncedLocation, market.code),
     enabled: !compact && debouncedLocation.trim().length >= 2,
     staleTime: 5 * 60_000,
   });
@@ -58,7 +61,7 @@ export function SearchBar({
   const suggestionLabels = useMemo(
     () =>
       (locationSuggestions.data ?? []).map(
-        (item) => `${item.city}, ${item.stateCode}`,
+        (item) => [item.city, item.stateCode || item.state].filter(Boolean).join(', '),
       ),
     [locationSuggestions.data],
   );
@@ -71,21 +74,22 @@ export function SearchBar({
 
     const selectedLocation =
       (compact && location ? location : null) ??
-      (localLocation.trim().toLocaleLowerCase('pt-BR') ===
-      activeLocationLabel.toLocaleLowerCase('pt-BR')
+      (localLocation.trim().toLocaleLowerCase(market.locale) ===
+      activeLocationLabel.toLocaleLowerCase(market.locale)
         ? activeLocation
         : null) ??
-      locationFromLabel(localLocation) ??
+      locationFromLabel(localLocation, market.code) ??
       locationSuggestions.data?.find(
         (item) =>
-          `${item.city}, ${item.stateCode}`.toLocaleLowerCase('pt-BR') ===
-          localLocation.trim().toLocaleLowerCase('pt-BR'),
+          [item.city, item.stateCode || item.state].filter(Boolean).join(', ').toLocaleLowerCase(market.locale) ===
+          localLocation.trim().toLocaleLowerCase(market.locale),
       ) ??
       null;
 
     if (selectedLocation) {
-      const state = getBrazilState(selectedLocation.stateCode);
+      const state = market.code === 'BR' ? getBrazilState(selectedLocation.stateCode) : undefined;
       if (state) params.set('region', state.regionCode);
+      params.set('countryCode', selectedLocation.countryCode || market.code);
       params.set('state', selectedLocation.stateCode);
       params.set('city', selectedLocation.city);
       if (selectedLocation.district) {
@@ -103,6 +107,7 @@ export function SearchBar({
     } else if (!compact && localLocation.trim()) {
       // A user can still search a city name before selecting a suggestion. The
       // results page then lets them narrow it to state/neighborhood precisely.
+      params.set('countryCode', market.code);
       params.set('city', localLocation.trim());
     }
 

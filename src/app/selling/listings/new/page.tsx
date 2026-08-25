@@ -27,11 +27,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LocationFields } from '@/components/location/location-fields';
-import { getBrazilState } from '@/data/brazil-locations';
 import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
 import type { ListingAttributes } from '@/types';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 
 type Form = {
   category: string;
@@ -41,6 +41,7 @@ type Form = {
   condition: 'New' | 'Like new' | 'Used';
   negotiable: boolean;
   state: string;
+  stateName: string;
   city: string;
   district: string;
   latitude?: number;
@@ -55,8 +56,9 @@ const defaultValues: Form = {
   price: 0,
   condition: 'Used',
   negotiable: false,
-  state: 'SP',
-  city: 'São Paulo',
+  state: '',
+  stateName: '',
+  city: '',
   district: '',
 };
 
@@ -82,6 +84,7 @@ export default function NewListingPage() {
   'use no memo';
 
   const { t, tr, categoryName: localizedCategoryName } = useLocale();
+  const { market, formatMoney } = useMarket();
   const steps = [t('selling.new.step.category'), t('selling.new.step.basic'), t('selling.new.step.photos'), t('selling.new.step.location'), t('selling.new.step.details'), t('selling.new.step.review')];
   const schema = useMemo(() => z.object({
     category: z.string().min(1, t('selling.new.validation.category')),
@@ -91,6 +94,7 @@ export default function NewListingPage() {
     condition: z.enum(['New', 'Like new', 'Used']),
     negotiable: z.boolean(),
     state: z.string().min(1),
+    stateName: z.string().optional(),
     city: z.string().min(1),
     district: z.string().min(2, t('selling.new.validation.district')),
     latitude: z.number().optional(),
@@ -113,7 +117,6 @@ export default function NewListingPage() {
   });
 
   const values = useWatch({ control: form.control });
-  const selectedState = getBrazilState(values.state);
   const selectedCategory = categories.find((category) => category.id === values.category);
   const categoryName = selectedCategory ? localizedCategoryName(selectedCategory.id, selectedCategory.name) : t('selling.new.step.details');
 
@@ -232,7 +235,8 @@ export default function NewListingPage() {
       negotiable: data.negotiable,
       images: photos.map((photo) => photo.file),
       location: {
-        state: selectedState?.name ?? data.state,
+        countryCode: market.code,
+        state: data.stateName || data.state,
         stateCode: data.state,
         city: data.city,
         district: data.district,
@@ -341,7 +345,7 @@ export default function NewListingPage() {
                       />
                     </Field>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label={categoryConfig ? tr(categoryConfig.pricing.label) : t('selling.new.priceLabel')} error={form.formState.errors.price?.message}>
+                      <Field label={`${(categoryConfig ? tr(categoryConfig.pricing.label) : t('selling.new.priceLabel')).replace(/\s*\(R\$\)/gi, '')} (${market.currencySymbol})`} error={form.formState.errors.price?.message}>
                         <Input
                           type="number"
                           min="0"
@@ -409,7 +413,9 @@ export default function NewListingPage() {
                   <div className="mt-5">
                     <LocationFields
                       value={{
-                        stateCode: values.state ?? 'SP',
+                        countryCode: market.code,
+                        state: values.stateName ?? '',
+                        stateCode: values.state ?? '',
                         city: values.city ?? '',
                         district: values.district ?? '',
                         latitude: values.latitude,
@@ -417,6 +423,7 @@ export default function NewListingPage() {
                       }}
                       onChange={(location) => {
                         form.setValue('state', location.stateCode, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('stateName', location.state || location.stateCode, { shouldDirty: true });
                         form.setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
                         form.setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
                         form.setValue('latitude', location.latitude, { shouldDirty: true });
@@ -437,6 +444,7 @@ export default function NewListingPage() {
                         city: form.formState.errors.city?.message,
                         district: form.formState.errors.district?.message,
                       }}
+                      countryCode={market.code}
                       className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
                     />
                   </div>
@@ -485,7 +493,7 @@ export default function NewListingPage() {
                       <div className="p-6">
                         <span className="text-xs font-bold uppercase tracking-wide text-brand-700">{categoryName}</span>
                         <h3 className="mt-2 text-2xl font-black">{values.title || t('selling.new.untitled')}</h3>
-                        <p className="mt-2 text-2xl font-black text-brand-700">R$ {Number(values.price || 0).toLocaleString('pt-BR')}</p>
+                        <p className="mt-2 text-2xl font-black text-brand-700">{formatMoney(Number(values.price || 0))}</p>
                         <p className="mt-3 text-sm text-slate-500">
                           {values.city}, {values.state}
                           {categoryConfig?.condition.enabled ? ` · ${tr(String(values.condition))}` : ''}

@@ -16,15 +16,15 @@ const PAYMENT_FIELDS = `
 `;
 
 const PLAN_FIELDS = `
-  id name monthlyPrice yearlyPrice listingLimit promotionCredits features
+  id name countryCode currency monthlyPrice yearlyPrice listingLimit promotionCredits features
   visibilityWeight recommended active sortOrder
 `;
 
 export const paymentService = {
-  async getPlans() {
+  async getPlans(countryCode?: string) {
     const data = await graphqlRequest<{ sellerPlans: ApiSellerPlan[] }>(`
-      query SellerPlans { sellerPlans { ${PLAN_FIELDS} } }
-    `);
+      query SellerPlans($countryCode: String) { sellerPlans(countryCode: $countryCode) { ${PLAN_FIELDS} } }
+    `, { countryCode: countryCode || null });
     return (data.sellerPlans || []).map(mapPlan);
   },
 
@@ -108,12 +108,12 @@ export const paymentService = {
     return (data.myPayments || []).map(mapPayment);
   },
 
-  async getPromotions() {
+  async getPromotions(countryCode?: string) {
     const data = await graphqlRequest<{ promotionOptions: ApiPromotion[] }>(`
-      query PromotionOptions {
-        promotionOptions { id name description durationDays price }
+      query PromotionOptions($countryCode: String) {
+        promotionOptions(countryCode: $countryCode) { id name description durationDays price countryCode currency }
       }
-    `);
+    `, { countryCode: countryCode || null });
     return (data.promotionOptions || []).map(mapPromotion);
   },
 };

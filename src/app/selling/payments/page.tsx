@@ -6,12 +6,14 @@ import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { SellingSidebar } from '@/components/selling/selling-sidebar';
 import { EmptyState, InlineError, PageLoading } from '@/components/feedback/async-states';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import { paymentService } from '@/services/payment.service';
 import { UpcomingFeature } from '@/components/feedback/upcoming-feature';
 import { releaseFeatures } from '@/lib/release-features';
 
 export default function PaymentsPage() {
   const { t, locale } = useLocale();
+  const { formatMoney } = useMarket();
   const query = useQuery({ queryKey: ['seller-payments'], queryFn: paymentService.getPayments, enabled: releaseFeatures.payments });
   const dateLocale = locale === 'pt-BR' ? 'pt-BR' : 'en-US';
 
@@ -43,7 +45,7 @@ export default function PaymentsPage() {
                         <p className="mt-0.5 truncate text-xs text-slate-500">{payment.reference} · {new Date(payment.createdAt).toLocaleDateString(dateLocale)}</p>
                       </div>
                       <div className="col-span-2 flex items-center justify-between border-t pt-3 text-left sm:col-span-1 sm:block sm:border-0 sm:pt-0 sm:text-right">
-                        <p className="font-black">R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className="font-black">{formatMoney(payment.amount, payment.currency)}</p>
                         <span className="text-xs font-black uppercase text-brand-700">{t(`selling.payments.status.${payment.status}`)}</span>
                       </div>
                     </article>

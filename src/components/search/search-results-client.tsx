@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 import type { ListingCondition, SearchFilters, SellerType } from "@/types";
 
 const toNum = (value: string | null) =>
@@ -27,11 +28,12 @@ const toNum = (value: string | null) =>
 
 function useFilters(): SearchFilters {
   const params = useSearchParams();
+  const { market } = useMarket();
   const legacyLocation = params.get("location") || "";
   const legacyMatch = legacyLocation.match(
     /^(.*?)(?:,|\s)\s*([A-Za-z]{2})\s*$/,
   );
-  const legacyState = legacyMatch
+  const legacyState = legacyMatch && market.code === 'BR'
     ? brazilLocations.find(
         (state) => state.code === legacyMatch[2].toUpperCase(),
       )
@@ -39,9 +41,10 @@ function useFilters(): SearchFilters {
   const state = params.get("state") || legacyState?.code || "";
   const city =
     params.get("city") || (legacyState ? legacyMatch?.[1].trim() || "" : "");
-  const stateRow = brazilLocations.find((item) => item.code === state);
+  const stateRow = market.code === 'BR' ? brazilLocations.find((item) => item.code === state) : undefined;
 
   return {
+    countryCode: market.code,
     q: params.get("q") || "",
     category: params.get("category") || "",
     region: params.get("region") || stateRow?.regionCode || "",
@@ -67,6 +70,8 @@ export function SearchResultsClient() {
   const searchParams = useSearchParams();
   const filters = useFilters();
   const { t, categoryName, locale } = useLocale();
+  const { market } = useMarket();
+  const isBrazil = market.code === 'BR';
   const [mobileFilters, setMobileFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
   const cityFilterKey = `${filters.state}:${filters.city}`;
@@ -107,50 +112,52 @@ export function SearchResultsClient() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["listings", filters],
+    queryKey: ["listings", market.code, filters],
     queryFn: () => listingService.getListings(filters),
   });
 
-  const selectedState = brazilLocations.find(
+  const selectedState = isBrazil ? brazilLocations.find(
     (state) => state.code === filters.state,
-  );
+  ) : undefined;
   const selectedRegionCode = filters.region || selectedState?.regionCode || "";
-  const selectedRegion = brazilRegions.find(
+  const selectedRegion = isBrazil ? brazilRegions.find(
     (region) => region.code === selectedRegionCode,
-  );
-  const states = selectedRegionCode
-    ? brazilLocations.filter((state) => state.regionCode === selectedRegionCode)
-    : brazilLocations;
+  ) : undefined;
+  const states = isBrazil
+    ? (selectedRegionCode ? brazilLocations.filter((state) => state.regionCode === selectedRegionCode) : brazilLocations)
+    : [];
   const citiesQuery = useQuery({
-    queryKey: ["location-cities", filters.state, debouncedCityDraft],
+    queryKey: ["location-cities", market.code, filters.state, debouncedCityDraft],
     queryFn: () =>
-      locationService.getCities(filters.state || "", debouncedCityDraft, 40),
-    enabled: Boolean(filters.state),
+      locationService.getCities(market.code, filters.state || "", debouncedCityDraft, 40),
+    enabled: isBrazil ? Boolean(filters.state) : debouncedCityDraft.trim().length >= 2,
     staleTime: 24 * 60 * 60_000,
   });
   const neighborhoodsQuery = useQuery({
     queryKey: [
       "location-neighborhoods",
+      market.code,
       filters.state,
       filters.city,
       debouncedDistrictDraft,
     ],
     queryFn: () =>
       locationService.getNeighborhoods(
+        market.code,
         filters.state || "",
         filters.city || "",
         debouncedDistrictDraft,
       ),
-    enabled: Boolean(filters.state && filters.city),
+    enabled: Boolean(filters.city),
     staleTime: 5 * 60_000,
   });
   const cities = citiesQuery.data?.length
     ? citiesQuery.data
-    : [...(selectedState?.cities ?? [])].filter((city) =>
+    : isBrazil ? [...(selectedState?.cities ?? [])].filter((city) =>
         city
           .toLocaleLowerCase("pt-BR")
           .includes(cityDraft.toLocaleLowerCase("pt-BR")),
-      );
+      ) : [];
   const neighborhoods = neighborhoodsQuery.data ?? [];
 
   function update(patch: Record<string, string | undefined>) {
@@ -187,7 +194,7 @@ export function SearchResultsClient() {
     filters.city ||
     selectedState?.name ||
     selectedRegion?.name ||
-    t("search.brazil");
+    market.countryName;
   const count = data.length.toLocaleString(
     locale === "pt-BR" ? "pt-BR" : "en-US",
   );
@@ -236,115 +243,84 @@ export function SearchResultsClient() {
           ))}
         </select>
       </div>
-      <div>
-        <label
-          htmlFor="search-filter-region"
-          className="mb-2 block text-sm font-semibold"
-        >
-          {t("search.region")}
-        </label>
-        <select
-          id="search-filter-region"
-          value={selectedRegionCode}
-          onChange={(event) => {
-            setCityDraft("");
-            setDistrictDraft("");
-            update({
-              region: event.target.value,
-              state: undefined,
-              city: undefined,
-              district: undefined,
-              location: undefined,
-            });
-          }}
-          className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
-        >
-          <option value="">{t("search.all")}</option>
-          {brazilRegions.map((region) => (
-            <option key={region.code} value={region.code}>
-              {region.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label
-            htmlFor="search-filter-state"
-            className="mb-2 block text-sm font-semibold"
-          >
-            {t("search.state")}
-          </label>
-          <select
-            id="search-filter-state"
-            value={filters.state}
-            onChange={(event) => {
-              const state = brazilLocations.find(
-                (item) => item.code === event.target.value,
-              );
-              setCityDraft("");
-              setDistrictDraft("");
-              update({
-                state: event.target.value,
-                region: state?.regionCode || filters.region || undefined,
-                city: undefined,
-                district: undefined,
-                location: undefined,
-              });
-            }}
-            className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
-          >
-            <option value="">{t("search.all")}</option>
-            {states.map((state) => (
-              <option key={state.code} value={state.code}>
-                {state.name} ({state.code})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor="search-filter-city"
-            className="mb-2 block text-sm font-semibold"
-          >
-            {t("search.city")}
-          </label>
-          <Input
-            id="search-filter-city"
-            disabled={!filters.state}
-            value={cityDraft}
-            list="search-city-suggestions"
-            placeholder={
-              filters.state ? t("search.allCities") : t("search.state")
-            }
-            onChange={(event) => setCityDraft(event.target.value)}
-            onBlur={() => {
-              setDistrictDraft("");
-              update({
-                city: cityDraft.trim() || undefined,
-                district: undefined,
-                location: undefined,
-              });
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
+      {isBrazil ? (
+        <>
+          <div>
+            <label htmlFor="search-filter-region" className="mb-2 block text-sm font-semibold">{t("search.region")}</label>
+            <select
+              id="search-filter-region"
+              value={selectedRegionCode}
+              onChange={(event) => {
+                setCityDraft("");
                 setDistrictDraft("");
-                update({
-                  city: cityDraft.trim() || undefined,
-                  district: undefined,
-                  location: undefined,
-                });
-              }
-            }}
-          />
-          <datalist id="search-city-suggestions">
-            {cities.map((city) => (
-              <option key={city} value={city} />
-            ))}
-          </datalist>
+                update({ region: event.target.value, state: undefined, city: undefined, district: undefined, location: undefined });
+              }}
+              className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+            >
+              <option value="">{t("search.all")}</option>
+              {brazilRegions.map((region) => <option key={region.code} value={region.code}>{region.name}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="search-filter-state" className="mb-2 block text-sm font-semibold">{t("search.state")}</label>
+              <select
+                id="search-filter-state"
+                value={filters.state}
+                onChange={(event) => {
+                  const state = brazilLocations.find((item) => item.code === event.target.value);
+                  setCityDraft("");
+                  setDistrictDraft("");
+                  update({ state: event.target.value, region: state?.regionCode || filters.region || undefined, city: undefined, district: undefined, location: undefined });
+                }}
+                className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+              >
+                <option value="">{t("search.all")}</option>
+                {states.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="search-filter-city" className="mb-2 block text-sm font-semibold">{t("search.city")}</label>
+              <Input
+                id="search-filter-city"
+                disabled={!filters.state}
+                value={cityDraft}
+                list="search-city-suggestions"
+                placeholder={filters.state ? t("search.allCities") : t("search.state")}
+                onChange={(event) => setCityDraft(event.target.value)}
+                onBlur={() => { setDistrictDraft(""); update({ city: cityDraft.trim() || undefined, district: undefined, location: undefined }); }}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); setDistrictDraft(""); update({ city: cityDraft.trim() || undefined, district: undefined, location: undefined }); } }}
+              />
+              <datalist id="search-city-suggestions">{cities.map((city) => <option key={city} value={city} />)}</datalist>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label htmlFor="search-filter-state" className="mb-2 block text-sm font-semibold">State / region</label>
+            <Input
+              id="search-filter-state"
+              value={filters.state}
+              placeholder="State or region"
+              onChange={(event) => update({ state: event.target.value || undefined })}
+            />
+          </div>
+          <div>
+            <label htmlFor="search-filter-city" className="mb-2 block text-sm font-semibold">{t("search.city")}</label>
+            <Input
+              id="search-filter-city"
+              value={cityDraft}
+              list="search-city-suggestions"
+              placeholder={`City in ${market.countryName}`}
+              onChange={(event) => setCityDraft(event.target.value)}
+              onBlur={() => { setDistrictDraft(""); update({ city: cityDraft.trim() || undefined, district: undefined }); }}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); update({ city: cityDraft.trim() || undefined }); } }}
+            />
+            <datalist id="search-city-suggestions">{cities.map((city) => <option key={city} value={city} />)}</datalist>
+          </div>
         </div>
-      </div>
+      )}
       <div>
         <label
           htmlFor="search-filter-neighborhood"

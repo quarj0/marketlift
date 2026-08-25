@@ -27,13 +27,14 @@ function mapMediaUrls(urls: Array<string | null | undefined> | null | undefined)
   return mapped.length ? mapped : [LISTING_IMAGE_PLACEHOLDER];
 }
 
-export type ApiLocation = { state: string; stateCode: string; city: string; district?: string | null };
+export type ApiLocation = { countryCode?: string | null; state: string; stateCode: string; city: string; district?: string | null; latitude?: number | null; longitude?: number | null };
 
 export type ApiUser = {
   id: string;
   name: string;
   email?: string;
   phone?: string | null;
+  countryCode?: string | null;
   sellerProfile?: {
     sellerId: string;
     activatedAt: string;
@@ -147,7 +148,10 @@ export type ApiMessage = {
 
 export type ApiVerification = {
   id: string;
-  cpfMasked: string;
+  identityCountryCode?: string | null;
+  identityType?: string | null;
+  identityMasked?: string | null;
+  cpfMasked?: string | null;
   legalName: string;
   birthDate: string;
   status: string;
@@ -159,6 +163,8 @@ export type ApiVerification = {
 export type ApiSellerPlan = {
   id: string;
   name: string;
+  countryCode?: string;
+  currency?: string;
   monthlyPrice?: number;
   yearlyPrice?: number;
   listingLimit?: number;
@@ -172,6 +178,8 @@ export type ApiPromotion = {
   id: PromotionOption['id'];
   name: string;
   description: string;
+  countryCode?: string;
+  currency?: string;
   durationDays?: number;
   price?: number;
 };
@@ -180,6 +188,8 @@ export type ApiPayment = {
   id: string;
   purpose: Payment['purpose'];
   amount?: number;
+  currency?: string | null;
+  provider?: string | null;
   method: Payment['method'];
   status: Payment['status'] | 'refunded';
   createdAt: string;
@@ -193,6 +203,7 @@ export type ApiPayment = {
 
 export type ApiSeller = {
   id: string;
+  countryCode?: string | null;
   name: string;
   avatarUrl?: string | null;
   phone?: string | null;
@@ -234,6 +245,7 @@ export type ApiListing = {
 export function mapUser(raw: ApiUser): User {
   return {
     id: String(raw.id),
+    countryCode: raw.countryCode || undefined,
     name: raw.name,
     email: raw.email,
     phone: raw.phone ?? undefined,
@@ -250,6 +262,7 @@ export function mapUser(raw: ApiUser): User {
 export function mapSeller(raw: ApiSeller): Seller {
   return {
     id: String(raw.id),
+    countryCode: raw.countryCode || raw.location?.countryCode || undefined,
     name: raw.name,
     avatar: raw.avatarUrl?.trim() ? resolveApiUrl(raw.avatarUrl.trim()) : AVATAR_PLACEHOLDER,
     phone: raw.phone?.trim() || undefined,
@@ -261,6 +274,7 @@ export function mapSeller(raw: ApiSeller): Seller {
     memberSince: raw.memberSince,
     responseRate: Number(raw.responseRate || 0),
     location: {
+      countryCode: raw.location?.countryCode || undefined,
       state: raw.location?.state || '',
       stateCode: raw.location?.stateCode || '',
       city: raw.location?.city || '',
@@ -279,6 +293,7 @@ export function mapListing(raw: ApiListing): Listing {
     category: raw.category,
     condition: (raw.condition || undefined) as Listing['condition'],
     location: {
+      countryCode: raw.location?.countryCode || undefined,
       state: raw.location?.state || '',
       stateCode: raw.location?.stateCode || '',
       city: raw.location?.city || '',
@@ -319,7 +334,7 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
     description: raw.description || '',
     pricing: {
       mode: raw.pricing?.mode === 'optional' ? 'optional' : 'required',
-      label: raw.pricing?.label || 'Price (R$)',
+      label: raw.pricing?.label || 'Price',
       placeholder: raw.pricing?.placeholder || undefined,
     },
     condition: {
@@ -353,6 +368,7 @@ export function mapAccountProfile(raw: ApiAccountProfile): AccountProfile {
     avatar: raw.avatarUrl ? resolveApiUrl(raw.avatarUrl) : undefined,
     bio: raw.bio || undefined,
     location: {
+      countryCode: raw.location?.countryCode || undefined,
       state: raw.location?.state || '',
       stateCode: raw.location?.stateCode || '',
       city: raw.location?.city || '',
@@ -457,7 +473,10 @@ export function mapMessage(raw: ApiMessage): Message {
 export function mapVerification(raw: ApiVerification): VerificationSubmission {
   return {
     id: String(raw.id),
-    cpfMasked: raw.cpfMasked,
+    countryCode: raw.identityCountryCode || undefined,
+    identityType: raw.identityType || undefined,
+    identityMasked: raw.identityMasked || raw.cpfMasked || '',
+    cpfMasked: raw.cpfMasked || undefined,
     fullName: raw.legalName,
     birthDate: raw.birthDate,
     status: raw.status === 'verified' ? 'verified' : raw.status === 'rejected' ? 'rejected' : 'pending',
@@ -471,6 +490,8 @@ export function mapPlan(raw: ApiSellerPlan): SellerPlan {
   return {
     id: raw.id,
     name: raw.name,
+    countryCode: raw.countryCode || undefined,
+    currency: raw.currency || undefined,
     monthlyPrice: Number(raw.monthlyPrice || 0),
     yearlyPrice: Number(raw.yearlyPrice || 0),
     listingLimit: Number(raw.listingLimit || 0),
@@ -486,6 +507,8 @@ export function mapPromotion(raw: ApiPromotion): PromotionOption {
     id: raw.id,
     name: raw.name,
     description: raw.description,
+    countryCode: raw.countryCode || undefined,
+    currency: raw.currency || undefined,
     durationDays: Number(raw.durationDays || 0),
     price: Number(raw.price || 0),
   };
@@ -496,6 +519,8 @@ export function mapPayment(raw: ApiPayment): Payment {
     id: String(raw.id),
     purpose: raw.purpose,
     amount: Number(raw.amount || 0),
+    currency: raw.currency || undefined,
+    provider: raw.provider || undefined,
     method: raw.method,
     status: raw.status === 'refunded' ? 'cancelled' : raw.status,
     createdAt: raw.createdAt,

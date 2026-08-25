@@ -21,7 +21,7 @@ import { useState } from "react";
 import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
 import { socialService } from "@/services/social.service";
-import { formatBRL, formatReadableDate, formatRelativeDate } from "@/lib/utils";
+import { formatReadableDate, formatRelativeDate } from "@/lib/utils";
 import { releaseFeatures } from "@/lib/release-features";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -33,10 +33,12 @@ import { SellerReviewPreview } from "./seller-review-preview";
 import { EmptyState, InlineError } from "@/components/feedback/async-states";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 export function ListingDetailsClient({ slug }: { slug: string }) {
   const { isAuthenticated } = useAuth();
   const { t, locale, tr, categoryName } = useLocale();
+  const { formatMoney } = useMarket();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [active, setActive] = useState(0);
@@ -256,7 +258,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                     {listing.title}
                   </h1>
                   <p className="mt-3 text-3xl font-black text-brand-700">
-                    {formatBRL(listing.price)}
+                    {formatMoney(listing.price)}
                   </p>
                 </div>
                 <Button

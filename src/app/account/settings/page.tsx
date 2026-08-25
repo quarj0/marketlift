@@ -21,6 +21,7 @@ import { AccountSidebar } from "@/components/account/account-sidebar";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 import { accountService } from "@/services/account.service";
 import type { AccountSettings } from "@/types";
 
@@ -103,6 +104,7 @@ function SettingsForm({
 }) {
   const queryClient = useQueryClient();
   const { t, locale, setLocale } = useLocale();
+  const { market } = useMarket();
 
   const [form, setForm] =
     useState<AccountSettings>(initialSettings);
@@ -332,13 +334,11 @@ function SettingsForm({
             </span>
 
             <select
-              value={form.currency}
+              value={market.currency}
               disabled
               className="h-11 w-full rounded-xl border bg-slate-50 px-3.5 text-sm text-slate-600"
             >
-              <option value="BRL">
-                {t("settings.brl")}
-              </option>
+              <option value={market.currency}>{market.currency} ({market.currencySymbol})</option>
             </select>
           </label>
         </div>

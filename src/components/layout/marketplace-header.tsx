@@ -19,6 +19,7 @@ import {
 import { CategoryNav } from "@/components/layout/category-nav";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { MarketliftLogo } from "@/components/marketplace/logo";
+import { MarketSelector } from "@/components/marketplace/market-selector";
 import { LocationSelector } from "@/components/marketplace/location-selector";
 import { SearchBar } from "@/components/search/search-bar";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,7 @@ export function MarketplaceHeader() {
           <SearchBar compact location={location} showSubmitButton={false} />
         </div>
 
+        <MarketSelector inverse compact className="hidden lg:inline-flex" />
         <LanguageSwitcher inverse className="hidden lg:inline-flex" />
 
         <div className="hidden md:block">
@@ -124,6 +126,7 @@ export function MarketplaceHeader() {
           className="ml-auto flex items-center gap-1"
           aria-label={t("nav.account")}
         >
+          <MarketSelector compact inverse className="lg:hidden" />
           <LanguageSwitcher compact inverse className="lg:hidden" />
 
           {authReady && user && (

@@ -13,12 +13,15 @@ import { PasswordField } from '@/components/auth/password-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import { authService } from '@/services/auth.service';
 
 function RegisterForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { t } = useLocale();
+  const { market } = useMarket();
+  const phonePlaceholder = ({ GH: '+233 24 123 4567', NG: '+234 801 234 5678', KE: '+254 712 345 678', ZA: '+27 82 123 4567', CI: '+225 01 23 45 67 89', BR: '+55 11 99999-9999' } as Record<string, string>)[market.code] || '+1234567890';
 
   const schema = useMemo(
     () =>
@@ -26,7 +29,7 @@ function RegisterForm() {
         .object({
           fullName: z.string().min(3, t('auth.validation.fullName')),
           email: z.string().email(t('auth.validation.email')),
-          phone: z.string().min(10, t('auth.validation.phone')),
+          phone: z.string().min(7, t('auth.validation.phone')),
           password: z.string().min(8, t('auth.validation.password8')),
           confirmPassword: z.string().min(8, t('auth.validation.confirm')),
           terms: z.literal(true, {
@@ -49,7 +52,7 @@ function RegisterForm() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   async function submit(data: FormData) {
-    const result = await authService.register(data);
+    const result = await authService.register({ ...data, countryCode: market.code });
     sessionStorage.setItem('marketlift-pending-user', JSON.stringify(result));
     const returnTo = params.get('returnTo');
     router.push(`/verify?channel=email${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}`);
@@ -60,7 +63,7 @@ function RegisterForm() {
       <div className="mb-5 grid gap-2 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-950 sm:grid-cols-2">
         <span className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-4 text-brand-700" />
-          {t('auth.register.noCpf')}
+          No identity document required to browse
         </span>
         <span className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-4 text-brand-700" />
@@ -85,7 +88,7 @@ function RegisterForm() {
           </div>
           <div>
             <label htmlFor="register-phone" className="mb-1.5 block text-sm font-bold">{t('auth.phone')}</label>
-            <Input id="register-phone" {...register('phone')} placeholder="+55 11 99999-9999" autoComplete="tel" inputMode="tel" aria-invalid={Boolean(errors.phone)} />
+            <Input id="register-phone" {...register('phone')} placeholder={phonePlaceholder} autoComplete="tel" inputMode="tel" aria-invalid={Boolean(errors.phone)} />
             {errors.phone && <p className="mt-1.5 text-sm font-medium text-rose-600">{errors.phone.message}</p>}
           </div>
         </div>
