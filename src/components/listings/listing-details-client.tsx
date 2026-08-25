@@ -182,7 +182,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                 <button
                   type="button"
                   onClick={() => setGallery(true)}
-                  className="absolute inset-0 z-[1] rounded-[inherit] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand-400"
+                  className="absolute inset-0 z-1 rounded-[inherit] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand-400"
                   aria-label={t("listing.galleryOpen")}
                 >
                   <span className="sr-only">{t("listing.galleryOpen")}</span>
