@@ -9,7 +9,6 @@ import { ListingCard } from "@/components/listings/listing-card";
 import { SellerProfileActions } from "@/components/seller/seller-profile-actions";
 import { SellerReviewForm } from "@/components/seller/seller-review-form";
 import { socialService } from "@/services/social.service";
-import { releaseFeatures } from "@/lib/release-features";
 
 type SellerProfilePageProps = {
   params: Promise<{ sellerId: string }>;
@@ -32,7 +31,9 @@ function SellerProfileFallback() {
           <div className="h-96 rounded-2xl border bg-white" />
         </div>
       </div>
-      <span className="sr-only"><T id="common.loading" /></span>
+      <span className="sr-only">
+        <T id="common.loading" />
+      </span>
     </main>
   );
 }
@@ -46,7 +47,9 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
   }
 
   const { seller, listings, reviews } = data;
-  const sellerLocation = [seller.location.city, seller.location.stateCode].filter(Boolean).join(", ");
+  const sellerLocation = [seller.location.city, seller.location.stateCode]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
@@ -65,7 +68,7 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-extrabold">{seller.name}</h1>
 
-              {releaseFeatures.cpfVerification && seller.verified && (
+              {seller.verified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
                   <CheckCircle2 className="size-4" aria-hidden="true" />
                   <T id="seller.verified" />

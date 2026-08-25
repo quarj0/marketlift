@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   createContext,
@@ -8,25 +8,31 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { marketService, type MarketCapabilities, type MarketProfile } from '@/services/market.service';
+} from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  marketService,
+  type MarketCapabilities,
+  type MarketProfile,
+} from "@/services/market.service";
 
-const STORAGE_KEY = 'marketlift.marketCode';
+const STORAGE_KEY = "marketlift.marketCode";
 
 const FALLBACK_MARKET: MarketProfile = {
-  code: 'GH',
-  countryCode: 'GH',
-  countryName: 'Ghana',
-  locale: 'en-GH',
-  languageCode: 'en-gb',
-  currency: 'GHS',
-  currencySymbol: 'GH₵',
-  paymentProvider: 'paystack',
-  paymentMethods: ['card', 'mobile_money'],
-  identityLabel: 'Ghana Card',
-  identityKey: 'national_id',
-  locationMode: 'geocoder',
+  code: "GH",
+  countryCode: "GH",
+  countryName: "Ghana",
+  locale: "en-GH",
+  languageCode: "en-gb",
+  currency: "GHS",
+  currencySymbol: "GH₵",
+  paymentProvider: "paystack",
+  paymentMethods: ["card", "mobile_money"],
+  identityLabel: "Ghana Card",
+  identityKey: "national_id",
+  locationMode: "geocoder",
+  paymentsEnabled: false,
+  identityVerificationEnabled: false,
 };
 
 type MarketContextValue = {
@@ -34,6 +40,10 @@ type MarketContextValue = {
   defaultMarket: MarketProfile;
   enabledMarkets: MarketProfile[];
   capabilities: MarketCapabilities | null;
+  paymentsEnabled: boolean;
+  identityVerificationEnabled: boolean;
+  paymentsEnabledForMarket: (code?: string | null) => boolean;
+  identityVerificationEnabledForMarket: (code?: string | null) => boolean;
   loading: boolean;
   setMarket: (code: string) => void;
   formatMoney: (value: number, currency?: string) => string;
@@ -42,17 +52,17 @@ type MarketContextValue = {
 const MarketContext = createContext<MarketContextValue | null>(null);
 
 function readStoredMarketCode() {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === "undefined") return "";
   try {
-    return window.localStorage.getItem(STORAGE_KEY)?.trim().toUpperCase() || '';
+    return window.localStorage.getItem(STORAGE_KEY)?.trim().toUpperCase() || "";
   } catch {
-    return '';
+    return "";
   }
 }
 
 export function MarketProvider({ children }: { children: ReactNode }) {
   const query = useQuery({
-    queryKey: ['market-capabilities'],
+    queryKey: ["market-capabilities"],
     queryFn: marketService.getCapabilities,
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -61,18 +71,19 @@ export function MarketProvider({ children }: { children: ReactNode }) {
   const [selectedCode, setSelectedCode] = useState(readStoredMarketCode);
 
   const enabledMarkets = useMemo(
-    () => query.data?.enabledMarkets?.length
-      ? query.data.enabledMarkets
-      : [query.data?.active || FALLBACK_MARKET],
+    () =>
+      query.data?.enabledMarkets?.length
+        ? query.data.enabledMarkets
+        : [query.data?.active || FALLBACK_MARKET],
     [query.data],
   );
-  const defaultMarket = query.data?.active || enabledMarkets[0] || FALLBACK_MARKET;
+  const defaultMarket =
+    query.data?.active || enabledMarkets[0] || FALLBACK_MARKET;
   const market =
     enabledMarkets.find((item) => item.code === selectedCode) || defaultMarket;
 
-
   useEffect(() => {
-    if (!market?.code || typeof document === 'undefined') return;
+    if (!market?.code || typeof document === "undefined") return;
     document.documentElement.dataset.market = market.code;
     document.documentElement.dataset.currency = market.currency;
   }, [market.code, market.currency]);
@@ -90,10 +101,10 @@ export function MarketProvider({ children }: { children: ReactNode }) {
   const formatMoney = useCallback(
     (value: number, currency = market.currency) => {
       try {
-        return new Intl.NumberFormat(market.locale || 'en', {
-          style: 'currency',
+        return new Intl.NumberFormat(market.locale || "en", {
+          style: "currency",
           currency,
-          maximumFractionDigits: currency === 'XOF' ? 0 : 2,
+          maximumFractionDigits: currency === "XOF" ? 0 : 2,
         }).format(value);
       } catch {
         return `${market.currencySymbol}${Number(value).toLocaleString()}`;
@@ -102,24 +113,62 @@ export function MarketProvider({ children }: { children: ReactNode }) {
     [market.currency, market.currencySymbol, market.locale],
   );
 
+  const paymentsEnabledForMarket = useCallback(
+    (code?: string | null) => {
+      const target =
+        enabledMarkets.find(
+          (item) => item.code === code?.trim().toUpperCase(),
+        ) || market;
+      return Boolean(target.paymentsEnabled);
+    },
+    [enabledMarkets, market],
+  );
+
+  const identityVerificationEnabledForMarket = useCallback(
+    (code?: string | null) => {
+      const target =
+        enabledMarkets.find(
+          (item) => item.code === code?.trim().toUpperCase(),
+        ) || market;
+      return Boolean(target.identityVerificationEnabled);
+    },
+    [enabledMarkets, market],
+  );
+
   const value = useMemo<MarketContextValue>(
     () => ({
       market,
       defaultMarket,
       enabledMarkets,
       capabilities: query.data || null,
+      paymentsEnabled: Boolean(market.paymentsEnabled),
+      identityVerificationEnabled: Boolean(market.identityVerificationEnabled),
+      paymentsEnabledForMarket,
+      identityVerificationEnabledForMarket,
       loading: query.isLoading,
       setMarket,
       formatMoney,
     }),
-    [market, defaultMarket, enabledMarkets, query.data, query.isLoading, setMarket, formatMoney],
+    [
+      market,
+      defaultMarket,
+      enabledMarkets,
+      query.data,
+      query.isLoading,
+      setMarket,
+      formatMoney,
+      paymentsEnabledForMarket,
+      identityVerificationEnabledForMarket,
+    ],
   );
 
-  return <MarketContext.Provider value={value}>{children}</MarketContext.Provider>;
+  return (
+    <MarketContext.Provider value={value}>{children}</MarketContext.Provider>
+  );
 }
 
 export function useMarket() {
   const value = useContext(MarketContext);
-  if (!value) throw new Error('useMarket must be used inside MarketProvider.');
+  if (!value) throw new Error("useMarket must be used inside MarketProvider.");
   return value;
 }

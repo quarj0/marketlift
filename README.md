@@ -2,35 +2,26 @@
 
 Consumer marketplace frontend for Marketlift, built with Next.js, TypeScript, Tailwind CSS, TanStack Query, React Hook Form and Zod.
 
-## Current product model
+## Product model
 
-- One Marketlift customer account. There are no separate buyer and seller logins.
-- Any registered user can enable selling on the same account.
-- Public seller profiles remain available at `/seller/[sellerId]`.
-- Private selling tools live under `/selling`.
-- Ordinary listings publish immediately after automated validation.
-- `under_review` is exceptional and reserved for risk signals, reports or future category rules.
-- CPF/provider-backed seller identity verification is marked **Upcoming** and disabled for the initial release.
-- Buyers and sellers arrange product payment and delivery independently in V1.
-- Marketlift subscriptions, checkout, boosts, promotions and all other service payments are marked **Upcoming** until the payment provider is integrated and certified.
-- The internal administration product is deployed separately at `admin.marketlift.com.br`.
+- One customer account; the same user can enable selling.
+- Public seller profiles plus private `/selling` tools.
+- Listings/search/location are market-aware and support administrator-enabled countries.
+- Seller plans, promotions, identity labels and payment methods come from backend market configuration.
+- Buyers and sellers arrange the item transaction independently; Marketlift only processes seller plan/promotion charges.
+- Provider capability is discovered at runtime from `/api/v1/market/`; there are no frontend payment/verification release flags.
 
 ## Development
 
 ```bash
 pnpm install
 pnpm dev
-```
-
-Production check:
-
-```bash
+pnpm lint
 pnpm build
 ```
 
-## Production configuration
+## Deployment configuration
 
-Copy `.env.production.example` into the deployment provider and keep both
-release flags set to `false`. The production defaults target
-`https://marketlift.com.br` and `https://api.marketlift.com.br`; explicitly set
-the values in the deployment environment so configuration remains auditable.
+Copy `.env.example` into your deployment settings and replace the local URLs. `NEXT_PUBLIC_MARKETLIFT_MEDIA_ORIGIN` is only needed when public listing images are served from a separate CDN/storage origin.
+
+Country enable/disable/default changes do not require rebuilding this frontend. They are controlled from the admin/backend.

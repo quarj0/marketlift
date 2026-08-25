@@ -23,7 +23,12 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   manifest: "/manifest.webmanifest",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.NODE_ENV === "production"
+        ? "https://marketlift.com"
+        : "http://localhost:3001"),
+  ),
   applicationName: "Marketlift",
   creator: "Marketlift",
   publisher: "Marketlift",
@@ -90,7 +95,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
 };
-
 
 function AppPrerenderFallback() {
   return (

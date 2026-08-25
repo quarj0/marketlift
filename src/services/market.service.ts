@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/api-client';
+import { apiRequest } from "@/lib/api-client";
 
 export type MarketProfile = {
   code: string;
@@ -12,7 +12,9 @@ export type MarketProfile = {
   paymentMethods: string[];
   identityLabel: string;
   identityKey: string;
-  locationMode: 'catalog' | 'geocoder';
+  locationMode: "catalog" | "geocoder";
+  paymentsEnabled: boolean;
+  identityVerificationEnabled: boolean;
 };
 
 export type MarketCapabilities = {
@@ -33,6 +35,6 @@ export type MarketCapabilities = {
 
 export const marketService = {
   getCapabilities() {
-    return apiRequest<MarketCapabilities>('/api/v1/market/');
+    return apiRequest<MarketCapabilities>("/api/v1/market/");
   },
 };

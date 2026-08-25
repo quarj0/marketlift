@@ -32,9 +32,11 @@ import {
   PageLoading,
 } from "@/components/feedback/async-states";
 import { ReportDialog } from "@/components/feedback/report-dialog";
-import { releaseFeatures } from "@/lib/release-features";
 import { messagingService } from "@/services/messaging.service";
-import { formatConversationTimestamp, formatMessageTimestamp } from "@/lib/utils";
+import {
+  formatConversationTimestamp,
+  formatMessageTimestamp,
+} from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
 
@@ -218,9 +220,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
         <div className="border-b p-4">
           <h2 className="text-lg font-black">{t("messages.title")}</h2>
 
-          <p className="text-xs text-slate-500">
-            {t("messages.subtitle")}
-          </p>
+          <p className="text-xs text-slate-500">{t("messages.subtitle")}</p>
         </div>
 
         <div className="divide-y">
@@ -243,7 +243,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   height={44}
                   unoptimized
                   className="size-11 shrink-0 rounded-full object-cover"
-                  alt={t("messages.avatar", { name: conversation.participant.name })}
+                  alt={t("messages.avatar", {
+                    name: conversation.participant.name,
+                  })}
                 />
 
                 <div className="min-w-0 flex-1">
@@ -253,12 +255,17 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <span className="shrink-0 text-[11px] text-slate-400">
-                      {formatConversationTimestamp(conversation.lastMessageAt, locale)}
+                      {formatConversationTimestamp(
+                        conversation.lastMessageAt,
+                        locale,
+                      )}
                     </span>
                   </div>
 
                   <p className="mt-1 truncate text-xs text-slate-500">
-                    {conversation.lastMessage === "📷 Photo" ? tr(conversation.lastMessage) : conversation.lastMessage}
+                    {conversation.lastMessage === "📷 Photo"
+                      ? tr(conversation.lastMessage)
+                      : conversation.lastMessage}
                   </p>
 
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -266,7 +273,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                       <span className="min-w-0 truncate text-[11px] font-semibold text-slate-400">
                         {conversation.listing.title}
                       </span>
-                    ) : <span />}
+                    ) : (
+                      <span />
+                    )}
 
                     {conversation.unread > 0 && (
                       <span className="grid size-5 shrink-0 place-items-center rounded-full bg-blue-700 text-[10px] font-black text-white">
@@ -313,7 +322,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     {current.participant.name}
                   </p>
 
-                  {releaseFeatures.cpfVerification && current.participant.verified && (
+                  {current.participant.verified && (
                     <ShieldCheck
                       className="size-4 shrink-0 text-emerald-600"
                       aria-label={t("messages.verified")}
@@ -399,7 +408,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
               className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3 sm:p-4"
               aria-live="polite"
             >
-              {messages.isLoading && <PageLoading label={t("messages.loadingThread")} />}
+              {messages.isLoading && (
+                <PageLoading label={t("messages.loadingThread")} />
+              )}
 
               {messages.isError && (
                 <InlineError
@@ -426,7 +437,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                       <div className="p-1.5 pb-0">
                         <Image
                           src={message.attachment.url}
-                          alt={message.attachment.name || t("messages.sharedImage")}
+                          alt={
+                            message.attachment.name || t("messages.sharedImage")
+                          }
                           width={420}
                           height={320}
                           unoptimized
@@ -454,7 +467,11 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                         {message.sender === "me" && (
                           <CheckCheck
                             className="size-3"
-                            aria-label={message.read ? t("messages.read") : t("messages.sent")}
+                            aria-label={
+                              message.read
+                                ? t("messages.read")
+                                : t("messages.sent")
+                            }
                           />
                         )}
                       </div>
@@ -520,7 +537,11 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <p className="mt-1 text-[11px] text-slate-500">
-                      {new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(attachment.file.size / 1024 / 1024)} MB
+                      {new Intl.NumberFormat(
+                        locale === "pt-BR" ? "pt-BR" : "en-US",
+                        { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+                      ).format(attachment.file.size / 1024 / 1024)}{" "}
+                      MB
                     </p>
 
                     <p className="mt-1 text-[11px] font-medium text-emerald-700">

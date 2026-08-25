@@ -31,7 +31,6 @@ import { ListingCard } from "@/components/listings/listing-card";
 import { SearchBar } from "@/components/search/search-bar";
 import { SellerCard } from "@/components/seller/seller-card";
 import { Button } from "@/components/ui/button";
-import { releaseFeatures } from "@/lib/release-features";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarketplaceLocation } from "@/providers/marketplace-location-provider";
 import { useMarket } from "@/providers/market-provider";
@@ -255,7 +254,7 @@ export function HomepageContent() {
   const sellersQuery = useQuery({
     queryKey: ["sellers", "verified", market.code],
     queryFn: () => sellerService.getVerified(6, market.code),
-    enabled: releaseFeatures.cpfVerification,
+    enabled: true,
   });
 
   const allSellersQuery = useQuery({
@@ -291,7 +290,6 @@ export function HomepageContent() {
     nearbyQuery.isError ||
     featuredQuery.isError ||
     recentQuery.isError ||
-    (releaseFeatures.cpfVerification && sellersQuery.isError) ||
     categoriesQuery.isError;
 
   return (
@@ -528,37 +526,39 @@ export function HomepageContent() {
         )}
       </section>
 
-      {releaseFeatures.cpfVerification && <section className="border-y bg-slate-100/70 py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            eyebrow={t("home.trusted")}
-            title={t("home.verifiedSellers")}
-            description={t("home.verifiedSellersBody")}
-            href="/search?verifiedOnly=true"
-            action={t("home.viewListings")}
-          />
+      {(sellersQuery.data?.length ?? 0) > 0 && (
+        <section className="border-y bg-slate-100/70 py-12 lg:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <SectionHeading
+              eyebrow={t("home.trusted")}
+              title={t("home.verifiedSellers")}
+              description={t("home.verifiedSellersBody")}
+              href="/search?verifiedOnly=true"
+              action={t("home.viewListings")}
+            />
 
-          {sellersQuery.isError ? (
-            <ErrorCard onRetry={() => sellersQuery.refetch()} />
-          ) : sellersQuery.isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <SellerSkeleton key={index} />
-              ))}
-            </div>
-          ) : sellersQuery.data?.length ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sellersQuery.data.map((seller) => (
-                <SellerCard key={seller.id} seller={seller} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed bg-white p-10 text-center text-sm text-slate-500">
-              {t("home.noVerified")}
-            </div>
-          )}
-        </div>
-      </section>}
+            {sellersQuery.isError ? (
+              <ErrorCard onRetry={() => sellersQuery.refetch()} />
+            ) : sellersQuery.isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <SellerSkeleton key={index} />
+                ))}
+              </div>
+            ) : sellersQuery.data?.length ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {sellersQuery.data.map((seller) => (
+                  <SellerCard key={seller.id} seller={seller} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed bg-white p-10 text-center text-sm text-slate-500">
+                {t("home.noVerified")}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="bg-ink-950 py-14 text-white lg:py-20">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:px-8">

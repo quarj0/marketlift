@@ -22,9 +22,13 @@ import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
 import { socialService } from "@/services/social.service";
 import { formatReadableDate, formatRelativeDate } from "@/lib/utils";
-import { releaseFeatures } from "@/lib/release-features";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ListingCard } from "./listing-card";
 import { AuthRequiredDialog } from "@/components/auth/auth-required-dialog";
 import { ReportDialog } from "@/components/feedback/report-dialog";
@@ -135,7 +139,10 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
             {t("listing.breadcrumbHome")}
           </Link>
 
-          <ChevronRight className="size-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+          <ChevronRight
+            className="size-3.5 shrink-0 text-slate-300"
+            aria-hidden="true"
+          />
 
           <Link
             href={`/search?category=${listing.category}`}
@@ -144,7 +151,10 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
             {categoryName(listing.category)}
           </Link>
 
-          <ChevronRight className="size-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+          <ChevronRight
+            className="size-3.5 shrink-0 text-slate-300"
+            aria-hidden="true"
+          />
 
           <span
             aria-current="page"
@@ -289,18 +299,26 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                 <span>{formatRelativeDate(listing.createdAt, locale)}</span>
                 <span className="flex items-center gap-1">
                   <Eye className="size-4" />
-                  {t("listing.views", { count: listing.views.toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}
+                  {t("listing.views", {
+                    count: listing.views.toLocaleString(
+                      locale === "pt-BR" ? "pt-BR" : "en-US",
+                    ),
+                  })}
                 </span>
               </div>
               <div className="mt-7">
-                <h2 className="text-xl font-black">{t("listing.description")}</h2>
+                <h2 className="text-xl font-black">
+                  {t("listing.description")}
+                </h2>
                 <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600 sm:text-base">
                   {listing.description}
                 </p>
               </div>
               {listing.specifications && (
                 <div className="mt-8">
-                  <h2 className="text-xl font-black">{t("listing.specifications")}</h2>
+                  <h2 className="text-xl font-black">
+                    {t("listing.specifications")}
+                  </h2>
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                     {Object.entries(listing.specifications).map(
                       ([key, value]) => (
@@ -308,7 +326,9 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                           <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
                             {tr(key)}
                           </dt>
-                          <dd className="mt-1 font-semibold">{tr(String(value))}</dd>
+                          <dd className="mt-1 font-semibold">
+                            {tr(String(value))}
+                          </dd>
                         </div>
                       ),
                     )}
@@ -349,7 +369,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 font-black">
                       <span className="truncate">{seller.name}</span>
-                      {releaseFeatures.cpfVerification && seller.verified && (
+                      {seller.verified && (
                         <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
                       )}
                     </div>
@@ -417,7 +437,9 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
                   </Button>
                 </div>
                 <Button variant="outline" className="mt-2 w-full" asChild>
-                  <Link href={`/seller/${seller.id}`}>{t("listing.viewSeller")}</Link>
+                  <Link href={`/seller/${seller.id}`}>
+                    {t("listing.viewSeller")}
+                  </Link>
                 </Button>
               </div>
             ) : null}
@@ -428,7 +450,8 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
               <div className="flex gap-2">
                 <ShieldAlert className="mt-0.5 size-5 shrink-0" />
                 <p>
-                  <strong>{t("listing.safetyTitle")}</strong> {t("listing.safetyBody")}
+                  <strong>{t("listing.safetyTitle")}</strong>{" "}
+                  {t("listing.safetyBody")}
                 </p>
               </div>
             </div>
@@ -438,7 +461,9 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
         <section className="mt-12">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-bold text-brand-700">{t("listing.keepBrowsing")}</p>
+              <p className="text-sm font-bold text-brand-700">
+                {t("listing.keepBrowsing")}
+              </p>
               <h2 className="text-2xl font-black">{t("listing.similar")}</h2>
             </div>
             <Link

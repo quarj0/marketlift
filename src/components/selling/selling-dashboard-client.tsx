@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import Image from "next/image";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   Eye,
@@ -11,16 +11,20 @@ import {
   Plus,
   ShieldAlert,
   Store,
-} from 'lucide-react';
-import { sellingService } from '@/services/selling.service';
-import { Button } from '@/components/ui/button';
-import { useLocale } from '@/providers/locale-provider';
-import { releaseFeatures } from '@/lib/release-features';
+} from "lucide-react";
+import { sellingService } from "@/services/selling.service";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
+import { useAuth } from "@/providers/auth-provider";
 
 export function SellingDashboardClient() {
+  const { user } = useAuth();
+  const { paymentsEnabledForMarket } = useMarket();
+  const paymentsEnabled = paymentsEnabledForMarket(user?.countryCode);
   const { t, tr, locale } = useLocale();
   const query = useQuery({
-    queryKey: ['selling-dashboard'],
+    queryKey: ["selling-dashboard"],
     queryFn: sellingService.getDashboard,
   });
 
@@ -41,14 +45,18 @@ export function SellingDashboardClient() {
     return (
       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
         <AlertCircle className="mx-auto size-8 text-rose-600" />
-        <h2 className="mt-3 font-black text-rose-900">{t('selling.dashboard.error')}</h2>
-        <p className="mt-1 text-sm text-rose-700">{t('selling.dashboard.errorBody')}</p>
+        <h2 className="mt-3 font-black text-rose-900">
+          {t("selling.dashboard.error")}
+        </h2>
+        <p className="mt-1 text-sm text-rose-700">
+          {t("selling.dashboard.errorBody")}
+        </p>
         <Button
           variant="outline"
           className="mt-4 bg-white"
           onClick={() => query.refetch()}
         >
-          {t('common.tryAgain')}
+          {t("common.tryAgain")}
         </Button>
       </div>
     );
@@ -56,20 +64,29 @@ export function SellingDashboardClient() {
 
   const data = query.data;
   const stats = [
-    [t('selling.dashboard.active'), data.active, Store],
-    [t('selling.dashboard.drafts'), data.drafts, FileText],
-    [t('selling.dashboard.underReview'), data.underReview, ShieldAlert],
-    [t('selling.dashboard.views'), data.views.toLocaleString(locale === 'pt-BR' ? 'pt-BR' : 'en-US'), Eye],
-    [t('selling.dashboard.messages'), data.messages, MessageCircle],
+    [t("selling.dashboard.active"), data.active, Store],
+    [t("selling.dashboard.drafts"), data.drafts, FileText],
+    [t("selling.dashboard.underReview"), data.underReview, ShieldAlert],
+    [
+      t("selling.dashboard.views"),
+      data.views.toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US"),
+      Eye,
+    ],
+    [t("selling.dashboard.messages"), data.messages, MessageCircle],
   ] as const;
   const usage =
-    data.plan.limit > 0 ? Math.min(100, (data.plan.used / data.plan.limit) * 100) : 0;
+    data.plan.limit > 0
+      ? Math.min(100, (data.plan.used / data.plan.limit) * 100)
+      : 0;
 
   return (
     <div className="min-w-0 space-y-5 sm:space-y-6">
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         {stats.map(([label, value, Icon]) => (
-          <article key={label} className="rounded-2xl border bg-white p-4 shadow-sm">
+          <article
+            key={label}
+            className="rounded-2xl border bg-white p-4 shadow-sm"
+          >
             <div className="flex items-start justify-between gap-2">
               <span className="text-xs font-semibold leading-5 text-slate-500 sm:text-sm">
                 {label}
@@ -87,15 +104,17 @@ export function SellingDashboardClient() {
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="flex items-start justify-between gap-3 border-b p-4 sm:items-center sm:p-5">
             <div>
-              <h2 className="text-lg font-black sm:text-xl">{t('selling.dashboard.recent')}</h2>
+              <h2 className="text-lg font-black sm:text-xl">
+                {t("selling.dashboard.recent")}
+              </h2>
               <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
-                {t('selling.dashboard.recentBody')}
+                {t("selling.dashboard.recentBody")}
               </p>
             </div>
             <Button asChild size="sm" className="hidden sm:inline-flex">
               <Link href="/selling/listings/new">
                 <Plus className="size-4" />
-                {t('selling.addListing')}
+                {t("selling.addListing")}
               </Link>
             </Button>
           </div>
@@ -103,12 +122,16 @@ export function SellingDashboardClient() {
           {data.recentListings.length === 0 ? (
             <div className="px-5 py-12 text-center">
               <Store className="mx-auto size-9 text-slate-300" />
-              <h3 className="mt-3 font-black">{t('selling.dashboard.empty')}</h3>
+              <h3 className="mt-3 font-black">
+                {t("selling.dashboard.empty")}
+              </h3>
               <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
-                {t('selling.dashboard.emptyBody')}
+                {t("selling.dashboard.emptyBody")}
               </p>
               <Button asChild className="mt-4">
-                <Link href="/selling/listings/new">{t('selling.dashboard.create')}</Link>
+                <Link href="/selling/listings/new">
+                  {t("selling.dashboard.create")}
+                </Link>
               </Button>
             </div>
           ) : (
@@ -125,7 +148,7 @@ export function SellingDashboardClient() {
                     width={72}
                     height={72}
                     unoptimized
-                    className="size-[72px] rounded-xl object-cover sm:size-16"
+                    className="size-18 rounded-xl object-cover sm:size-16"
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -137,7 +160,10 @@ export function SellingDashboardClient() {
                       </span>
                     </div>
                     <p className="mt-1 truncate text-xs text-slate-500">
-                      {t('selling.dashboard.viewsEnquiries', { views: listing.views, inquiries: listing.inquiries })}
+                      {t("selling.dashboard.viewsEnquiries", {
+                        views: listing.views,
+                        inquiries: listing.inquiries,
+                      })}
                     </p>
                   </div>
                   <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold capitalize sm:inline-flex">
@@ -152,7 +178,7 @@ export function SellingDashboardClient() {
             <Button asChild className="w-full">
               <Link href="/selling/listings/new">
                 <Plus className="size-4" />
-                {t('selling.addListing')}
+                {t("selling.addListing")}
               </Link>
             </Button>
           </div>
@@ -161,13 +187,17 @@ export function SellingDashboardClient() {
         <aside className="h-fit rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-slate-500">{t('selling.dashboard.plan')}</p>
+              <p className="text-sm font-semibold text-slate-500">
+                {t("selling.dashboard.plan")}
+              </p>
               <h2 className="mt-1 text-2xl font-black">{tr(data.plan.name)}</h2>
             </div>
             <Store className="size-6 text-brand-700" />
           </div>
           <div className="mt-5 flex items-end justify-between gap-3">
-            <p className="text-sm font-bold">{t('selling.dashboard.capacity')}</p>
+            <p className="text-sm font-bold">
+              {t("selling.dashboard.capacity")}
+            </p>
             <p className="text-sm text-slate-500">
               {data.plan.used} / {data.plan.limit}
             </p>
@@ -185,9 +215,19 @@ export function SellingDashboardClient() {
             />
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
-            {t('selling.dashboard.planBody')}
+            {t("selling.dashboard.planBody")}
           </p>
-          {releaseFeatures.payments?<Button asChild variant="outline" className="mt-5 w-full"><Link href="/selling/plan">{t('selling.dashboard.managePlan')}</Link></Button>:<Button variant="outline" className="mt-5 w-full" disabled>{t('common.upcoming')}</Button>}
+          {paymentsEnabled ? (
+            <Button asChild variant="outline" className="mt-5 w-full">
+              <Link href="/selling/plan">
+                {t("selling.dashboard.managePlan")}
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" className="mt-5 w-full" disabled>
+              {t("common.upcoming")}
+            </Button>
+          )}
         </aside>
       </div>
     </div>

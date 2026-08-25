@@ -12,25 +12,102 @@ type ListingPageProps = {
 };
 
 function fallbackMarket(countryCode?: string | null): MarketProfile {
-  const code=(countryCode||"GH").toUpperCase();
-  const profiles:Record<string,Pick<MarketProfile,"countryCode"|"countryName"|"locale"|"languageCode"|"currency"|"currencySymbol">>={
-    BR:{countryCode:"BR",countryName:"Brazil",locale:"pt-BR",languageCode:"pt",currency:"BRL",currencySymbol:"R$"},
-    GH:{countryCode:"GH",countryName:"Ghana",locale:"en-GH",languageCode:"en",currency:"GHS",currencySymbol:"GH₵"},
-    NG:{countryCode:"NG",countryName:"Nigeria",locale:"en-NG",languageCode:"en",currency:"NGN",currencySymbol:"₦"},
-    KE:{countryCode:"KE",countryName:"Kenya",locale:"en-KE",languageCode:"en",currency:"KES",currencySymbol:"KSh"},
-    ZA:{countryCode:"ZA",countryName:"South Africa",locale:"en-ZA",languageCode:"en",currency:"ZAR",currencySymbol:"R"},
-    CI:{countryCode:"CI",countryName:"Côte d’Ivoire",locale:"fr-CI",languageCode:"fr",currency:"XOF",currencySymbol:"FCFA"},
+  const code = (countryCode || "GH").toUpperCase();
+  const profiles: Record<
+    string,
+    Pick<
+      MarketProfile,
+      | "countryCode"
+      | "countryName"
+      | "locale"
+      | "languageCode"
+      | "currency"
+      | "currencySymbol"
+    >
+  > = {
+    BR: {
+      countryCode: "BR",
+      countryName: "Brazil",
+      locale: "pt-BR",
+      languageCode: "pt",
+      currency: "BRL",
+      currencySymbol: "R$",
+    },
+    GH: {
+      countryCode: "GH",
+      countryName: "Ghana",
+      locale: "en-GH",
+      languageCode: "en",
+      currency: "GHS",
+      currencySymbol: "GH₵",
+    },
+    NG: {
+      countryCode: "NG",
+      countryName: "Nigeria",
+      locale: "en-NG",
+      languageCode: "en",
+      currency: "NGN",
+      currencySymbol: "₦",
+    },
+    KE: {
+      countryCode: "KE",
+      countryName: "Kenya",
+      locale: "en-KE",
+      languageCode: "en",
+      currency: "KES",
+      currencySymbol: "KSh",
+    },
+    ZA: {
+      countryCode: "ZA",
+      countryName: "South Africa",
+      locale: "en-ZA",
+      languageCode: "en",
+      currency: "ZAR",
+      currencySymbol: "R",
+    },
+    CI: {
+      countryCode: "CI",
+      countryName: "Côte d’Ivoire",
+      locale: "fr-CI",
+      languageCode: "fr",
+      currency: "XOF",
+      currencySymbol: "FCFA",
+    },
   };
-  const base=profiles[code]||profiles.GH;
-  return {code,...base,paymentProvider:"disabled",paymentMethods:[],identityLabel:"Identity",identityKey:"identity",locationMode:code==="BR"?"catalog":"geocoder"};
+  const base = profiles[code] || profiles.GH;
+  return {
+    code,
+    ...base,
+    paymentProvider: "disabled",
+    paymentMethods: [],
+    identityLabel: "Identity",
+    identityKey: "identity",
+    locationMode: code === "BR" ? "catalog" : "geocoder",
+    paymentsEnabled: false,
+    identityVerificationEnabled: false,
+  };
 }
 
-async function listingMarket(countryCode?:string|null){
-  try{const capabilities=await marketService.getCapabilities();return capabilities.enabledMarkets.find((m)=>m.code===countryCode)||capabilities.active;}catch{return fallbackMarket(countryCode);}
+async function listingMarket(countryCode?: string | null) {
+  try {
+    const capabilities = await marketService.getCapabilities();
+    return (
+      capabilities.enabledMarkets.find((m) => m.code === countryCode) ||
+      capabilities.active
+    );
+  } catch {
+    return fallbackMarket(countryCode);
+  }
 }
 
-function formatPrice(value:number, market:MarketProfile){
-  return new Intl.NumberFormat(market.locale,{style:"currency",currency:market.currency,maximumFractionDigits:market.currency==="XOF"?0:2}).format(value).replace(/\u00a0/g," ");
+function formatPrice(value: number, market: MarketProfile) {
+  return new Intl.NumberFormat(market.locale, {
+    style: "currency",
+    currency: market.currency,
+    maximumFractionDigits: market.currency === "XOF" ? 0 : 2,
+  })
+    .format(value)
+    .replace(/\u00a0/g, " ");
 }
 
 export async function generateMetadata({
@@ -81,7 +158,9 @@ function ListingFallback() {
         </div>
         <div className="h-96 rounded-3xl border bg-white" />
       </div>
-      <span className="sr-only"><T id="common.loading" /></span>
+      <span className="sr-only">
+        <T id="common.loading" />
+      </span>
     </main>
   );
 }
@@ -89,24 +168,33 @@ function ListingFallback() {
 async function ListingContent({ params }: ListingPageProps) {
   const { slug } = await params;
   const listing = await listingService.getListing(slug);
-  const market = listing ? await listingMarket(listing.location.countryCode) : null;
-
-  const jsonLd = listing && market
-    ? {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        name: listing.title,
-        description: listing.description,
-        image: listing.images,
-        offers: {
-          "@type": "Offer",
-          priceCurrency: market.currency,
-          price: listing.price,
-          availability: "https://schema.org/InStock",
-        },
-        areaServed: [listing.location.city, listing.location.stateCode, market.countryName].filter(Boolean).join(", "),
-      }
+  const market = listing
+    ? await listingMarket(listing.location.countryCode)
     : null;
+
+  const jsonLd =
+    listing && market
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: listing.title,
+          description: listing.description,
+          image: listing.images,
+          offers: {
+            "@type": "Offer",
+            priceCurrency: market.currency,
+            price: listing.price,
+            availability: "https://schema.org/InStock",
+          },
+          areaServed: [
+            listing.location.city,
+            listing.location.stateCode,
+            market.countryName,
+          ]
+            .filter(Boolean)
+            .join(", "),
+        }
+      : null;
 
   return (
     <>
