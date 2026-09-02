@@ -147,7 +147,7 @@ export function LocationSelector({ value, compact = false, inverse = false, onCh
       </DialogTrigger>
       <DialogContent className="max-w-2xl p-0">
         <div className="border-b p-5 sm:p-6">
-          <DialogTitle>{t('location.title')}</DialogTitle>
+          <DialogTitle>{t('location.dialogTitle')}</DialogTitle>
           <DialogDescription className="mt-1">
             Browse listings in {market.countryName} by city or area.
           </DialogDescription>
