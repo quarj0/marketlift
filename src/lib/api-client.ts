@@ -31,7 +31,7 @@ const configuredApiBase = process.env.NEXT_PUBLIC_MARKETLIFT_API_URL?.trim();
 function resolveApiBaseUrl() {
   const defaultApiBase =
     process.env.NODE_ENV === "production"
-      ? "https://api.marketlift.com"
+      ? "https://api.marketlift.com.br"
       : "http://localhost:8000";
   const raw = (configuredApiBase || defaultApiBase).replace(/\/+$/, "");
   if (typeof window === "undefined") return raw;

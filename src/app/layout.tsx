@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ||
       (process.env.NODE_ENV === "production"
-        ? "https://marketlift.com"
+        ? "https://marketlift.com.br"
         : "http://localhost:3001"),
   ),
   applicationName: "Marketlift",

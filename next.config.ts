@@ -23,13 +23,11 @@ function remotePattern(origin?: string): RemotePattern | null {
 
 const defaultApiOrigin =
   process.env.NODE_ENV === "production"
-    ? "https://api.marketlift.com"
+    ? "https://api.marketlift.com.br"
     : "http://localhost:8000";
 const imageOrigins = [
   remotePattern(process.env.NEXT_PUBLIC_MARKETLIFT_API_URL || defaultApiOrigin),
   remotePattern(process.env.NEXT_PUBLIC_MARKETLIFT_MEDIA_ORIGIN),
-  remotePattern("http://localhost:8000"),
-  remotePattern("http://127.0.0.1:8000"),
 ].filter((pattern): pattern is RemotePattern => pattern !== null);
 
 const nextConfig: NextConfig = {
