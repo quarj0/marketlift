@@ -17,6 +17,28 @@ export const categoryService = {
     return data.category ? mapCategory(data.category) : null;
   },
 
+  async getFieldOptions(
+    categoryId: string,
+    fieldId: string,
+    parentValue?: string,
+    search?: string,
+  ) {
+    const data = await graphqlRequest<{
+      categoryFieldOptions: Array<{ value: string; label: string }>;
+    }>(
+      `query CategoryFieldOptions($categoryId:String!,$fieldId:String!,$parentValue:String,$search:String){
+        categoryFieldOptions(categoryId:$categoryId,fieldId:$fieldId,parentValue:$parentValue,search:$search,limit:250){value label}
+      }`,
+      {
+        categoryId,
+        fieldId,
+        parentValue: parentValue || null,
+        search: search || null,
+      },
+    );
+    return data.categoryFieldOptions ?? [];
+  },
+
   async getConfigurations(): Promise<CategoryConfiguration[]> {
     return this.getCategories();
   },

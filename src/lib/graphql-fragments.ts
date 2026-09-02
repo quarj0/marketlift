@@ -55,7 +55,7 @@ export const CATEGORY_FIELDS = `
   pricing { mode label placeholder }
   condition { enabled required }
   fields {
-    id label type required filterable allowCustomValue placeholder helpText unit min max step
+    id label type required filterable allowCustomValue dependsOn lazyOptions optionCount placeholder helpText unit min max step
     options { value label }
   }
   subcategories { id name icon imageUrl active }

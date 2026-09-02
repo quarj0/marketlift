@@ -61,6 +61,9 @@ export type ApiCategoryField = {
   required?: boolean;
   filterable?: boolean;
   allowCustomValue?: boolean;
+  dependsOn?: string | null;
+  lazyOptions?: boolean;
+  optionCount?: number | null;
   placeholder?: string | null;
   helpText?: string | null;
   unit?: string | null;
@@ -391,6 +394,9 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
       required: Boolean(field.required),
       filterable: Boolean(field.filterable),
       allowCustomValue: Boolean(field.allowCustomValue),
+      dependsOn: field.dependsOn || undefined,
+      lazyOptions: Boolean(field.lazyOptions),
+      optionCount: Number(field.optionCount || 0),
       placeholder: field.placeholder || undefined,
       helpText: field.helpText || undefined,
       unit: field.unit || undefined,

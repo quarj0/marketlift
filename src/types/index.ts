@@ -73,6 +73,9 @@ export interface CategoryFieldDefinition {
   required: boolean;
   filterable: boolean;
   allowCustomValue?: boolean;
+  dependsOn?: string;
+  lazyOptions?: boolean;
+  optionCount?: number;
   placeholder?: string;
   helpText?: string;
   unit?: string;

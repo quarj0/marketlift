@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   BadgeCheck,
@@ -225,11 +226,12 @@ function CategoryGrid({
           >
             <div className="relative h-24 overflow-hidden bg-slate-100 sm:h-28">
               {category.imageUrl ? (
-                <img
+                <Image
                   src={category.imageUrl}
                   alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  fill
+                  sizes="(max-width: 640px) 45vw, (max-width: 1280px) 22vw, 180px"
+                  className="object-cover transition duration-300 group-hover:scale-105"
                 />
               ) : (
                 <div className={`grid h-full place-items-center ${tone}`}>
