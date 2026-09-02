@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
+import { resolveCategoryVisual } from "@/components/categories/category-visual";
 import { ListingCard } from "@/components/listings/listing-card";
 import { SearchBar } from "@/components/search/search-bar";
 import { SellerCard } from "@/components/seller/seller-card";
@@ -208,7 +209,13 @@ function CategoryGrid({
   return (
     <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
       {categories?.map((category) => {
-        const Icon = icons[category.icon as keyof typeof icons] ?? Grid3X3;
+        const semantic = resolveCategoryVisual(category);
+        const ExplicitIcon = icons[category.icon as keyof typeof icons];
+        const Icon =
+          category.icon && category.icon !== "Grid3X3"
+            ? ExplicitIcon ?? semantic.Icon
+            : semantic.Icon;
+        const tone = semantic.tone;
 
         return (
           <Link
@@ -216,8 +223,10 @@ function CategoryGrid({
             href={`/search?category=${category.id}`}
             className="group flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border bg-white p-3 text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
-            <span className="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-700 transition group-hover:bg-brand-100">
-              <Icon className="size-5" />
+            <span
+              className={`grid size-12 place-items-center rounded-xl transition group-hover:scale-105 ${tone}`}
+            >
+              <Icon className="size-6" aria-hidden />
             </span>
 
             <span className="text-xs font-bold text-slate-800 sm:text-sm">

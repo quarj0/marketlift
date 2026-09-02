@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight, Grid3X3 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
+import {
+  CategoryIcon,
+  resolveCategoryVisual,
+} from "@/components/categories/category-visual";
 import { categoryService } from "@/services/category.service";
 import { useLocale } from "@/providers/locale-provider";
 
@@ -44,10 +48,19 @@ export function CategoryNav() {
                     >
                       <Link
                         href={`/search?category=${category.id}`}
-                        className="flex items-center justify-between text-sm font-black text-slate-900 hover:text-brand-700"
+                        className="flex items-center justify-between gap-3 text-sm font-black text-slate-900 hover:text-brand-700"
                       >
-                        <span>{categoryName(category.id, category.name)}</span>
-                        <ChevronRight className="size-3.5" />
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span
+                            className={`grid size-8 shrink-0 place-items-center rounded-lg ${resolveCategoryVisual(category).tone}`}
+                          >
+                            <CategoryIcon category={category} className="size-4" />
+                          </span>
+                          <span className="truncate">
+                            {categoryName(category.id, category.name)}
+                          </span>
+                        </span>
+                        <ChevronRight className="size-3.5 shrink-0" />
                       </Link>
                       {children.length > 0 && (
                         <div className="mt-2 space-y-1">
@@ -55,9 +68,10 @@ export function CategoryNav() {
                             <Link
                               key={sub.id}
                               href={`/search?category=${sub.id}`}
-                              className="block rounded-md px-1 py-1 text-xs text-slate-500 hover:bg-brand-50 hover:text-brand-700"
+                              className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs text-slate-500 hover:bg-brand-50 hover:text-brand-700"
                             >
-                              {categoryName(sub.id, sub.name)}
+                              <CategoryIcon category={sub} className="size-3.5 shrink-0" />
+                              <span>{categoryName(sub.id, sub.name)}</span>
                             </Link>
                           ))}
                         </div>
@@ -79,8 +93,9 @@ export function CategoryNav() {
             <div key={category.id} className="group relative shrink-0">
               <Link
                 href={`/search?category=${category.id}`}
-                className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-700"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-700"
               >
+                <CategoryIcon category={category} className="size-3.5 shrink-0" />
                 {categoryName(category.id, category.name)}
                 {children.length > 0 && <ChevronDown className="size-3.5" />}
               </Link>
@@ -99,9 +114,10 @@ export function CategoryNav() {
                     <Link
                       key={sub.id}
                       href={`/search?category=${sub.id}`}
-                      className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
                     >
-                      {categoryName(sub.id, sub.name)}
+                      <CategoryIcon category={sub} className="size-4 shrink-0" />
+                      <span>{categoryName(sub.id, sub.name)}</span>
                     </Link>
                   ))}
                 </div>
