@@ -36,8 +36,7 @@ import { useMarketplaceLocation } from "@/providers/marketplace-location-provide
 import { useMarket } from "@/providers/market-provider";
 import { listingService } from "@/services/listing.service";
 import { marketplaceService } from "@/services/marketplace.service";
-import { sellerService } from "@/services/seller.service";
-import type { Category, Listing, Seller } from "@/types";
+import type { Category, Listing } from "@/types";
 
 const icons = {
   Smartphone,
@@ -129,12 +128,10 @@ function SellerSkeleton() {
 
 function ListingSection({
   listings,
-  sellers,
   loading,
   emptyMessage,
 }: {
   listings?: Listing[];
-  sellers?: Seller[];
   loading: boolean;
   emptyMessage: string;
 }) {
@@ -156,18 +153,10 @@ function ListingSection({
     );
   }
 
-  const sellerMap = new Map(
-    (sellers ?? []).map((seller) => [seller.id, seller]),
-  );
-
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       {listings.map((listing) => (
-        <ListingCard
-          key={listing.id}
-          listing={listing}
-          seller={sellerMap.get(listing.sellerId)}
-        />
+        <ListingCard key={listing.id} listing={listing} />
       ))}
     </div>
   );
@@ -255,19 +244,16 @@ export function HomepageContent() {
   const { location } = useMarketplaceLocation();
 
   const categoriesQuery = useQuery({
-    queryKey: ["marketplace", "categories"],
+    // Same key as CategoryNav so React Query shares/deduplicates this request.
+    queryKey: ["categories"],
     queryFn: marketplaceService.getCategories,
+    staleTime: 5 * 60_000,
   });
 
-  const sellersQuery = useQuery({
-    queryKey: ["sellers", "verified", market.code],
-    queryFn: () => sellerService.getVerified(6, market.code),
-    enabled: true,
-  });
-
-  const allSellersQuery = useQuery({
-    queryKey: ["sellers", "all", market.code],
-    queryFn: () => sellerService.getSellers(market.code),
+  const homeFeedQuery = useQuery({
+    queryKey: ["marketplace", "home-feed", market.code],
+    queryFn: () => marketplaceService.getHomeFeed(market.code),
+    staleTime: 30_000,
   });
 
   const nearbyQuery = useQuery({
@@ -284,20 +270,9 @@ export function HomepageContent() {
     queryFn: () => listingService.getNearby(location, 4),
   });
 
-  const featuredQuery = useQuery({
-    queryKey: ["listings", "featured", market.code],
-    queryFn: () => listingService.getFeatured(8, market.code),
-  });
-
-  const recentQuery = useQuery({
-    queryKey: ["listings", "recent", market.code],
-    queryFn: () => listingService.getRecent(4, market.code),
-  });
-
   const sectionError =
     nearbyQuery.isError ||
-    featuredQuery.isError ||
-    recentQuery.isError ||
+    homeFeedQuery.isError ||
     categoriesQuery.isError;
 
   return (
@@ -483,8 +458,7 @@ export function HomepageContent() {
         ) : (
           <ListingSection
             listings={nearbyQuery.data}
-            sellers={allSellersQuery.data}
-            loading={nearbyQuery.isLoading || allSellersQuery.isLoading}
+            loading={nearbyQuery.isLoading}
             emptyMessage={t("home.noNearby")}
           />
         )}
@@ -500,13 +474,12 @@ export function HomepageContent() {
             action={t("home.seeFeatured")}
           />
 
-          {featuredQuery.isError ? (
-            <ErrorCard onRetry={() => featuredQuery.refetch()} />
+          {homeFeedQuery.isError ? (
+            <ErrorCard onRetry={() => homeFeedQuery.refetch()} />
           ) : (
             <ListingSection
-              listings={featuredQuery.data}
-              sellers={allSellersQuery.data}
-              loading={featuredQuery.isLoading || allSellersQuery.isLoading}
+              listings={homeFeedQuery.data?.featuredListings}
+              loading={homeFeedQuery.isLoading}
               emptyMessage={t("home.noFeatured")}
             />
           )}
@@ -522,19 +495,18 @@ export function HomepageContent() {
           action={t("home.browseNewest")}
         />
 
-        {recentQuery.isError ? (
-          <ErrorCard onRetry={() => recentQuery.refetch()} />
+        {homeFeedQuery.isError ? (
+          <ErrorCard onRetry={() => homeFeedQuery.refetch()} />
         ) : (
           <ListingSection
-            listings={recentQuery.data}
-            sellers={allSellersQuery.data}
-            loading={recentQuery.isLoading || allSellersQuery.isLoading}
+            listings={homeFeedQuery.data?.recentListings}
+            loading={homeFeedQuery.isLoading}
             emptyMessage={t("home.noRecent")}
           />
         )}
       </section>
 
-      {(sellersQuery.data?.length ?? 0) > 0 && (
+      {(homeFeedQuery.data?.verifiedSellers.length ?? 0) > 0 && (
         <section className="border-y bg-slate-100/70 py-12 lg:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
@@ -545,17 +517,17 @@ export function HomepageContent() {
               action={t("home.viewListings")}
             />
 
-            {sellersQuery.isError ? (
-              <ErrorCard onRetry={() => sellersQuery.refetch()} />
-            ) : sellersQuery.isLoading ? (
+            {homeFeedQuery.isError ? (
+              <ErrorCard onRetry={() => homeFeedQuery.refetch()} />
+            ) : homeFeedQuery.isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <SellerSkeleton key={index} />
                 ))}
               </div>
-            ) : sellersQuery.data?.length ? (
+            ) : homeFeedQuery.data?.verifiedSellers.length ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {sellersQuery.data.map((seller) => (
+                {homeFeedQuery.data.verifiedSellers.map((seller) => (
                   <SellerCard key={seller.id} seller={seller} />
                 ))}
               </div>

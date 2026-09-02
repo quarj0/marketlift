@@ -322,6 +322,7 @@ export function mapListing(raw: ApiListing): Listing {
     },
     images: mapMediaUrls(raw.images),
     sellerId: String(raw.seller?.id || ""),
+    sellerVerified: Boolean(raw.seller?.verified),
     createdAt: raw.createdAt,
     views: Number(raw.views || 0),
     featured: Boolean(raw.featured),

@@ -38,6 +38,7 @@ export function ListingCard({
   });
 
   const saved = savedQuery.data?.includes(listing.id) ?? false;
+  const sellerVerified = seller?.verified ?? Boolean(listing.sellerVerified);
 
   const saveMutation = useMutation({
     mutationFn: () => socialService.toggleSaved(listing.id),
@@ -140,7 +141,7 @@ export function ListingCard({
             {formatRelativeDate(listing.createdAt, locale)}
           </div>
 
-          {seller?.verified && (
+          {sellerVerified && (
             <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-700 sm:text-xs">
               <ShieldCheck className="size-4" />
               {t("listing.verifiedSeller")}

@@ -108,6 +108,7 @@ export interface Listing {
   location: Location;
   images: string[];
   sellerId: string;
+  sellerVerified?: boolean;
   createdAt: string;
   views: number;
   featured?: boolean;

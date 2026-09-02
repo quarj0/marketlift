@@ -3,7 +3,7 @@ import { mapListing, type ApiListing, type ApiSeller } from "@/lib/api-mappers";
 import { LISTING_FIELDS } from "@/lib/graphql-fragments";
 import type { Location, SearchFilters } from "@/types";
 
-function paramsFromFilters(filters: SearchFilters) {
+function paramsFromFilters(filters: SearchFilters, pageSize = 24) {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
   if (filters.countryCode) params.set("countryCode", filters.countryCode);
@@ -31,7 +31,7 @@ function paramsFromFilters(filters: SearchFilters) {
   if (filters.verifiedOnly) params.set("verifiedOnly", "true");
   if (filters.dateListed) params.set("dateListed", filters.dateListed);
   if (filters.sort) params.set("sort", filters.sort);
-  params.set("pageSize", "50");
+  params.set("pageSize", String(Math.max(1, Math.min(pageSize, 50))));
   return params;
 }
 
@@ -77,8 +77,8 @@ function normalizeSearchListing(row: SearchListingRow): ApiListing {
   };
 }
 
-async function fetchListings(filters: SearchFilters = {}) {
-  const params = paramsFromFilters(filters);
+async function fetchListings(filters: SearchFilters = {}, pageSize = 24) {
+  const params = paramsFromFilters(filters, pageSize);
   const data = await apiRequest<SearchResponse>(
     `/api/v1/search/listings/?${params.toString()}`,
   );
@@ -87,7 +87,7 @@ async function fetchListings(filters: SearchFilters = {}) {
 }
 
 export const listingService = {
-  getListings: fetchListings,
+  getListings: (filters: SearchFilters = {}) => fetchListings(filters, 50),
 
   async getListing(slug: string) {
     const data = await graphqlRequest<{ listing: ApiListing | null }>(
@@ -106,25 +106,21 @@ export const listingService = {
   },
 
   async getFeatured(limit = 8, countryCode?: string) {
-    if (countryCode) {
-      const listings = await fetchListings({ countryCode, sort: "relevant" });
-      return listings.filter((listing) => listing.featured).slice(0, Math.max(1, limit));
-    }
     const data = await graphqlRequest<{ featuredListings: ApiListing[] }>(
-      `query FeaturedListings($limit: Int!) { featuredListings(limit: $limit) { ${LISTING_FIELDS} } }`,
-      { limit },
+      `query FeaturedListings($limit: Int!, $countryCode: String) {
+        featuredListings(limit: $limit, countryCode: $countryCode) { ${LISTING_FIELDS} }
+      }`,
+      { limit, countryCode: countryCode || null },
     );
     return data.featuredListings.map(mapListing);
   },
 
   async getRecent(limit = 8, countryCode?: string) {
-    if (countryCode) {
-      const listings = await fetchListings({ countryCode, sort: "newest" });
-      return listings.slice(0, Math.max(1, limit));
-    }
     const data = await graphqlRequest<{ recentListings: ApiListing[] }>(
-      `query RecentListings($limit: Int!) { recentListings(limit: $limit) { ${LISTING_FIELDS} } }`,
-      { limit },
+      `query RecentListings($limit: Int!, $countryCode: String) {
+        recentListings(limit: $limit, countryCode: $countryCode) { ${LISTING_FIELDS} }
+      }`,
+      { limit, countryCode: countryCode || null },
     );
     return data.recentListings.map(mapListing);
   },
@@ -148,6 +144,7 @@ export const listingService = {
             district: location.district,
             sort: "newest",
           },
+      Math.max(1, Math.min(limit, 50)),
     );
     return listings.slice(0, Math.max(1, limit));
   },
