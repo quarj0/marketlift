@@ -65,10 +65,10 @@ function RegisterForm() {
           <CheckCircle2 className="size-4 text-brand-700" />
           No identity document required to browse
         </span> */}
-        <span className="flex items-center gap-2 font-semibold">
+        {/* <span className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-4 text-brand-700" />
           {t('auth.register.browse')}
-        </span>
+        </span> */}
       </div>
 
       <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
