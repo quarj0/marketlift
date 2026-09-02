@@ -12,7 +12,7 @@ import type { SendMessagePayload } from '@/types';
 const CONVERSATION_FIELDS = `
   id
   participant { id name avatarUrl verifiedSeller isSeller }
-  listing { id slug title price primaryImage status deleted }
+  listing { id slug title price primaryImage status deleted countryCode state stateCode city district }
   lastMessage
   lastMessageAt
   unread

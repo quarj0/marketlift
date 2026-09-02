@@ -1,11 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Grid2X2, List, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BellRing,
+  CheckCircle2,
+  Grid2X2,
+  List,
+  RotateCcw,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { listingService } from "@/services/listing.service";
+import { savedSearchService } from "@/services/saved-search.service";
 import { brazilLocations, brazilRegions } from "@/data/brazil-locations";
 import { locationService } from "@/services/location.service";
 import { categoryService } from "@/services/category.service";
@@ -19,11 +29,47 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/providers/locale-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { useMarket } from "@/providers/market-provider";
 import type { ListingCondition, SearchFilters, SellerType } from "@/types";
 
 const toNum = (value: string | null) =>
   value && !Number.isNaN(Number(value)) ? Number(value) : undefined;
+
+function alertCriteria(filters: SearchFilters) {
+  const criteria: Record<string, unknown> = {
+    q: filters.q,
+    category: filters.category,
+    countryCode: filters.countryCode,
+    state: filters.state,
+    city: filters.city,
+    district: filters.district,
+    latitude: filters.latitude,
+    longitude: filters.longitude,
+    radiusKm: filters.radiusKm,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    condition: filters.condition,
+    sellerType: filters.sellerType,
+    verifiedOnly: filters.verifiedOnly || undefined,
+    dateListed: filters.dateListed,
+  };
+  return Object.fromEntries(
+    Object.entries(criteria).filter(
+      ([, value]) =>
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        value !== false,
+    ),
+  );
+}
+
+function hasAlertableCriteria(filters: SearchFilters) {
+  return Object.keys(alertCriteria(filters)).some(
+    (key) => key !== "countryCode",
+  );
+}
 
 function useFilters(): SearchFilters {
   const params = useSearchParams();
@@ -71,8 +117,10 @@ export function SearchResultsClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const filters = useFilters();
   const { t, categoryName, locale } = useLocale();
+  const { user } = useAuth();
   const { market } = useMarket();
   const isBrazil = market.code === "BR";
   const [mobileFilters, setMobileFilters] = useState(false);
@@ -117,6 +165,20 @@ export function SearchResultsClient() {
   } = useQuery({
     queryKey: ["listings", market.code, filters],
     queryFn: () => listingService.getListings(filters),
+  });
+
+  const saveAlert = useMutation({
+    mutationFn: () =>
+      savedSearchService.create({
+        name:
+          filters.q?.trim() ||
+          `Search in ${filters.city || market.countryName}`,
+        criteria: alertCriteria(filters),
+        alertsEnabled: true,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["saved-searches"] });
+    },
   });
 
   const selectedState = isBrazil
@@ -223,6 +285,12 @@ export function SearchResultsClient() {
     count,
     location: locationLabel,
   });
+
+  const currentSearchHref = `${pathname}${
+    searchParams.toString() ? `?${searchParams.toString()}` : ""
+  }`;
+  const alertable = hasAlertableCriteria(filters);
+  const portuguese = locale === "pt-BR";
 
   const panel = (
     <div className="space-y-5">
@@ -678,9 +746,96 @@ export function SearchResultsClient() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border bg-white p-10 text-center">
+            <div className="rounded-2xl border bg-white p-8 text-center sm:p-10">
               <h2 className="text-xl font-bold">{t("search.noResults")}</h2>
               <p className="mt-2 text-slate-500">{t("search.noResultsBody")}</p>
+
+              {alertable && (
+                <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-brand-100 bg-brand-50 p-5 text-left">
+                  <div className="flex gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-brand-700 shadow-sm">
+                      {saveAlert.isSuccess ? (
+                        <CheckCircle2 className="size-5" />
+                      ) : (
+                        <BellRing className="size-5" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-black text-brand-950">
+                        {saveAlert.isSuccess
+                          ? portuguese
+                            ? "Alerta salvo"
+                            : "Alert saved"
+                          : portuguese
+                            ? "Quer saber quando aparecer?"
+                            : "Want to know when it appears?"}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-brand-900/80">
+                        {saveAlert.isSuccess
+                          ? portuguese
+                            ? "Avisaremos quando um novo anúncio corresponder a esta busca."
+                            : "We’ll notify you when a new listing matches this search."
+                          : portuguese
+                            ? "Salve esta busca e o Marketlift avisará quando um novo anúncio corresponder aos mesmos termos e filtros."
+                            : "Save this search and Marketlift will notify you when a new listing matches the same terms and filters."}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {user ? (
+                          <Button
+                            type="button"
+                            disabled={
+                              saveAlert.isPending || saveAlert.isSuccess
+                            }
+                            onClick={() => saveAlert.mutate()}
+                          >
+                            <BellRing className="size-4" />
+                            {saveAlert.isSuccess
+                              ? portuguese
+                                ? "Alerta ativo"
+                                : "Alert active"
+                              : saveAlert.isPending
+                                ? portuguese
+                                  ? "Salvando…"
+                                  : "Saving…"
+                                : portuguese
+                                  ? "Avise-me"
+                                  : "Notify me"}
+                          </Button>
+                        ) : (
+                          <>
+                            <Button asChild>
+                              <Link
+                                href={`/register?returnTo=${encodeURIComponent(currentSearchHref)}`}
+                              >
+                                {portuguese
+                                  ? "Criar conta para receber alertas"
+                                  : "Create account for alerts"}
+                              </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                              <Link
+                                href={`/login?returnTo=${encodeURIComponent(currentSearchHref)}`}
+                              >
+                                {portuguese ? "Entrar" : "Sign in"}
+                              </Link>
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {saveAlert.isError && (
+                        <p className="mt-3 text-xs font-semibold text-rose-700">
+                          {portuguese
+                            ? "Não foi possível salvar o alerta. Tente novamente."
+                            : "Couldn’t save the alert. Please try again."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Button variant="outline" className="mt-5" onClick={clear}>
                 {t("search.clearFilters")}
               </Button>

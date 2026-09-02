@@ -33,6 +33,7 @@ import {
 } from "@/components/feedback/async-states";
 import { ReportDialog } from "@/components/feedback/report-dialog";
 import { messagingService } from "@/services/messaging.service";
+import { SafeMeetupSuggestions } from "@/components/messaging/safe-meetup-suggestions";
 import {
   formatConversationTimestamp,
   formatMessageTimestamp,
@@ -402,6 +403,10 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
               />
               {t("messages.safety")}
             </div>
+
+            {current.listing && (
+              <SafeMeetupSuggestions location={current.listing.location} />
+            )}
 
             {/* Messages */}
             <div

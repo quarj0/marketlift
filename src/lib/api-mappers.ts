@@ -144,6 +144,11 @@ export type ApiConversation = {
     price?: number | null;
     primaryImage?: string | null;
     deleted?: boolean;
+    countryCode?: string | null;
+    state?: string | null;
+    stateCode?: string | null;
+    city?: string | null;
+    district?: string | null;
   } | null;
   lastMessage?: string | null;
   lastMessageAt?: string | null;
@@ -474,7 +479,13 @@ export function mapConversation(raw: ApiConversation): Conversation {
             description: "",
             price: Number(raw.listing.price ?? 0),
             category: "",
-            location: { state: "", stateCode: "", city: "" },
+            location: {
+              countryCode: raw.listing.countryCode || undefined,
+              state: raw.listing.state || "",
+              stateCode: raw.listing.stateCode || "",
+              city: raw.listing.city || "",
+              district: raw.listing.district || undefined,
+            },
             images: mapMediaUrls([raw.listing.primaryImage]),
             sellerId: "",
             createdAt: raw.lastMessageAt || new Date(0).toISOString(),
