@@ -2,7 +2,7 @@ export type MarketliftApp = "marketplace" | "admin";
 
 const productionOrigins: Record<MarketliftApp, string> = {
   marketplace: "https://marketlift.com",
-  admin: "https://admin.marketlift.com",
+  admin: "https://dash.marketlift.com.br",
 };
 
 const localPorts: Record<MarketliftApp, string> = {
@@ -64,7 +64,10 @@ export function appBaseUrlForBrowser(app: MarketliftApp) {
           configuredUrl.hostname === window.location.hostname;
 
         // A non-local explicit override (for example a staging domain) still wins.
-        if (!looksLocal) return stripTrailingSlash(configuredUrl.origin + configuredUrl.pathname);
+        if (!looksLocal)
+          return stripTrailingSlash(
+            configuredUrl.origin + configuredUrl.pathname,
+          );
       } catch {
         // Invalid overrides fall through to the safe local peer origin.
       }
