@@ -1,7 +1,7 @@
 export type MarketliftApp = "marketplace" | "admin";
 
 const productionOrigins: Record<MarketliftApp, string> = {
-  marketplace: "https://marketlift.com",
+  marketplace: "https://marketlift.com.br",
   admin: "https://dash.marketlift.com.br",
 };
 
