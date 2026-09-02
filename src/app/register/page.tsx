@@ -61,10 +61,10 @@ function RegisterForm() {
   return (
     <AuthShell title={t('auth.register.title')} subtitle={t('auth.register.subtitle')}>
       <div className="mb-5 grid gap-2 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-950 sm:grid-cols-2">
-        <span className="flex items-center gap-2 font-semibold">
+        {/* <span className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-4 text-brand-700" />
           No identity document required to browse
-        </span>
+        </span> */}
         <span className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-4 text-brand-700" />
           {t('auth.register.browse')}
