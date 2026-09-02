@@ -1,7 +1,14 @@
+import type { Metadata } from 'next';
 import type { LucideIcon } from 'lucide-react';
 import { AlertTriangle, Handshake, MapPin, MessageCircle, ShieldCheck } from 'lucide-react';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { T } from '@/components/i18n/t';
+
+export const metadata: Metadata = {
+  title: 'Marketplace Safety',
+  description: 'Learn how to buy, sell, meet and communicate safely on Marketlift Brazil.',
+  alternates: { canonical: '/safety' },
+};
 
 const tips: Array<{ icon: LucideIcon; title: string; body: string }> = [
   { icon: MapPin, title: 'safety.tip.meet', body: 'safety.tip.meetBody' },

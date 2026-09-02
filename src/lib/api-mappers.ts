@@ -74,11 +74,13 @@ export type ApiCategory = {
   id: string;
   name: string;
   icon?: string | null;
+  imageUrl?: string | null;
   active?: boolean | null;
   subcategories?: Array<{
     id: string;
     name: string;
     icon?: string | null;
+    imageUrl?: string | null;
     active?: boolean | null;
   }> | null;
   schemaVersion?: number | null;
@@ -359,6 +361,7 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
     id: raw.id,
     name: raw.name,
     icon: raw.icon || "Tag",
+    imageUrl: raw.imageUrl ? resolveApiUrl(raw.imageUrl) : undefined,
     schemaVersion: Number(raw.schemaVersion || 1),
     description: raw.description || "",
     active: raw.active !== false,
@@ -368,6 +371,7 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
         id: sub.id,
         name: sub.name,
         icon: sub.icon || "Tag",
+        imageUrl: sub.imageUrl ? resolveApiUrl(sub.imageUrl) : undefined,
         active: sub.active !== false,
         subcategories: [],
       })),

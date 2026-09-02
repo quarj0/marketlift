@@ -123,6 +123,7 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
+  imageUrl?: string;
   active?: boolean;
   subcategories?: Category[];
 }
