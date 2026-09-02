@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { T } from '@/components/i18n/t';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'Read how Marketlift handles personal information and privacy controls.',
+  alternates: { canonical: '/privacy' },
+};
 
 const sections = [
   ['privacy.collect', 'privacy.collectBody'],

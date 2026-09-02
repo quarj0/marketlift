@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { T } from '@/components/i18n/t';
+
+export const metadata: Metadata = {
+  title: 'Terms of Use',
+  description: 'Read the terms for using the Marketlift Brazil marketplace.',
+  alternates: { canonical: '/terms' },
+};
 
 const sections = [
   ['terms.using', 'terms.usingBody'],

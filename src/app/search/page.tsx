@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { SearchResultsClient } from "@/components/search/search-results-client";
+
+export const metadata: Metadata = {
+  title: "Products for Sale Across Brazil",
+  description:
+    "Search cars, phones, electronics, fashion, property and more from local sellers across Brazil on Marketlift.",
+  alternates: { canonical: "/search" },
+};
 
 export default function SearchPage() {
   return (

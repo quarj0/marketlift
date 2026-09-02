@@ -19,7 +19,8 @@ export function CategoryNav() {
     staleTime: 5 * 60_000,
   });
   const categories = query.data ?? [];
-  const primary = categories.slice(0, 8);
+  const primary = categories.slice(0, 5);
+  const overflow = categories.slice(5);
 
   return (
     <div className="hidden border-t bg-white lg:block">
@@ -90,7 +91,7 @@ export function CategoryNav() {
           )}
         </div>
 
-        {primary.map((category, index) => {
+        {primary.map((category) => {
           const children = (category.subcategories ?? []).filter(
             (item) => item.active !== false,
           );
@@ -98,13 +99,7 @@ export function CategoryNav() {
           return (
             <div
               key={category.id}
-              className={`group relative shrink-0 ${
-                index >= 6
-                  ? "hidden 2xl:block"
-                  : index >= 4
-                    ? "hidden xl:block"
-                    : ""
-              }`}
+              className="group relative shrink-0"
             >
               <Link
                 href={`/search?category=${category.id}`}
@@ -147,12 +142,47 @@ export function CategoryNav() {
           );
         })}
 
-        <Link
-          href="/search"
-          className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
-        >
-          {t("categories.more")}
-        </Link>
+        {overflow.length > 0 && (
+          <div className="group relative ml-auto shrink-0">
+            <button
+              type="button"
+              aria-haspopup="menu"
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              {t("categories.more")}
+              <ChevronDown className="size-3.5" />
+            </button>
+
+            <div
+              role="menu"
+              className="invisible absolute right-0 top-full z-50 max-h-[70vh] min-w-72 translate-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 opacity-0 shadow-xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+            >
+              {overflow.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/search?category=${category.id}`}
+                  role="menuitem"
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className={`grid size-8 shrink-0 place-items-center rounded-lg ${resolveCategoryVisual(category).tone}`}
+                    >
+                      <CategoryIcon
+                        category={category}
+                        className="size-4"
+                      />
+                    </span>
+                    <span className="truncate">
+                      {categoryName(category.id, category.name)}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-3.5 shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,11 +14,11 @@ import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 
 const siteDescription =
-  "Discover local deals, trusted sellers and marketplace listings across supported countries.";
+  "Marketlift is Brazil's online marketplace to buy and sell cars, phones, electronics, fashion, property and everyday items from local sellers.";
 
 export const metadata: Metadata = {
   title: {
-    default: "Marketlift — Buy & Sell Locally",
+    default: "Marketlift Brazil — Buy & Sell Online",
     template: "%s | Marketlift",
   },
   description: siteDescription,
@@ -53,7 +53,9 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Marketlift",
-    title: "Marketlift — Buy & Sell Locally",
+    locale: "pt_BR",
+    alternateLocale: ["en_US"],
+    title: "Marketlift Brazil — Buy & Sell Online",
     description: siteDescription,
     images: [
       {
@@ -72,7 +74,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Marketlift — Buy & Sell Locally",
+    title: "Marketlift Brazil — Buy & Sell Online",
     description: siteDescription,
     images: [
       {

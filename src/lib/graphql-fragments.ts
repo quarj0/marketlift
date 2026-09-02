@@ -48,6 +48,7 @@ export const CATEGORY_FIELDS = `
   id
   name
   icon
+  imageUrl
   active
   schemaVersion
   description
@@ -57,5 +58,5 @@ export const CATEGORY_FIELDS = `
     id label type required filterable allowCustomValue placeholder helpText unit min max step
     options { value label }
   }
-  subcategories { id name icon active }
+  subcategories { id name icon imageUrl active }
 `;
