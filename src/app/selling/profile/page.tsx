@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +7,7 @@ import { BadgeCheck, Camera, Eye, Loader2 } from "lucide-react";
 
 import { LocationFields } from "@/components/location/location-fields";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
+import { SellerAvatar } from "@/components/seller/seller-avatar";
 import { SellingSidebar } from "@/components/selling/selling-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,11 +155,9 @@ export default function SellingProfilePage() {
                 <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                     <div className="relative w-fit">
-                      <Image
-                        src={profile.avatar || "/images/avatar-placeholder.svg"}
+                      <SellerAvatar
+                        src={profile.avatar}
                         alt={t("selling.profile.avatar")}
-                        width={96}
-                        height={96}
                         className="size-24 rounded-3xl object-cover"
                       />
                       <label className="absolute -bottom-2 -right-2 grid size-11 cursor-pointer place-items-center rounded-full border bg-white shadow focus-within:ring-2 focus-within:ring-brand-500">

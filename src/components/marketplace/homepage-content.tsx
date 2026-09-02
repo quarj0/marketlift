@@ -195,7 +195,7 @@ function CategoryGrid({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         {Array.from({ length: 13 }).map((_, index) => (
           <div
             key={index}
@@ -207,7 +207,7 @@ function CategoryGrid({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
       {categories?.map((category) => {
         const semantic = resolveCategoryVisual(category);
         const ExplicitIcon = icons[category.icon as keyof typeof icons];
@@ -221,7 +221,7 @@ function CategoryGrid({
           <Link
             key={category.id}
             href={`/search?category=${category.id}`}
-            className="group flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border bg-white p-3 text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="group flex min-h-32 min-w-0 flex-col items-center justify-center gap-3 rounded-2xl border bg-white p-4 text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
             <span
               className={`grid size-12 place-items-center rounded-xl transition group-hover:scale-105 ${tone}`}
@@ -229,11 +229,11 @@ function CategoryGrid({
               <Icon className="size-6" aria-hidden />
             </span>
 
-            <span className="text-xs font-bold text-slate-800 sm:text-sm">
+            <span className="line-clamp-2 text-sm font-bold leading-5 text-slate-800">
               {categoryName(category.id, category.name)}
             </span>
             {category.subcategories?.length ? (
-              <span className="line-clamp-2 text-[10px] leading-4 text-slate-500">
+              <span className="hidden text-[10px] leading-4 text-slate-500 2xl:line-clamp-2">
                 {category.subcategories
                   .slice(0, 3)
                   .map((sub) => categoryName(sub.id, sub.name))

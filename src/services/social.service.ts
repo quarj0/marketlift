@@ -94,23 +94,52 @@ export const socialService = {
   },
 
   async getSellerProfile(id: string) {
-    const data = await graphqlRequest<{
-      seller: ApiSeller | null;
-      listings: ApiListing[];
-      sellerReviews: ApiReview[];
-    }>(`
-      query SellerProfile($id: ID!, $sellerId: ID!) {
+    const sellerData = await graphqlRequest<{ seller: ApiSeller | null }>(
+      `query SellerProfileSeller($id: ID!) {
         seller(id: $id) { ${SELLER_FIELDS} }
-        listings(filters: { sellerId: $sellerId }, limit: 100) { ${LISTING_FIELDS} }
-        sellerReviews(sellerId: $id, limit: 100) { ${REVIEW_FIELDS} }
-      }
-    `, { id, sellerId: id });
+      }`,
+      { id },
+    );
 
-    if (!data.seller) return null;
+    if (!sellerData.seller) return null;
+
+    const [listingsResult, reviewsResult] = await Promise.allSettled([
+      graphqlRequest<{ listings: ApiListing[] }>(
+        `query SellerProfileListings($sellerId: ID!) {
+          listings(filters: { sellerId: $sellerId }, limit: 100) {
+            ${LISTING_FIELDS}
+          }
+        }`,
+        { sellerId: id },
+      ),
+      graphqlRequest<{ sellerReviews: ApiReview[] }>(
+        `query SellerProfileReviews($id: ID!) {
+          sellerReviews(sellerId: $id, limit: 100) { ${REVIEW_FIELDS} }
+        }`,
+        { id },
+      ),
+    ]);
+
+    const listings =
+      listingsResult.status === 'fulfilled'
+        ? (listingsResult.value.listings || []).map(mapListing)
+        : [];
+    const reviews =
+      reviewsResult.status === 'fulfilled'
+        ? (reviewsResult.value.sellerReviews || []).map(mapReview)
+        : [];
+
+    if (listingsResult.status === 'rejected') {
+      console.error('Seller listings failed to load', listingsResult.reason);
+    }
+    if (reviewsResult.status === 'rejected') {
+      console.error('Seller reviews failed to load', reviewsResult.reason);
+    }
+
     return {
-      seller: mapSeller(data.seller),
-      listings: (data.listings || []).map(mapListing),
-      reviews: (data.sellerReviews || []).map(mapReview),
+      seller: mapSeller(sellerData.seller),
+      listings,
+      reviews,
     };
   },
 

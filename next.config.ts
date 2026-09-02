@@ -25,9 +25,15 @@ const defaultApiOrigin =
   process.env.NODE_ENV === "production"
     ? "https://api.marketlift.com.br"
     : "http://localhost:8000";
+const defaultMediaOrigin =
+  process.env.NODE_ENV === "production"
+    ? "https://assets.marketlift.com.br"
+    : undefined;
 const imageOrigins = [
   remotePattern(process.env.NEXT_PUBLIC_MARKETLIFT_API_URL || defaultApiOrigin),
-  remotePattern(process.env.NEXT_PUBLIC_MARKETLIFT_MEDIA_ORIGIN),
+  remotePattern(
+    process.env.NEXT_PUBLIC_MARKETLIFT_MEDIA_ORIGIN || defaultMediaOrigin,
+  ),
 ].filter((pattern): pattern is RemotePattern => pattern !== null);
 
 const nextConfig: NextConfig = {
