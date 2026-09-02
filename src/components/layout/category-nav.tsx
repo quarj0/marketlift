@@ -35,7 +35,7 @@ export function CategoryNav() {
           </Link>
 
           {categories.length > 0 && (
-            <div className="invisible absolute left-0 top-full z-50 w-190 translate-y-1 rounded-2xl border border-slate-200 bg-white p-4 opacity-0 shadow-2xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+            <div className="invisible absolute left-0 top-full z-50 w-190 max-w-[calc(100vw-4rem)] translate-y-1 rounded-2xl border border-slate-200 bg-white p-4 opacity-0 shadow-2xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
               <div className="grid grid-cols-3 gap-3">
                 {categories.map((category) => {
                   const children = (category.subcategories ?? []).filter(
@@ -54,7 +54,10 @@ export function CategoryNav() {
                           <span
                             className={`grid size-8 shrink-0 place-items-center rounded-lg ${resolveCategoryVisual(category).tone}`}
                           >
-                            <CategoryIcon category={category} className="size-4" />
+                            <CategoryIcon
+                              category={category}
+                              className="size-4"
+                            />
                           </span>
                           <span className="truncate">
                             {categoryName(category.id, category.name)}
@@ -70,7 +73,10 @@ export function CategoryNav() {
                               href={`/search?category=${sub.id}`}
                               className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs text-slate-500 hover:bg-brand-50 hover:text-brand-700"
                             >
-                              <CategoryIcon category={sub} className="size-3.5 shrink-0" />
+                              <CategoryIcon
+                                category={sub}
+                                className="size-3.5 shrink-0"
+                              />
                               <span>{categoryName(sub.id, sub.name)}</span>
                             </Link>
                           ))}
@@ -84,18 +90,30 @@ export function CategoryNav() {
           )}
         </div>
 
-        {primary.map((category) => {
+        {primary.map((category, index) => {
           const children = (category.subcategories ?? []).filter(
             (item) => item.active !== false,
           );
 
           return (
-            <div key={category.id} className="group relative shrink-0">
+            <div
+              key={category.id}
+              className={`group relative shrink-0 ${
+                index >= 6
+                  ? "hidden 2xl:block"
+                  : index >= 4
+                    ? "hidden xl:block"
+                    : ""
+              }`}
+            >
               <Link
                 href={`/search?category=${category.id}`}
                 className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-700"
               >
-                <CategoryIcon category={category} className="size-3.5 shrink-0" />
+                <CategoryIcon
+                  category={category}
+                  className="size-3.5 shrink-0"
+                />
                 {categoryName(category.id, category.name)}
                 {children.length > 0 && <ChevronDown className="size-3.5" />}
               </Link>
@@ -116,7 +134,10 @@ export function CategoryNav() {
                       href={`/search?category=${sub.id}`}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
                     >
-                      <CategoryIcon category={sub} className="size-4 shrink-0" />
+                      <CategoryIcon
+                        category={sub}
+                        className="size-4 shrink-0"
+                      />
                       <span>{categoryName(sub.id, sub.name)}</span>
                     </Link>
                   ))}
