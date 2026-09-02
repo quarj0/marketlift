@@ -1,4 +1,4 @@
-import { resolveApiUrl } from '@/lib/api-client';
+import { resolveApiUrl } from "@/lib/api-client";
 import type {
   AccountProfile,
   AccountReview,
@@ -15,19 +15,31 @@ import type {
   SellerPlan,
   User,
   VerificationSubmission,
-} from '@/types';
+} from "@/types";
 
-const LISTING_IMAGE_PLACEHOLDER = '/images/listing-placeholder.svg';
-const AVATAR_PLACEHOLDER = '/images/avatar-placeholder.svg';
+const LISTING_IMAGE_PLACEHOLDER = "/images/listing-placeholder.svg";
+const AVATAR_PLACEHOLDER = "/images/avatar-placeholder.svg";
 
-function mapMediaUrls(urls: Array<string | null | undefined> | null | undefined) {
+function mapMediaUrls(
+  urls: Array<string | null | undefined> | null | undefined,
+) {
   const mapped = (urls || [])
-    .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
+    .filter(
+      (url): url is string => typeof url === "string" && url.trim().length > 0,
+    )
     .map((url) => resolveApiUrl(url.trim()));
   return mapped.length ? mapped : [LISTING_IMAGE_PLACEHOLDER];
 }
 
-export type ApiLocation = { countryCode?: string | null; state: string; stateCode: string; city: string; district?: string | null; latitude?: number | null; longitude?: number | null };
+export type ApiLocation = {
+  countryCode?: string | null;
+  state: string;
+  stateCode: string;
+  city: string;
+  district?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+};
 
 export type ApiUser = {
   id: string;
@@ -45,7 +57,7 @@ export type ApiUser = {
 export type ApiCategoryField = {
   id: string;
   label: string;
-  type: CategoryConfiguration['fields'][number]['type'];
+  type: CategoryConfiguration["fields"][number]["type"];
   required?: boolean;
   filterable?: boolean;
   allowCustomValue?: boolean;
@@ -55,13 +67,20 @@ export type ApiCategoryField = {
   min?: number | null;
   max?: number | null;
   step?: number | null;
-  options?: CategoryConfiguration['fields'][number]['options'];
+  options?: CategoryConfiguration["fields"][number]["options"];
 };
 
 export type ApiCategory = {
   id: string;
   name: string;
   icon?: string | null;
+  active?: boolean | null;
+  subcategories?: Array<{
+    id: string;
+    name: string;
+    icon?: string | null;
+    active?: boolean | null;
+  }> | null;
   schemaVersion?: number | null;
   description?: string | null;
   pricing?: {
@@ -101,7 +120,7 @@ export type ApiReview = {
 
 export type ApiNotification = {
   id: string;
-  type: NotificationItem['type'];
+  type: NotificationItem["type"];
   title: string;
   body: string;
   createdAt: string;
@@ -175,7 +194,7 @@ export type ApiSellerPlan = {
 };
 
 export type ApiPromotion = {
-  id: PromotionOption['id'];
+  id: PromotionOption["id"];
   name: string;
   description: string;
   countryCode?: string;
@@ -186,17 +205,17 @@ export type ApiPromotion = {
 
 export type ApiPayment = {
   id: string;
-  purpose: Payment['purpose'];
+  purpose: Payment["purpose"];
   amount?: number;
   currency?: string | null;
   provider?: string | null;
-  method: Payment['method'];
-  status: Payment['status'] | 'refunded';
+  method: Payment["method"];
+  status: Payment["status"] | "refunded";
   createdAt: string;
   reference: string;
   checkoutData?: Record<string, string> | null;
   planId?: string | null;
-  billingCycle?: Payment['billingCycle'] | null;
+  billingCycle?: Payment["billingCycle"] | null;
   listingId?: string | null;
   promotionId?: string | null;
 };
@@ -208,7 +227,7 @@ export type ApiSeller = {
   avatarUrl?: string | null;
   phone?: string | null;
   verified: boolean;
-  sellerType: 'individual' | 'business' | string;
+  sellerType: "individual" | "business" | string;
   isSuspended?: boolean;
   rating: number;
   reviews: number;
@@ -264,10 +283,12 @@ export function mapSeller(raw: ApiSeller): Seller {
     id: String(raw.id),
     countryCode: raw.countryCode || raw.location?.countryCode || undefined,
     name: raw.name,
-    avatar: raw.avatarUrl?.trim() ? resolveApiUrl(raw.avatarUrl.trim()) : AVATAR_PLACEHOLDER,
+    avatar: raw.avatarUrl?.trim()
+      ? resolveApiUrl(raw.avatarUrl.trim())
+      : AVATAR_PLACEHOLDER,
     phone: raw.phone?.trim() || undefined,
     verified: Boolean(raw.verified),
-    type: raw.sellerType === 'business' ? 'business' : 'individual',
+    type: raw.sellerType === "business" ? "business" : "individual",
     rating: Number(raw.rating || 0),
     reviews: Number(raw.reviews || 0),
     activeListings: Number(raw.activeListings || 0),
@@ -275,9 +296,9 @@ export function mapSeller(raw: ApiSeller): Seller {
     responseRate: Number(raw.responseRate || 0),
     location: {
       countryCode: raw.location?.countryCode || undefined,
-      state: raw.location?.state || '',
-      stateCode: raw.location?.stateCode || '',
-      city: raw.location?.city || '',
+      state: raw.location?.state || "",
+      stateCode: raw.location?.stateCode || "",
+      city: raw.location?.city || "",
       district: raw.location?.district || undefined,
     },
   };
@@ -288,19 +309,19 @@ export function mapListing(raw: ApiListing): Listing {
     id: String(raw.id),
     slug: raw.slug,
     title: raw.title,
-    description: raw.description || '',
+    description: raw.description || "",
     price: Number(raw.price ?? 0),
     category: raw.category,
-    condition: (raw.condition || undefined) as Listing['condition'],
+    condition: (raw.condition || undefined) as Listing["condition"],
     location: {
       countryCode: raw.location?.countryCode || undefined,
-      state: raw.location?.state || '',
-      stateCode: raw.location?.stateCode || '',
-      city: raw.location?.city || '',
+      state: raw.location?.state || "",
+      stateCode: raw.location?.stateCode || "",
+      city: raw.location?.city || "",
       district: raw.location?.district || undefined,
     },
     images: mapMediaUrls(raw.images),
-    sellerId: String(raw.seller?.id || ''),
+    sellerId: String(raw.seller?.id || ""),
     createdAt: raw.createdAt,
     views: Number(raw.views || 0),
     featured: Boolean(raw.featured),
@@ -309,7 +330,9 @@ export function mapListing(raw: ApiListing): Listing {
     attributes: raw.attributes || undefined,
     specifications: raw.attributes
       ? Object.fromEntries(
-          Object.entries(raw.attributes).filter(([, value]) => typeof value !== 'boolean') as Array<[string, string | number]>,
+          Object.entries(raw.attributes).filter(
+            ([, value]) => typeof value !== "boolean",
+          ) as Array<[string, string | number]>,
         )
       : undefined,
     categorySchemaVersion: raw.categorySchemaVersion,
@@ -319,7 +342,7 @@ export function mapListing(raw: ApiListing): Listing {
 export function mapSellerListing(raw: ApiListing): SellerListing {
   return {
     ...mapListing(raw),
-    status: raw.status as SellerListing['status'],
+    status: raw.status as SellerListing["status"],
     inquiries: Number(raw.inquiries || 0),
     favorites: Number(raw.favorites || 0),
   };
@@ -329,12 +352,22 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
   return {
     id: raw.id,
     name: raw.name,
-    icon: raw.icon || 'Tag',
+    icon: raw.icon || "Tag",
     schemaVersion: Number(raw.schemaVersion || 1),
-    description: raw.description || '',
+    description: raw.description || "",
+    active: raw.active !== false,
+    subcategories: (raw.subcategories || [])
+      .filter((sub) => sub.active !== false)
+      .map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+        icon: sub.icon || "Tag",
+        active: sub.active !== false,
+        subcategories: [],
+      })),
     pricing: {
-      mode: raw.pricing?.mode === 'optional' ? 'optional' : 'required',
-      label: raw.pricing?.label || 'Price',
+      mode: raw.pricing?.mode === "optional" ? "optional" : "required",
+      label: raw.pricing?.label || "Price",
       placeholder: raw.pricing?.placeholder || undefined,
     },
     condition: {
@@ -364,14 +397,14 @@ export function mapAccountProfile(raw: ApiAccountProfile): AccountProfile {
     id: String(raw.id),
     fullName: raw.name,
     email: raw.email,
-    phone: raw.phone || '',
+    phone: raw.phone || "",
     avatar: raw.avatarUrl ? resolveApiUrl(raw.avatarUrl) : undefined,
     bio: raw.bio || undefined,
     location: {
       countryCode: raw.location?.countryCode || undefined,
-      state: raw.location?.state || '',
-      stateCode: raw.location?.stateCode || '',
-      city: raw.location?.city || '',
+      state: raw.location?.state || "",
+      stateCode: raw.location?.stateCode || "",
+      city: raw.location?.city || "",
       district: raw.location?.district || undefined,
     },
     memberSince: raw.memberSince,
@@ -386,7 +419,7 @@ export function mapReview(raw: ApiReview): Review {
     sellerId: String(raw.sellerId),
     reviewerName: raw.reviewerName,
     rating: Number(raw.rating),
-    comment: raw.comment || '',
+    comment: raw.comment || "",
     date: raw.date,
     sellerReply: raw.sellerReply || undefined,
   };
@@ -395,7 +428,7 @@ export function mapReview(raw: ApiReview): Review {
 export function mapAccountReview(raw: ApiReview): AccountReview {
   return {
     ...mapReview(raw),
-    sellerName: raw.sellerName || '',
+    sellerName: raw.sellerName || "",
     sellerAvatar: raw.sellerAvatar || undefined,
     listingTitle: raw.listingTitle || undefined,
   };
@@ -419,33 +452,36 @@ export function mapConversation(raw: ApiConversation): Conversation {
     participant: {
       id: String(raw.participant.id),
       name: raw.participant.name,
-      avatar: raw.participant.avatarUrl?.trim() ? resolveApiUrl(raw.participant.avatarUrl.trim()) : AVATAR_PLACEHOLDER,
+      avatar: raw.participant.avatarUrl?.trim()
+        ? resolveApiUrl(raw.participant.avatarUrl.trim())
+        : AVATAR_PLACEHOLDER,
       verified: Boolean(raw.participant.verifiedSeller),
-      type: raw.participant.isSeller ? 'business' : 'individual',
+      type: raw.participant.isSeller ? "business" : "individual",
       rating: 0,
       reviews: 0,
       activeListings: 0,
-      memberSince: '',
+      memberSince: "",
       responseRate: 0,
-      location: { state: '', stateCode: '', city: '' },
+      location: { state: "", stateCode: "", city: "" },
     },
-    listing: raw.listing && !raw.listing.deleted && raw.listing.id && raw.listing.slug
-      ? {
-          id: String(raw.listing.id),
-          slug: raw.listing.slug,
-          title: raw.listing.title,
-          description: '',
-          price: Number(raw.listing.price ?? 0),
-          category: '',
-          location: { state: '', stateCode: '', city: '' },
-          images: mapMediaUrls([raw.listing.primaryImage]),
-          sellerId: '',
-          createdAt: raw.lastMessageAt || new Date(0).toISOString(),
-          views: 0,
-        }
-      : undefined,
-    lastMessage: raw.lastMessage || '',
-    lastMessageAt: raw.lastMessageAt || '',
+    listing:
+      raw.listing && !raw.listing.deleted && raw.listing.id && raw.listing.slug
+        ? {
+            id: String(raw.listing.id),
+            slug: raw.listing.slug,
+            title: raw.listing.title,
+            description: "",
+            price: Number(raw.listing.price ?? 0),
+            category: "",
+            location: { state: "", stateCode: "", city: "" },
+            images: mapMediaUrls([raw.listing.primaryImage]),
+            sellerId: "",
+            createdAt: raw.lastMessageAt || new Date(0).toISOString(),
+            views: 0,
+          }
+        : undefined,
+    lastMessage: raw.lastMessage || "",
+    lastMessageAt: raw.lastMessageAt || "",
     unread: Number(raw.unread || 0),
   };
 }
@@ -454,13 +490,13 @@ export function mapMessage(raw: ApiMessage): Message {
   return {
     id: String(raw.id),
     conversationId: String(raw.conversationId),
-    sender: raw.sender === 'me' ? 'me' : 'seller',
-    text: raw.text || '',
+    sender: raw.sender === "me" ? "me" : "seller",
+    text: raw.text || "",
     createdAt: raw.createdAt,
     read: Boolean(raw.read),
     attachment: raw.attachment
       ? {
-          type: 'image',
+          type: "image",
           url: resolveApiUrl(raw.attachment.url),
           name: raw.attachment.name,
           mimeType: raw.attachment.mimeType,
@@ -475,11 +511,16 @@ export function mapVerification(raw: ApiVerification): VerificationSubmission {
     id: String(raw.id),
     countryCode: raw.identityCountryCode || undefined,
     identityType: raw.identityType || undefined,
-    identityMasked: raw.identityMasked || raw.cpfMasked || '',
+    identityMasked: raw.identityMasked || raw.cpfMasked || "",
     cpfMasked: raw.cpfMasked || undefined,
     fullName: raw.legalName,
     birthDate: raw.birthDate,
-    status: raw.status === 'verified' ? 'verified' : raw.status === 'rejected' ? 'rejected' : 'pending',
+    status:
+      raw.status === "verified"
+        ? "verified"
+        : raw.status === "rejected"
+          ? "rejected"
+          : "pending",
     submittedAt: raw.submittedAt,
     providerResult: raw.providerResult || undefined,
     riskFlags: raw.riskFlags || [],
@@ -522,7 +563,7 @@ export function mapPayment(raw: ApiPayment): Payment {
     currency: raw.currency || undefined,
     provider: raw.provider || undefined,
     method: raw.method,
-    status: raw.status === 'refunded' ? 'cancelled' : raw.status,
+    status: raw.status === "refunded" ? "cancelled" : raw.status,
     createdAt: raw.createdAt,
     reference: raw.reference,
     checkoutData: raw.checkoutData || {},

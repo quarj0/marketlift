@@ -121,6 +121,8 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
+  active?: boolean;
+  subcategories?: Category[];
 }
 
 export interface SearchFilters {
@@ -215,7 +217,14 @@ export interface SellingDashboardData {
 }
 
 export type BillingCycle = "monthly" | "yearly";
-export type PaymentMethod = "pix" | "card" | "boleto" | "mobile_money" | "bank_transfer" | "ussd" | "eft";
+export type PaymentMethod =
+  | "pix"
+  | "card"
+  | "boleto"
+  | "mobile_money"
+  | "bank_transfer"
+  | "ussd"
+  | "eft";
 export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
 export interface SellerPlan {

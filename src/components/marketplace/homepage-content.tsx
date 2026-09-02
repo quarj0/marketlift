@@ -234,6 +234,14 @@ function CategoryGrid({
             <span className="text-xs font-bold text-slate-800 sm:text-sm">
               {categoryName(category.id, category.name)}
             </span>
+            {category.subcategories?.length ? (
+              <span className="line-clamp-2 text-[10px] leading-4 text-slate-500">
+                {category.subcategories
+                  .slice(0, 3)
+                  .map((sub) => categoryName(sub.id, sub.name))
+                  .join(" · ")}
+              </span>
+            ) : null}
           </Link>
         );
       })}
