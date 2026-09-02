@@ -146,7 +146,30 @@ export async function graphqlRequest<T>(
   let csrf = "";
   let serverCookie = "";
 
-  if (typeof document === "undefined") {
+  
+  let serverOrigin = "";
+if (typeof document === "undefined") {
+    const configuredOrigin =
+      process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+      process.env.NEXT_PUBLIC_MARKETPLACE_URL?.trim();
+    const fallbackOrigin =
+      process.env.NODE_ENV === "production"
+        ? "https://marketlift.com.br"
+        : "http://localhost:3001";
+
+    try {
+      const parsed = new URL(configuredOrigin || fallbackOrigin);
+      const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
+        parsed.hostname,
+      );
+      serverOrigin =
+        process.env.NODE_ENV === "production" && isLoopback
+          ? "https://marketlift.com.br"
+          : parsed.origin;
+    } catch {
+      serverOrigin = fallbackOrigin;
+    }
+
     const csrfResponse = await fetch(resolveApiUrl("/api/v1/auth/csrf/"), {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -175,6 +198,12 @@ export async function graphqlRequest<T>(
       "Content-Type": "application/json",
       ...(csrf ? { "X-CSRFToken": csrf } : {}),
       ...(serverCookie ? { Cookie: serverCookie } : {}),
+      ...(serverOrigin
+        ? {
+            Origin: serverOrigin,
+            Referer: `${serverOrigin}/`,
+          }
+        : {}),
     },
     body: JSON.stringify({ query, variables }),
   });
