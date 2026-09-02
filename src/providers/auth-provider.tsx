@@ -16,6 +16,7 @@ type AuthContextValue = {
   hydrated: boolean;
   isAuthenticated: boolean;
   canSell: boolean;
+  login: (input: { emailOrPhone: string; password: string }) => Promise<User>;
   refreshSession: () => Promise<void>;
   activateSelling: () => Promise<User>;
   logout: () => Promise<void>;
@@ -44,6 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timeoutId);
   }, [refreshSession]);
 
+  const login = useCallback(
+    async (input: { emailOrPhone: string; password: string }) => {
+      const next = await authService.login(input);
+      setUser(next);
+      setHydrated(true);
+      return next;
+    },
+    [],
+  );
+
   const logout = useCallback(async () => {
     try {
       await authService.logout();
@@ -64,11 +75,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       isAuthenticated: Boolean(user),
       canSell: Boolean(user?.sellerProfile),
+      login,
       refreshSession,
       activateSelling,
       logout,
     }),
-    [user, hydrated, refreshSession, activateSelling, logout],
+    [user, hydrated, login, refreshSession, activateSelling, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

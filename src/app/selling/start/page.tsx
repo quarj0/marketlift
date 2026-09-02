@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { CheckCircle2, ShieldCheck, Store, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AccountSidebar } from "@/components/account/account-sidebar";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
@@ -36,7 +37,16 @@ const benefits: SellingBenefit[] = [
   },
 ];
 
+function safeSellingReturnTo(value: string | null) {
+  if (!value || !value.startsWith("/selling") || value.startsWith("//")) {
+    return null;
+  }
+  return value;
+}
+
 export default function StartSellingPage() {
+  const router = useRouter();
+  const params = useSearchParams();
   const { canSell, activateSelling } = useAuth();
   const { t } = useLocale();
   const { formatMoney } = useMarket();
@@ -49,6 +59,8 @@ export default function StartSellingPage() {
 
     try {
       await activateSelling();
+      const returnTo = safeSellingReturnTo(params.get("returnTo"));
+      if (returnTo) router.replace(returnTo);
     } catch {
       setError(t("selling.start.error"));
     } finally {
