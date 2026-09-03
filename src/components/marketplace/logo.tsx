@@ -46,24 +46,45 @@ export function MarketliftLogo({
       aria-label="Marketlift"
       className={cn(
         "inline-flex shrink-0 items-center overflow-hidden rounded-xl bg-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950",
+        size === "compact" && "gap-1",
         size === "large" && "rounded-2xl",
         className,
       )}
     >
-      <Image
-        src={source.src}
-        alt="Marketlift"
-        width={source.width}
-        height={source.height}
-        priority={priority}
-        className={cn(
-          "block h-auto object-contain",
-          size === "mark" && "w-11",
-          size === "compact" && "w-47 sm:w-51",
-          size === "default" && "w-51 sm:w-56.5",
-          size === "large" && "w-56.5 sm:w-[256px]",
-        )}
-      />
+      {size === "compact" ? (
+        <>
+          <Image
+            src={logoSources.mark.src}
+            alt=""
+            width={logoSources.mark.width}
+            height={logoSources.mark.height}
+            priority={priority}
+            className="block size-9 shrink-0 object-contain"
+          />
+          <Image
+            src={logoSources.compact.src}
+            alt=""
+            width={logoSources.compact.width}
+            height={logoSources.compact.height}
+            priority={priority}
+            className="block h-auto w-38 object-contain sm:w-42"
+          />
+        </>
+      ) : (
+        <Image
+          src={source.src}
+          alt="Marketlift"
+          width={source.width}
+          height={source.height}
+          priority={priority}
+          className={cn(
+            "block h-auto object-contain",
+            size === "mark" && "w-11",
+            size === "default" && "w-51 sm:w-56.5",
+            size === "large" && "w-56.5 sm:w-[256px]",
+          )}
+        />
+      )}
     </Link>
   );
 }
