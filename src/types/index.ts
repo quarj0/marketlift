@@ -1,4 +1,4 @@
-export type ListingCondition = "New" | "Like new" | "Used";
+export type ListingCondition = "Brand New" | "Refurbished" | "Used";
 export type VerificationStatus =
   | "not_verified"
   | "pending"

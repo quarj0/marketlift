@@ -159,8 +159,8 @@ export function EditListingClient() {
                     <span className="mb-1.5 block text-sm font-bold">{t('selling.edit.condition')}</span>
                     <select className="h-11 w-full rounded-xl border bg-white px-3 text-sm" value={form.condition} onChange={(event) => setForm((current) => ({ ...current, condition: event.target.value as ListingCondition }))}>
                       <option value="Used">{t('search.condition.used')}</option>
-                      <option value="Like new">{t('search.condition.likeNew')}</option>
-                      <option value="New">{t('search.condition.new')}</option>
+                      <option value="Refurbished">{t('search.condition.likeNew')}</option>
+                      <option value="Brand New">{t('search.condition.new')}</option>
                     </select>
                   </label>
                 )}

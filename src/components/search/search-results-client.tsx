@@ -562,8 +562,8 @@ export function SearchResultsClient() {
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
         >
           <option value="">{t("search.anyCondition")}</option>
-          <option value="New">{t("search.condition.new")}</option>
-          <option value="Like new">{t("search.condition.likeNew")}</option>
+          <option value="Brand New">{t("search.condition.new")}</option>
+          <option value="Refurbished">{t("search.condition.likeNew")}</option>
           <option value="Used">{t("search.condition.used")}</option>
         </select>
       </div>

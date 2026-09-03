@@ -39,7 +39,7 @@ type Form = {
   title: string;
   description: string;
   price: number;
-  condition: 'New' | 'Like new' | 'Used';
+  condition: 'Brand New' | 'Refurbished' | 'Used';
   negotiable: boolean;
   state: string;
   stateName: string;
@@ -92,7 +92,7 @@ export default function NewListingPage() {
     title: z.string().min(8, t('selling.new.validation.title')).max(90),
     description: z.string().min(30, t('selling.new.validation.description')),
     price: z.coerce.number().min(0, t('selling.new.validation.price')),
-    condition: z.enum(['New', 'Like new', 'Used']),
+    condition: z.enum(['Brand New', 'Refurbished', 'Used']),
     negotiable: z.boolean(),
     state: z.string().min(1),
     stateName: z.string().optional(),
@@ -350,8 +350,8 @@ export default function NewListingPage() {
                         <Field label={t('selling.new.condition')}>
                           <select {...form.register('condition')} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
                             <option value="Used">{t('search.condition.used')}</option>
-                            <option value="Like new">{t('search.condition.likeNew')}</option>
-                            <option value="New">{t('search.condition.new')}</option>
+                            <option value="Refurbished">{t('search.condition.likeNew')}</option>
+                            <option value="Brand New">{t('search.condition.new')}</option>
                           </select>
                         </Field>
                       )}
