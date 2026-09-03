@@ -2,6 +2,7 @@ import { resolveApiUrl } from "@/lib/api-client";
 import type {
   AccountProfile,
   AccountReview,
+  Category,
   CategoryConfiguration,
   Conversation,
   Listing,
@@ -73,19 +74,22 @@ export type ApiCategoryField = {
   options?: CategoryConfiguration["fields"][number]["options"];
 };
 
+export type ApiCategorySummary = {
+  id: string;
+  name: string;
+  icon?: string | null;
+  imageUrl?: string | null;
+  active?: boolean | null;
+  subcategories?: ApiCategorySummary[] | null;
+};
+
 export type ApiCategory = {
   id: string;
   name: string;
   icon?: string | null;
   imageUrl?: string | null;
   active?: boolean | null;
-  subcategories?: Array<{
-    id: string;
-    name: string;
-    icon?: string | null;
-    imageUrl?: string | null;
-    active?: boolean | null;
-  }> | null;
+  subcategories?: ApiCategorySummary[] | null;
   schemaVersion?: number | null;
   description?: string | null;
   pricing?: {
@@ -359,6 +363,19 @@ export function mapSellerListing(raw: ApiListing): SellerListing {
   };
 }
 
+function mapCategorySummary(raw: ApiCategorySummary): Category {
+  return {
+    id: raw.id,
+    name: raw.name,
+    icon: raw.icon || "Tag",
+    imageUrl: raw.imageUrl ? resolveApiUrl(raw.imageUrl) : undefined,
+    active: raw.active !== false,
+    subcategories: (raw.subcategories || [])
+      .filter((child) => child.active !== false)
+      .map(mapCategorySummary),
+  };
+}
+
 export function mapCategory(raw: ApiCategory): CategoryConfiguration {
   return {
     id: raw.id,
@@ -370,14 +387,7 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
     active: raw.active !== false,
     subcategories: (raw.subcategories || [])
       .filter((sub) => sub.active !== false)
-      .map((sub) => ({
-        id: sub.id,
-        name: sub.name,
-        icon: sub.icon || "Tag",
-        imageUrl: sub.imageUrl ? resolveApiUrl(sub.imageUrl) : undefined,
-        active: sub.active !== false,
-        subcategories: [],
-      })),
+      .map(mapCategorySummary),
     pricing: {
       mode: raw.pricing?.mode === "optional" ? "optional" : "required",
       label: raw.pricing?.label || "Price",

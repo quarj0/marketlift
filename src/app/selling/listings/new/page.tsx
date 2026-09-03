@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { SellingSidebar } from '@/components/selling/selling-sidebar';
+import { CategoryPicker } from '@/components/selling/category-picker';
 import {
   CategoryFields,
   toListingSpecifications,
@@ -307,23 +308,12 @@ export default function NewListingPage() {
                 <section>
                   <h2 className="text-xl font-black">{t('selling.new.chooseCategory')}</h2>
                   <p className="mt-1 text-sm text-slate-500">{t('selling.new.chooseCategoryBody')}</p>
-                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {categories.map((category) => (
-                      <button
-                        type="button"
-                        key={category.id}
-                        aria-pressed={values.category === category.id}
-                        onClick={() => chooseCategory(category.id)}
-                        className={`min-h-24 rounded-2xl border p-4 text-left font-semibold transition ${
-                          values.category === category.id
-                            ? 'border-brand-500 bg-brand-50 text-brand-800'
-                            : 'hover:border-brand-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        {localizedCategoryName(category.id, category.name)}
-                      </button>
-                    ))}
-                  </div>
+                  <CategoryPicker
+                    categories={categories}
+                    selectedId={values.category}
+                    onSelect={chooseCategory}
+                    categoryName={localizedCategoryName}
+                  />
                   {form.formState.errors.category && (
                     <p className="mt-3 text-sm text-red-600">{form.formState.errors.category.message}</p>
                   )}

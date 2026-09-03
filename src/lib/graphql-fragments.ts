@@ -58,5 +58,13 @@ export const CATEGORY_FIELDS = `
     id label type required filterable allowCustomValue dependsOn lazyOptions optionCount placeholder helpText unit min max step
     options { value label }
   }
-  subcategories { id name icon imageUrl active }
+  subcategories {
+    id name icon imageUrl active
+    subcategories {
+      id name icon imageUrl active
+      subcategories {
+        id name icon imageUrl active
+      }
+    }
+  }
 `;

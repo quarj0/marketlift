@@ -86,8 +86,21 @@ export const metadata: Metadata = {
     ],
   },
   icons: {
-    icon: "/brand/marketlift-mark.png",
-    apple: "/brand/marketlift-mark.png",
+    icon: [
+      {
+        url: "/brand/marketlift-mark.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
+    shortcut: "/brand/marketlift-mark.png",
+    apple: [
+      {
+        url: "/brand/marketlift-mark.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
   },
 };
 

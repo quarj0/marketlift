@@ -37,6 +37,7 @@ export function MarketplaceFooter() {
       links: [
         [t("footer.safetyTips"), "/safety"],
         [t("footer.helpCenter"), "/help"],
+        [t("footer.about"), "/about"],
         [t("footer.reportProblem"), "/help/report"],
         [t("footer.terms"), "/terms"],
         [t("footer.privacy"), "/privacy"],
