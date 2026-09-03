@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Mail, MapPin, Phone, ShieldCheck, UserRound } from 'lucide-react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AccountSidebar } from '@/components/account/account-sidebar';
 import { LocalizedDate } from '@/components/i18n/t';
 import { LocationFields } from '@/components/location/location-fields';
+import { PhoneInput } from '@/components/forms/phone-input';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -191,7 +192,19 @@ export default function ProfilePage() {
 
                       <label>
                         <span className="mb-2 block text-sm font-semibold">{t('account.profile.phone')}</span>
-                        <Input {...register('phone')} aria-invalid={!!errors.phone} />
+                        <Controller
+                          control={control}
+                          name="phone"
+                          render={({ field }) => (
+                            <PhoneInput
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              countryCode={profileQuery.data?.location.countryCode || market.code}
+                              dialCode={market.dialCode}
+                              invalid={!!errors.phone}
+                            />
+                          )}
+                        />
                         {errors.phone && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.phone.message}</p>}
                       </label>
 

@@ -17,8 +17,8 @@ export function MarketplaceFooter() {
       links: [
         [t("footer.browseListings"), "/search"],
         [t("category.vehicles"), "/search?category=vehicles"],
-        [t("category.properties"), "/search?category=properties"],
-        [t("category.phones"), "/search?category=phones"],
+        [t("category.properties"), "/search?category=property"],
+        [t("category.phones"), "/search?category=mobile-phones"],
         [t("footer.sellOnMarketlift"), "/selling/start"],
       ],
     },

@@ -33,6 +33,16 @@ import { useAuth } from "@/providers/auth-provider";
 function isActive(pathname: string, href: string) {
   if (href === "/selling") return pathname === "/selling";
   if (href === "/messages") return pathname.startsWith("/messages");
+  if (href === "/selling/listings/new") {
+    return pathname === "/selling/listings/new";
+  }
+  if (href === "/selling/listings") {
+    return (
+      pathname === "/selling/listings" ||
+      (pathname.startsWith("/selling/listings/") &&
+        !pathname.startsWith("/selling/listings/new"))
+    );
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

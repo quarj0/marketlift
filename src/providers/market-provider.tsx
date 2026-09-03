@@ -22,6 +22,7 @@ const FALLBACK_MARKET: MarketProfile = {
   code: "BR",
   countryCode: "BR",
   countryName: "Brazil",
+  dialCode: "+55",
   locale: "pt-BR",
   languageCode: "pt-br",
   currency: "BRL",

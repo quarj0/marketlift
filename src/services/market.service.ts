@@ -4,6 +4,7 @@ export type MarketProfile = {
   code: string;
   countryCode: string;
   countryName: string;
+  dialCode: string;
   locale: string;
   languageCode: string;
   currency: string;

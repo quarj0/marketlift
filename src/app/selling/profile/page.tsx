@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, Camera, Eye, Loader2 } from "lucide-react";
 
 import { LocationFields } from "@/components/location/location-fields";
+import { PhoneInput } from "@/components/forms/phone-input";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { SellerAvatar } from "@/components/seller/seller-avatar";
 import { SellingSidebar } from "@/components/selling/selling-sidebar";
@@ -258,13 +259,18 @@ export default function SellingProfilePage() {
                       <span className="mb-1.5 block text-sm font-bold">
                         {t("selling.profile.phone")}
                       </span>
-                      <Input
+                      <PhoneInput
                         value={form.phone}
-                        autoComplete="tel"
-                        onChange={(event) =>
+                        countryCode={
+                          profileQuery.data?.location.countryCode ||
+                          user?.countryCode ||
+                          market.code
+                        }
+                        dialCode={market.dialCode}
+                        onChange={(phone) =>
                           setForm((current) => ({
                             ...current,
-                            phone: event.target.value,
+                            phone,
                           }))
                         }
                       />

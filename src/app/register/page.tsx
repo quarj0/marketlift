@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { PasswordField } from "@/components/auth/password-field";
+import { PhoneInput } from "@/components/forms/phone-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/providers/locale-provider";
@@ -21,17 +22,6 @@ function RegisterForm() {
   const params = useSearchParams();
   const { t } = useLocale();
   const { market } = useMarket();
-  const phonePlaceholder =
-    (
-      {
-        GH: "+233 24 123 4567",
-        NG: "+234 801 234 5678",
-        KE: "+254 712 345 678",
-        ZA: "+27 82 123 4567",
-        CI: "+225 01 23 45 67 89",
-        BR: "+55 11 99999-9999",
-      } as Record<string, string>
-    )[market.code] || "+1234567890";
 
   const schema = useMemo(
     () =>
@@ -58,6 +48,7 @@ function RegisterForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
@@ -127,13 +118,20 @@ function RegisterForm() {
             >
               {t("auth.phone")}
             </label>
-            <Input
-              id="register-phone"
-              {...register("phone")}
-              placeholder={phonePlaceholder}
-              autoComplete="tel"
-              inputMode="tel"
-              aria-invalid={Boolean(errors.phone)}
+            <Controller
+              control={control}
+              name="phone"
+              defaultValue=""
+              render={({ field }) => (
+                <PhoneInput
+                  id="register-phone"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  countryCode={market.code}
+                  dialCode={market.dialCode}
+                  invalid={Boolean(errors.phone)}
+                />
+              )}
             />
             {errors.phone && (
               <p className="mt-1.5 text-sm font-medium text-rose-600">

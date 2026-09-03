@@ -340,7 +340,7 @@ export function HomepageContent() {
 
                 <Link
                   className="hover:text-white"
-                  href="/search?category=properties"
+                  href="/search?category=property"
                 >
                   {t("category.properties")}
                 </Link>
