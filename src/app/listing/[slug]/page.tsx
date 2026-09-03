@@ -19,6 +19,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
       MarketProfile,
       | "countryCode"
       | "countryName"
+      | "dialCode"
       | "locale"
       | "languageCode"
       | "currency"
@@ -28,6 +29,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
     BR: {
       countryCode: "BR",
       countryName: "Brazil",
+      dialCode: "+55",
       locale: "pt-BR",
       languageCode: "pt",
       currency: "BRL",
@@ -36,6 +38,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
     GH: {
       countryCode: "GH",
       countryName: "Ghana",
+      dialCode: "+233",
       locale: "en-GH",
       languageCode: "en",
       currency: "GHS",
@@ -44,6 +47,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
     NG: {
       countryCode: "NG",
       countryName: "Nigeria",
+      dialCode: "+234",
       locale: "en-NG",
       languageCode: "en",
       currency: "NGN",
@@ -52,6 +56,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
     KE: {
       countryCode: "KE",
       countryName: "Kenya",
+      dialCode: "+254",
       locale: "en-KE",
       languageCode: "en",
       currency: "KES",
@@ -60,6 +65,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
     ZA: {
       countryCode: "ZA",
       countryName: "South Africa",
+      dialCode: "+27",
       locale: "en-ZA",
       languageCode: "en",
       currency: "ZAR",
@@ -68,6 +74,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
     CI: {
       countryCode: "CI",
       countryName: "Côte d’Ivoire",
+      dialCode: "+225",
       locale: "fr-CI",
       languageCode: "fr",
       currency: "XOF",
