@@ -4,7 +4,10 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { CategoryIcon, resolveCategoryVisual } from "@/components/categories/category-visual";
+import {
+  CategoryIcon,
+  resolveCategoryVisual,
+} from "@/components/categories/category-visual";
 import type { Category } from "@/types";
 
 type Props = {
@@ -21,7 +24,10 @@ export function CategoryPicker({
   categoryName,
 }: Props) {
   const [path, setPath] = useState<Category[]>([]);
-  const visible = path.length ? path[path.length - 1]?.subcategories || [] : categories;
+
+  const current = path.at(-1);
+  const visible = current?.subcategories || categories;
+  const isRoot = path.length === 0;
 
   const breadcrumbs = useMemo(
     () => path.map((item) => categoryName(item.id, item.name)),
@@ -30,33 +36,53 @@ export function CategoryPicker({
 
   function choose(category: Category) {
     if (category.subcategories?.length) {
-      setPath((current) => [...current, category]);
+      setPath((currentPath) => [...currentPath, category]);
       return;
     }
+
     onSelect(category.id);
+  }
+
+  function goBack() {
+    setPath((currentPath) => currentPath.slice(0, -1));
   }
 
   return (
     <div className="mt-5">
       {path.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex min-w-0 items-center gap-3 border-b border-slate-100 pb-4">
           <button
             type="button"
-            onClick={() => setPath((current) => current.slice(0, -1))}
-            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            onClick={goBack}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
           >
             <ChevronLeft className="size-4" />
             Back
           </button>
-          <p className="min-w-0 text-sm text-slate-500">{breadcrumbs.join(" / ")}</p>
+
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium uppercase tracking-wide text-slate-400">
+              {breadcrumbs.slice(0, -1).join(" / ") || "Category"}
+            </p>
+            <p className="truncate text-sm font-bold text-slate-900">
+              {breadcrumbs.at(-1)}
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div
+        className={
+          isRoot
+            ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3"
+            : "grid grid-cols-1 gap-2 sm:grid-cols-2"
+        }
+      >
         {visible.map((category) => {
           const hasChildren = Boolean(category.subcategories?.length);
-          const visual = resolveCategoryVisual(category);
+          const childCount = category.subcategories?.length || 0;
           const selected = selectedId === category.id;
+          const visual = resolveCategoryVisual(category);
 
           return (
             <button
@@ -64,37 +90,67 @@ export function CategoryPicker({
               key={category.id}
               aria-pressed={!hasChildren ? selected : undefined}
               onClick={() => choose(category)}
-              className={`group min-h-28 overflow-hidden rounded-2xl border text-left transition ${
+              className={`group flex min-h-[72px] items-center gap-3 rounded-xl border p-3 text-left transition ${
                 selected
-                  ? "border-brand-500 bg-brand-50 text-brand-900"
-                  : "bg-white hover:border-brand-300 hover:bg-slate-50"
+                  ? "border-brand-500 bg-brand-50 ring-1 ring-brand-100"
+                  : "border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50"
               }`}
             >
-              <div className="relative h-20 overflow-hidden bg-slate-100">
+              <div
+                className={`relative grid size-12 shrink-0 overflow-hidden rounded-lg ${
+                  category.imageUrl ? "bg-slate-100" : visual.tone
+                }`}
+              >
                 {category.imageUrl ? (
                   <Image
                     src={category.imageUrl}
                     alt=""
                     fill
-                    sizes="(max-width: 640px) 45vw, 220px"
-                    className="object-cover transition duration-300 group-hover:scale-105"
+                    sizes="48px"
+                    className="object-cover"
                   />
                 ) : (
-                  <div className={`grid h-full place-items-center ${visual.tone}`}>
-                    <CategoryIcon category={category} className="size-7" />
-                  </div>
+                  <CategoryIcon
+                    category={category}
+                    className="m-auto size-5"
+                  />
                 )}
               </div>
-              <div className="flex items-center justify-between gap-2 p-3">
-                <span className="line-clamp-2 text-sm font-bold">
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`line-clamp-2 text-sm font-bold leading-snug ${
+                    selected ? "text-brand-900" : "text-slate-900"
+                  }`}
+                >
                   {categoryName(category.id, category.name)}
-                </span>
-                {hasChildren && <ChevronRight className="size-4 shrink-0 text-slate-400" />}
+                </p>
+
+                {hasChildren && (
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {childCount} {childCount === 1 ? "option" : "options"}
+                  </p>
+                )}
               </div>
+
+              {hasChildren && (
+                <ChevronRight className="size-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
+              )}
             </button>
           );
         })}
       </div>
+
+      {visible.length === 0 && (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
+          <p className="text-sm font-semibold text-slate-700">
+            No categories available
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Go back and choose another category.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
