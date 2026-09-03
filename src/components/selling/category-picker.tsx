@@ -90,7 +90,7 @@ export function CategoryPicker({
               key={category.id}
               aria-pressed={!hasChildren ? selected : undefined}
               onClick={() => choose(category)}
-              className={`group flex min-h-[72px] items-center gap-3 rounded-xl border p-3 text-left transition ${
+              className={`group flex min-h-18 items-center gap-3 rounded-xl border p-3 text-left transition ${
                 selected
                   ? "border-brand-500 bg-brand-50 ring-1 ring-brand-100"
                   : "border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50"
