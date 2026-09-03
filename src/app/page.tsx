@@ -17,12 +17,22 @@ export default function HomePage() {
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
       name: "Marketlift",
-      alternateName: "Marketlift Brazil",
+      alternateName: ["Marketlift Brasil", "Marketlift Brazil"],
       url: siteUrl,
-      logo: `${siteUrl}/brand/marketlift-mark.png`,
+      logo: {
+        "@type": "ImageObject",
+        "@id": `${siteUrl}/#logo`,
+        url: `${siteUrl}/brand/marketlift-mark.png`,
+        contentUrl: `${siteUrl}/brand/marketlift-mark.png`,
+        width: 512,
+        height: 512,
+        caption: "Marketlift",
+      },
+      image: { "@id": `${siteUrl}/#logo` },
       description:
-        "A trusted online marketplace for buying and selling locally across Brazil.",
+        "Marketlift is a Brazilian online marketplace for local classified listings, connecting buyers and sellers of vehicles, property, electronics, fashion and everyday items.",
       areaServed: {
         "@type": "Country",
         name: "Brazil",
@@ -31,10 +41,19 @@ export default function HomePage() {
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
       name: "Marketlift",
-      alternateName: "Marketlift Brazil",
+      alternateName: [
+        "Marketlift Brasil",
+        "Marketlift Brazil",
+        "marketlift.com.br",
+      ],
       url: siteUrl,
+      description:
+        "Brazilian marketplace for buying and selling through local classified listings.",
       inLanguage: ["pt-BR", "en"],
+      publisher: { "@id": `${siteUrl}/#organization` },
+      about: { "@id": `${siteUrl}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
         target: {

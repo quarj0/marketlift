@@ -134,11 +134,25 @@ const en: Dictionary = {
   "footer.createAccount": "Create account",
   "footer.safetyTips": "Safety tips",
   "footer.helpCenter": "Help center",
+  "footer.about": "About Marketlift",
   "footer.reportProblem": "Report a problem",
   "footer.terms": "Terms of use",
   "footer.privacy": "Privacy",
   "footer.rights": "© 2026 Marketlift · K&C. All rights reserved.",
   "footer.region": "Brazil · R$ BRL",
+
+  "about.title": "About Marketlift Brazil",
+  "about.introduction":
+    "Marketlift is a Brazilian online marketplace where people and businesses publish and discover local classified listings.",
+  "about.marketplaceTitle": "A marketplace built for Brazil",
+  "about.marketplaceBody":
+    "Marketlift helps buyers find vehicles, property, phones, electronics, fashion and everyday items from sellers across Brazil. Search and location tools make relevant local listings easier to discover.",
+  "about.howTitle": "How Marketlift works",
+  "about.howBody":
+    "Sellers publish listings and interested buyers contact them through the marketplace. Buyers and sellers arrange product payment and delivery directly; Marketlift does not hold product payments or provide escrow.",
+  "about.identityTitle": "What the Marketlift name represents",
+  "about.identityBody":
+    "Marketlift Brazil is a local classified-listings marketplace at marketlift.com.br. It is not an advertising analytics or campaign-measurement service.",
 
   "account.menu": "Account menu",
   "account.overview": "Overview",
@@ -321,11 +335,25 @@ const ptBR: Dictionary = {
   "footer.createAccount": "Criar conta",
   "footer.safetyTips": "Dicas de segurança",
   "footer.helpCenter": "Central de ajuda",
+  "footer.about": "Sobre o Marketlift",
   "footer.reportProblem": "Denunciar um problema",
   "footer.terms": "Termos de uso",
   "footer.privacy": "Privacidade",
   "footer.rights": "© 2026 Marketlift · K&C. Todos os direitos reservados.",
   "footer.region": "Brasil · R$ BRL",
+
+  "about.title": "Sobre o Marketlift Brasil",
+  "about.introduction":
+    "O Marketlift é um marketplace online brasileiro onde pessoas e empresas publicam e descobrem anúncios classificados locais.",
+  "about.marketplaceTitle": "Um marketplace feito para o Brasil",
+  "about.marketplaceBody":
+    "O Marketlift ajuda compradores a encontrar veículos, imóveis, celulares, eletrônicos, moda e itens do dia a dia anunciados por vendedores em todo o Brasil. As ferramentas de busca e localização facilitam a descoberta de anúncios relevantes por perto.",
+  "about.howTitle": "Como o Marketlift funciona",
+  "about.howBody":
+    "Os vendedores publicam anúncios e os compradores interessados entram em contato pelo marketplace. Compradores e vendedores combinam diretamente o pagamento e a entrega dos produtos; o Marketlift não recebe pagamentos de produtos nem oferece custódia (escrow).",
+  "about.identityTitle": "O que o nome Marketlift representa",
+  "about.identityBody":
+    "O Marketlift Brasil é um marketplace de anúncios classificados locais disponível em marketlift.com.br. Não é um serviço de análise de publicidade nem de mensuração de campanhas.",
 
   "account.menu": "Menu da conta",
   "account.overview": "Visão geral",
