@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { HomepageContent } from "@/components/marketplace/homepage-content";
+import { categoryService } from "@/services/category.service";
 
 export const metadata: Metadata = {
   title: "Marketlift Brazil — Buy and Sell Online",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
   const siteUrl = (
     process.env.NEXT_PUBLIC_SITE_URL || "https://marketlift.com.br"
   ).replace(/\/+$/, "");
@@ -64,6 +65,7 @@ export default function HomePage() {
       },
     },
   ];
+  const categories = await categoryService.getCategories().catch(() => []);
 
   return (
     <>
@@ -72,7 +74,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <MarketplaceShell>
-        <HomepageContent />
+        <HomepageContent initialCategories={categories} />
       </MarketplaceShell>
     </>
   );

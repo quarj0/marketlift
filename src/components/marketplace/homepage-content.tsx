@@ -183,7 +183,7 @@ function CategoryGrid({
         return (
           <Link
             key={category.id}
-            href={`/search?category=${category.id}`}
+            href={`/category/${category.id}`}
             className="group min-w-0 overflow-hidden rounded-2xl border bg-white text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
             <div className="h-24 overflow-hidden transition duration-300 group-hover:scale-105 sm:h-28">
@@ -210,7 +210,11 @@ function CategoryGrid({
   );
 }
 
-export function HomepageContent() {
+export function HomepageContent({
+  initialCategories = [],
+}: {
+  initialCategories?: Category[];
+}) {
   const { t } = useLocale();
   const { market } = useMarket();
   const { location } = useMarketplaceLocation();
@@ -219,6 +223,7 @@ export function HomepageContent() {
     // Same key as CategoryNav so React Query shares/deduplicates this request.
     queryKey: ["categories"],
     queryFn: marketplaceService.getCategories,
+    initialData: initialCategories.length ? initialCategories : undefined,
     staleTime: 5 * 60_000,
   });
 
@@ -248,14 +253,14 @@ export function HomepageContent() {
     categoriesQuery.isError;
 
   return (
-    <main className="overflow-hidden">
+    <main className="flex flex-col overflow-hidden">
       <section className="relative isolate overflow-hidden bg-ink-950 text-white">
         <div className="absolute inset-0 -z-10 opacity-25" aria-hidden="true">
           <div className="absolute -right-24 top-8 size-80 rounded-full bg-cyan-400 blur-3xl" />
           <div className="absolute -left-20 bottom-0 size-72 rounded-full bg-lift-400 blur-3xl" />
         </div>
 
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
           <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_.85fr]">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold backdrop-blur">
@@ -263,12 +268,12 @@ export function HomepageContent() {
                 {t("home.localBadge")}
               </span>
 
-              <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 max-w-4xl text-3xl font-black leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
                 {t("home.heroTitle")}
               </h1>
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-brand-50 sm:text-lg">
-                {`Find exactly what you want nearby in ${market.countryName}, with powerful search and clearer seller trust signals.`}
+                {t("home.heroDescription")}
               </p>
 
               <div className="mt-8 max-w-5xl">
@@ -290,7 +295,7 @@ export function HomepageContent() {
 
                 <Link
                   className="hover:text-white"
-                  href="/search?category=property"
+                  href="/category/property"
                 >
                   {t("category.properties")}
                 </Link>
@@ -386,7 +391,7 @@ export function HomepageContent() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <section className="order-first mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:order-none lg:px-8 lg:py-14">
         <SectionHeading
           eyebrow={t("home.explore")}
           title={t("home.browseCategories")}

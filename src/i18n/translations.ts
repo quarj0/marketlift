@@ -1,5 +1,6 @@
 import type { Locale } from "./config";
 import { catalogPtBR, extraEn, extraPtBR } from "./extra-translations";
+import { categoryPtBR } from "./category-translations";
 
 type Dictionary = Record<string, string>;
 
@@ -30,6 +31,7 @@ const en: Dictionary = {
 
   "categories.title": "Categories",
   "categories.more": "More",
+  "categories.all": "All {category}",
   "category.phones": "Mobile Phones",
   "category.electronics": "Electronics",
   "category.computers": "Computers",
@@ -231,6 +233,7 @@ const ptBR: Dictionary = {
 
   "categories.title": "Categorias",
   "categories.more": "Mais",
+  "categories.all": "Todos em {category}",
   "category.phones": "Celulares",
   "category.electronics": "Eletrônicos",
   "category.computers": "Computadores",
@@ -403,6 +406,7 @@ const ptBR: Dictionary = {
   "settings.save": "Salvar configurações",
 
   ...extraPtBR,
+  ...categoryPtBR,
 };
 
 

@@ -9,7 +9,7 @@ import { categoryService } from "@/services/category.service";
 import { useLocale } from "@/providers/locale-provider";
 
 export function CategoryNav() {
-  const { categoryName } = useLocale();
+  const { categoryName, t } = useLocale();
   const query = useQuery({
     queryKey: ["categories"],
     queryFn: categoryService.getCategories,
@@ -36,7 +36,7 @@ export function CategoryNav() {
           return (
             <div key={category.id} className="group relative shrink-0">
               <Link
-                href={`/search?category=${category.id}`}
+                href={`/category/${category.id}`}
                 className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-700"
               >
                 <CategoryIcon category={category} className="size-3.5 shrink-0" />
@@ -49,10 +49,12 @@ export function CategoryNav() {
               {children.length > 0 && (
                 <div className="invisible absolute left-0 top-full z-50 min-w-72 translate-y-1 rounded-xl border border-slate-200 bg-white p-2 opacity-0 shadow-xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
                   <Link
-                    href={`/search?category=${category.id}`}
+                    href={`/category/${category.id}`}
                     className="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-black text-slate-900 hover:bg-slate-50"
                   >
-                    All {categoryName(category.id, category.name)}
+                    {t("categories.all", {
+                      category: categoryName(category.id, category.name),
+                    })}
                     <ChevronRight className="size-3.5" />
                   </Link>
 
@@ -61,7 +63,7 @@ export function CategoryNav() {
                   {children.slice(0, 10).map((sub) => (
                     <Link
                       key={sub.id}
-                      href={`/search?category=${sub.id}`}
+                      href={`/category/${sub.id}`}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
                     >
                       <CategoryIcon category={sub} className="size-4 shrink-0" />
@@ -81,7 +83,7 @@ export function CategoryNav() {
               aria-haspopup="menu"
               className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
-              More
+              {t("categories.more")}
               <ChevronDown className="size-3.5" />
             </button>
 
@@ -92,7 +94,7 @@ export function CategoryNav() {
               {overflow.map((category) => (
                 <Link
                   key={category.id}
-                  href={`/search?category=${category.id}`}
+                  href={`/category/${category.id}`}
                   role="menuitem"
                   className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-700"
                 >

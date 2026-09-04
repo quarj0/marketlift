@@ -26,6 +26,16 @@ function paramsFromFilters(filters: SearchFilters, pageSize = 24) {
     params.set("minPrice", String(filters.minPrice));
   if (filters.maxPrice !== undefined)
     params.set("maxPrice", String(filters.maxPrice));
+  Object.entries(filters.attributes ?? {}).forEach(([key, value]) => {
+    if (typeof value === "object") {
+      if (value.min !== undefined)
+        params.set(`attr.${key}.min`, String(value.min));
+      if (value.max !== undefined)
+        params.set(`attr.${key}.max`, String(value.max));
+      return;
+    }
+    if (value !== "") params.set(`attr.${key}`, String(value));
+  });
   if (filters.condition) params.set("condition", filters.condition);
   if (filters.sellerType) params.set("sellerType", filters.sellerType);
   if (filters.verifiedOnly) params.set("verifiedOnly", "true");

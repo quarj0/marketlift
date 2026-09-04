@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 import { API_BASE_URL } from "@/lib/api-client";
+import { flattenCategories } from "@/lib/category-tree";
+import { categoryService } from "@/services/category.service";
 
 type SearchResult = { slug: string; createdAt: string };
 type SearchResponse = { results?: SearchResult[] };
@@ -9,6 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
     "https://marketlift.com.br";
   let listings: SearchResult[] = [];
+  let categorySlugs: string[] = [];
 
   try {
     const response = await fetch(
@@ -25,6 +28,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Static routes remain valid when the API is temporarily unavailable during a build.
   }
 
+  try {
+    const categories = await categoryService.getCategories();
+    categorySlugs = flattenCategories(categories).map(({ category }) => category.id);
+  } catch {
+    // Keep the sitemap available if the category API is temporarily unavailable.
+  }
+
   return [
     { url: base, changeFrequency: "daily", priority: 1 },
     { url: `${base}/search`, changeFrequency: "hourly", priority: 0.9 },
@@ -33,6 +43,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/help`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },
+    ...categorySlugs.map((slug) => ({
+      url: `${base}/category/${slug}`,
+      changeFrequency: "daily" as const,
+      priority: 0.75,
+    })),
     ...listings.map((listing) => ({
       url: `${base}/listing/${listing.slug}`,
       lastModified: new Date(listing.createdAt),

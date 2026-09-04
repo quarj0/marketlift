@@ -19,6 +19,10 @@ import { savedSearchService } from "@/services/saved-search.service";
 import { brazilLocations, brazilRegions } from "@/data/brazil-locations";
 import { locationService } from "@/services/location.service";
 import { categoryService } from "@/services/category.service";
+import {
+  findCategoryPath,
+  flattenCategories,
+} from "@/lib/category-tree";
 import { ListingCard } from "@/components/listings/listing-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +35,12 @@ import { Input } from "@/components/ui/input";
 import { useLocale } from "@/providers/locale-provider";
 import { useAuth } from "@/providers/auth-provider";
 import { useMarket } from "@/providers/market-provider";
-import type { ListingCondition, SearchFilters, SellerType } from "@/types";
+import type {
+  CategoryFieldDefinition,
+  ListingCondition,
+  SearchFilters,
+  SellerType,
+} from "@/types";
 
 const toNum = (value: string | null) =>
   value && !Number.isNaN(Number(value)) ? Number(value) : undefined;
@@ -71,7 +80,28 @@ function hasAlertableCriteria(filters: SearchFilters) {
   );
 }
 
-function useFilters(): SearchFilters {
+function attributeFilters(params: URLSearchParams): SearchFilters["attributes"] {
+  const attributes: NonNullable<SearchFilters["attributes"]> = {};
+
+  params.forEach((value, key) => {
+    const match = key.match(/^attr\.([a-z0-9_]+)(?:\.(min|max))?$/);
+    if (!match || !value) return;
+    const [, field, bound] = match;
+    if (bound) {
+      const current = attributes[field];
+      const range =
+        typeof current === "object" && current !== null ? current : {};
+      range[bound as "min" | "max"] = Number(value);
+      attributes[field] = range;
+      return;
+    }
+    attributes[field] = value === "true" ? true : value === "false" ? false : value;
+  });
+
+  return attributes;
+}
+
+function useFilters(categorySlug?: string): SearchFilters {
   const params = useSearchParams();
   const { market } = useMarket();
   const legacyLocation = params.get("location") || "";
@@ -95,7 +125,7 @@ function useFilters(): SearchFilters {
   return {
     countryCode: market.code,
     q: params.get("q") || "",
-    category: params.get("category") || "",
+    category: params.get("category") || categorySlug || "",
     region: params.get("region") || stateRow?.regionCode || "",
     state,
     city,
@@ -105,6 +135,7 @@ function useFilters(): SearchFilters {
     radiusKm: toNum(params.get("radiusKm") || params.get("radius_km")),
     minPrice: toNum(params.get("minPrice")),
     maxPrice: toNum(params.get("maxPrice")),
+    attributes: attributeFilters(params),
     condition: (params.get("condition") || "") as ListingCondition | "",
     sellerType: (params.get("sellerType") || "") as SellerType | "",
     verifiedOnly: params.get("verified") === "1",
@@ -113,12 +144,151 @@ function useFilters(): SearchFilters {
   };
 }
 
-export function SearchResultsClient() {
+function DynamicCategoryFilter({
+  categoryId,
+  field,
+  attributes,
+  update,
+}: {
+  categoryId: string;
+  field: CategoryFieldDefinition;
+  attributes: NonNullable<SearchFilters["attributes"]>;
+  update: (patch: Record<string, string | undefined>) => void;
+}) {
+  const { t, tr } = useLocale();
+  const current = attributes[field.id];
+  const parentValue = field.dependsOn
+    ? String(attributes[field.dependsOn] ?? "")
+    : "";
+  const needsRemoteOptions = field.type === "select" &&
+    (field.lazyOptions || Boolean(field.dependsOn));
+  const optionsQuery = useQuery({
+    queryKey: ["category-field-options", categoryId, field.id, parentValue],
+    queryFn: () =>
+      categoryService.getFieldOptions(
+        categoryId,
+        field.id,
+        parentValue || undefined,
+      ),
+    enabled: needsRemoteOptions && (!field.dependsOn || Boolean(parentValue)),
+    staleTime: 5 * 60_000,
+  });
+  const options = needsRemoteOptions ? optionsQuery.data ?? [] : field.options ?? [];
+  const label = tr(field.label);
+
+  if (field.type === "number") {
+    const range = typeof current === "object" && current !== null ? current : {};
+    return (
+      <fieldset>
+        <legend className="mb-2 block text-sm font-semibold">{label}</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            aria-label={`${label} ${t("search.min")}`}
+            type="number"
+            defaultValue={range.min}
+            key={`${field.id}-min-${range.min ?? ""}`}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            placeholder={t("search.min")}
+            onBlur={(event) =>
+              update({ [`attr.${field.id}.min`]: event.target.value || undefined })
+            }
+          />
+          <Input
+            aria-label={`${label} ${t("search.max")}`}
+            type="number"
+            defaultValue={range.max}
+            key={`${field.id}-max-${range.max ?? ""}`}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            placeholder={t("search.max")}
+            onBlur={(event) =>
+              update({ [`attr.${field.id}.max`]: event.target.value || undefined })
+            }
+          />
+        </div>
+      </fieldset>
+    );
+  }
+
+  if (field.type === "boolean") {
+    return (
+      <div>
+        <label className="mb-2 block text-sm font-semibold" htmlFor={`attr-${field.id}`}>
+          {label}
+        </label>
+        <select
+          id={`attr-${field.id}`}
+          value={typeof current === "boolean" ? String(current) : ""}
+          onChange={(event) =>
+            update({ [`attr.${field.id}`]: event.target.value || undefined })
+          }
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+        >
+          <option value="">{t("search.all")}</option>
+          <option value="true">{t("common.yes")}</option>
+          <option value="false">{t("common.no")}</option>
+        </select>
+      </div>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <div>
+        <label className="mb-2 block text-sm font-semibold" htmlFor={`attr-${field.id}`}>
+          {label}
+        </label>
+        <select
+          id={`attr-${field.id}`}
+          value={typeof current === "string" ? current : ""}
+          disabled={Boolean(field.dependsOn) && !parentValue}
+          onChange={(event) =>
+            update({ [`attr.${field.id}`]: event.target.value || undefined })
+          }
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm disabled:bg-slate-100"
+        >
+          <option value="">{t("search.all")}</option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>{tr(option.label)}</option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold" htmlFor={`attr-${field.id}`}>
+        {label}
+      </label>
+      <Input
+        id={`attr-${field.id}`}
+        defaultValue={typeof current === "string" ? current : ""}
+        key={`${field.id}-${String(current ?? "")}`}
+        placeholder={field.placeholder ? tr(field.placeholder) : label}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            update({ [`attr.${field.id}`]: event.currentTarget.value || undefined });
+          }
+        }}
+        onBlur={(event) =>
+          update({ [`attr.${field.id}`]: event.target.value || undefined })
+        }
+      />
+    </div>
+  );
+}
+
+export function SearchResultsClient({ categorySlug }: { categorySlug?: string } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const filters = useFilters();
+  const filters = useFilters(categorySlug);
   const { t, categoryName, locale } = useLocale();
   const { user } = useAuth();
   const { market } = useMarket();
@@ -156,6 +326,16 @@ export function SearchResultsClient() {
     staleTime: 5 * 60_000,
   });
   const categories = categoriesQuery.data ?? [];
+  const categoryEntries = flattenCategories(categories);
+  const categoryPath = filters.category
+    ? findCategoryPath(categories, filters.category)
+    : undefined;
+  const categoryConfigQuery = useQuery({
+    queryKey: ["category-configuration", filters.category],
+    queryFn: () => categoryService.getConfiguration(filters.category || ""),
+    enabled: Boolean(filters.category),
+    staleTime: 5 * 60_000,
+  });
 
   const {
     data = [],
@@ -321,17 +501,50 @@ export function SearchResultsClient() {
         <select
           id="search-filter-category"
           value={filters.category}
-          onChange={(event) => update({ category: event.target.value })}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (categorySlug) {
+              router.replace(value ? `/category/${value}` : "/search");
+              return;
+            }
+            update({ category: value });
+          }}
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
         >
           <option value="">{t("search.allCategories")}</option>
-          {categories.map((category) => (
+          {categoryEntries.map(({ category, depth }) => (
             <option key={category.id} value={category.id}>
-              {categoryName(category.id, category.name)}
+              {`${"— ".repeat(depth)}${categoryName(category.id, category.name)}`}
             </option>
           ))}
         </select>
+        {categoryPath?.length ? (
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            {categoryPath
+              .map((category) => categoryName(category.id, category.name))
+              .join(" › ")}
+          </p>
+        ) : null}
       </div>
+      {(categoryConfigQuery.data?.fields ?? []).filter((field) => field.filterable)
+        .length > 0 && (
+        <fieldset className="space-y-4 border-y border-slate-100 py-5">
+          <legend className="px-1 text-sm font-bold">
+            {t("search.categoryFilters")}
+          </legend>
+          {(categoryConfigQuery.data?.fields ?? [])
+            .filter((field) => field.filterable)
+            .map((field) => (
+              <DynamicCategoryFilter
+                key={field.id}
+                categoryId={filters.category || ""}
+                field={field}
+                attributes={filters.attributes ?? {}}
+                update={update}
+              />
+            ))}
+        </fieldset>
+      )}
       {isBrazil ? (
         <>
           <div>
@@ -626,8 +839,28 @@ export function SearchResultsClient() {
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
+          {categoryPath?.length ? (
+            <nav aria-label={t("search.categoryPath")} className="mb-2 flex flex-wrap items-center gap-1 text-xs font-semibold text-brand-700">
+              <Link href="/search">{t("search.allCategories")}</Link>
+              {categoryPath.map((category) => (
+                <span key={category.id} className="flex items-center gap-1">
+                  <span aria-hidden="true">›</span>
+                  <Link href={`/category/${category.id}`}>
+                    {categoryName(category.id, category.name)}
+                  </Link>
+                </span>
+              ))}
+            </nav>
+          ) : null}
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
-            {t("search.resultsTitle")}
+            {categoryPath?.length
+              ? t("search.categoryResultsTitle", {
+                  category: categoryName(
+                    categoryPath.at(-1)?.id || "",
+                    categoryPath.at(-1)?.name,
+                  ),
+                })
+              : t("search.resultsTitle")}
           </h1>
           <p
             className="mt-1 text-sm text-slate-500"

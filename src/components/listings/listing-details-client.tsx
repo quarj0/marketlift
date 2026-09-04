@@ -145,7 +145,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
           />
 
           <Link
-            href={`/search?category=${listing.category}`}
+            href={`/category/${listing.category}`}
             className="shrink-0 font-medium transition hover:text-brand-700 hover:underline"
           >
             {categoryName(listing.category)}
@@ -467,7 +467,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
               <h2 className="text-2xl font-black">{t("listing.similar")}</h2>
             </div>
             <Link
-              href={`/search?category=${listing.category}`}
+              href={`/category/${listing.category}`}
               className="text-sm font-bold text-brand-700 hover:underline"
             >
               {t("listing.viewMore")}
@@ -501,7 +501,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
               <EmptyState
                 title={t("listing.noSimilar")}
                 description={t("listing.noSimilarBody")}
-                href={`/search?category=${listing.category}`}
+                href={`/category/${listing.category}`}
                 action={t("listing.browseCategory")}
               />
             </div>

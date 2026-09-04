@@ -147,6 +147,10 @@ export interface SearchFilters {
   radiusKm?: number;
   minPrice?: number;
   maxPrice?: number;
+  attributes?: Record<
+    string,
+    string | number | boolean | { min?: number; max?: number }
+  >;
   condition?: ListingCondition | "";
   sellerType?: SellerType | "";
   verifiedOnly?: boolean;
