@@ -273,7 +273,7 @@ function SelectField({
         <Input
           value={catalogSearch}
           onChange={(event) => setCatalogSearch(event.target.value)}
-          placeholder={`Search ${label.toLowerCase()}...`}
+          placeholder={t('categoryFields.search', { label: label.toLowerCase() })}
           autoComplete="off"
           aria-label={`Search ${label}`}
         />
@@ -300,11 +300,15 @@ function SelectField({
       >
         <option value="">
           {disabledByParent
-            ? `Choose ${parentField ? tr(parentField.label) : 'the previous answer'} first`
+            ? t('categoryFields.chooseFirst', {
+                label: parentField
+                  ? tr(parentField.label)
+                  : t('categoryFields.previousAnswer'),
+              })
             : optionQuery.isLoading
-              ? 'Loading choices…'
+              ? t('categoryFields.loading')
               : debouncedCatalogSearch && options.length === 0
-                ? `No catalog match for "${debouncedCatalogSearch}"`
+                ? t('categoryFields.noMatch', { search: debouncedCatalogSearch })
                 : placeholder ?? t('categoryFields.select', { label })}
         </option>
         {options.map((option) => (
@@ -313,13 +317,13 @@ function SelectField({
           </option>
         ))}
         {field.allowCustomValue && (
-          <option value="__marketlift_other__">Other / Not listed</option>
+          <option value="__marketlift_other__">{t('categoryFields.other')}</option>
         )}
       </select>
 
       {autoFilled && (
         <p className="text-xs font-medium text-emerald-700">
-          Selected automatically because this is the only known option for your previous choice.
+          {t('categoryFields.autoSelected')}
         </p>
       )}
 
@@ -329,7 +333,7 @@ function SelectField({
           onClick={() => optionQuery.refetch()}
           className="text-xs font-bold text-brand-700 hover:underline"
         >
-          Couldn&apos;t load choices. Try again
+          {t('categoryFields.loadError')}
         </button>
       )}
 
@@ -337,7 +341,7 @@ function SelectField({
         <Input
           autoFocus
           value={rawValue}
-          placeholder={`Enter ${label.toLowerCase()}`}
+          placeholder={t('categoryFields.enter', { label: label.toLowerCase() })}
           onChange={(event) => onValue(event.target.value)}
         />
       )}
@@ -356,12 +360,12 @@ function BooleanGroup({
   values: ListingAttributes;
   onChange: (field: CategoryFieldDefinition, value: boolean) => void;
 }) {
-  const { tr } = useLocale();
+  const { t, tr } = useLocale();
   const [open, setOpen] = useState(false);
   const selected = fields.filter((field) => values[field.id] === true);
   const summary =
     selected.length === 0
-      ? 'Select options'
+      ? t('categoryFields.selectOptions')
       : selected.length <= 2
         ? selected.map((field) => tr(field.label)).join(', ')
         : `${selected.slice(0, 2).map((field) => tr(field.label)).join(', ')} +${selected.length - 2}`;
@@ -416,7 +420,7 @@ export function CategoryFields({
   errors?: CategoryFieldErrors;
   onChange: (fieldId: string, value: CategoryFieldValue) => void;
 }) {
-  const { tr } = useLocale();
+  const { t, tr } = useLocale();
 
   const descendants = useMemo(
     () =>
@@ -514,7 +518,7 @@ export function CategoryFields({
                     onChange={() => change(field, true)}
                     className="accent-brand-600"
                   />
-                  Yes
+                  {t('common.yes')}
                 </label>
                 <label className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 border-l px-3 text-sm font-semibold ${current === false ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>
                   <input
@@ -524,7 +528,7 @@ export function CategoryFields({
                     onChange={() => change(field, false)}
                     className="accent-brand-600"
                   />
-                  No
+                  {t('common.no')}
                 </label>
               </div>
               {helpText && (

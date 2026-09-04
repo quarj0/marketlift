@@ -34,35 +34,61 @@ export async function uploadFile(file: File, purpose: string) {
     },
   });
 
-  const targetUrl = resolveApiUrl(prepared.target.url);
-  const headers = new Headers(prepared.target.headers || {});
-  let body: BodyInit = file;
+  try {
+    const targetUrl = resolveApiUrl(prepared.target.url);
+    const headers = new Headers(prepared.target.headers || {});
+    let body: BodyInit = file;
 
-  if (sameApiOrigin(targetUrl)) {
-    const csrf = await ensureCsrfToken();
-    if (csrf) headers.set('X-CSRFToken', csrf);
+    if (sameApiOrigin(targetUrl)) {
+      const csrf = await ensureCsrfToken();
+      if (csrf) headers.set('X-CSRFToken', csrf);
+    }
+
+    if (prepared.target.fields && Object.keys(prepared.target.fields).length > 0) {
+      const form = new FormData();
+      Object.entries(prepared.target.fields).forEach(([key, value]) => form.append(key, value));
+      form.append('file', file);
+      body = form;
+      headers.delete('Content-Type');
+    }
+
+    const response = await fetch(targetUrl, {
+      method: prepared.target.method || 'PUT',
+      headers,
+      body,
+      credentials: sameApiOrigin(targetUrl) ? 'include' : 'omit',
+    });
+    if (!response.ok) throw new Error('File upload failed.');
+
+    await apiRequest(`/api/v1/uploads/${prepared.upload.id}/complete/`, {
+      method: 'POST',
+      json: {},
+    });
+
+    return prepared.upload.id;
+  } catch (error) {
+    await deleteUpload(prepared.upload.id).catch(() => undefined);
+    throw error;
   }
+}
 
-  if (prepared.target.fields && Object.keys(prepared.target.fields).length > 0) {
-    const form = new FormData();
-    Object.entries(prepared.target.fields).forEach(([key, value]) => form.append(key, value));
-    form.append('file', file);
-    body = form;
-    headers.delete('Content-Type');
+export async function deleteUpload(uploadId: string) {
+  await apiRequest(`/api/v1/uploads/${uploadId}/`, { method: 'DELETE' });
+}
+
+export async function uploadFiles(files: File[], purpose: string) {
+  const results = await Promise.allSettled(
+    files.map((file) => uploadFile(file, purpose)),
+  );
+  const uploadIds = results.flatMap((result) =>
+    result.status === 'fulfilled' ? [result.value] : [],
+  );
+  const failure = results.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  );
+  if (failure) {
+    await Promise.allSettled(uploadIds.map(deleteUpload));
+    throw failure.reason;
   }
-
-  const response = await fetch(targetUrl, {
-    method: prepared.target.method || 'PUT',
-    headers,
-    body,
-    credentials: sameApiOrigin(targetUrl) ? 'include' : 'omit',
-  });
-  if (!response.ok) throw new Error('File upload failed.');
-
-  await apiRequest(`/api/v1/uploads/${prepared.upload.id}/complete/`, {
-    method: 'POST',
-    json: {},
-  });
-
-  return prepared.upload.id;
+  return uploadIds;
 }

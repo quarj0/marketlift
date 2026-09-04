@@ -1,7 +1,7 @@
 import { graphqlRequest } from "@/lib/api-client";
 import { mapSellerListing, type ApiListing } from "@/lib/api-mappers";
 import { LISTING_FIELDS } from "@/lib/graphql-fragments";
-import { uploadFile } from "@/services/upload.service";
+import { deleteUpload, uploadFiles } from "@/services/upload.service";
 import type {
   ListingAttributes,
   ListingCondition,
@@ -112,9 +112,7 @@ export const sellingService = {
     input: Omit<CreateListingInput, "images"> & { images?: File[] },
   ) {
     const imageUploadIds = input.images?.length
-      ? await Promise.all(
-          input.images.map((file) => uploadFile(file, "listing_image")),
-        )
+      ? await uploadFiles(input.images, "listing_image")
       : undefined;
     const payload: Record<string, unknown> = {
       categoryId: input.category,
@@ -140,13 +138,20 @@ export const sellingService = {
     };
     if (imageUploadIds) payload.imageUploadIds = imageUploadIds;
 
-    const data = await graphqlRequest<{ updateListing: ApiListing }>(
-      `mutation UpdateListing($id: ID!, $input: ListingInput!) {
-        updateListing(listingId: $id, input: $input) { ${LISTING_FIELDS} }
-      }`,
-      { id, input: payload },
-    );
-    return mapSellerListing(data.updateListing);
+    try {
+      const data = await graphqlRequest<{ updateListing: ApiListing }>(
+        `mutation UpdateListing($id: ID!, $input: ListingInput!) {
+          updateListing(listingId: $id, input: $input) { ${LISTING_FIELDS} }
+        }`,
+        { id, input: payload },
+      );
+      return mapSellerListing(data.updateListing);
+    } catch (error) {
+      if (imageUploadIds) {
+        await Promise.allSettled(imageUploadIds.map(deleteUpload));
+      }
+      throw error;
+    }
   },
 
   async setStatus(id: string, status: SellerListing["status"]) {
@@ -183,42 +188,45 @@ export const sellingService = {
   },
 
   async createListing(input: CreateListingInput) {
-    const imageUploadIds = await Promise.all(
-      input.images.map((file) => uploadFile(file, "listing_image")),
-    );
-    const data = await graphqlRequest<{
-      createAndPublishListing: ApiListing;
-    }>(
-      `mutation CreateAndPublishListing($input: ListingInput!) {
-        createAndPublishListing(input: $input) { ${LISTING_FIELDS} }
-      }`,
-      {
-        input: {
-          categoryId: input.category,
-          title: input.title,
-          description: input.description,
-          countryCode: input.location.countryCode,
-          state: input.location.state,
-          stateCode: input.location.stateCode,
-          city: input.location.city,
-          district: input.location.district || "",
-      locationToken: input.location.locationToken || undefined,
-          ...(Number.isFinite(input.location.latitude) &&
-          Number.isFinite(input.location.longitude)
-            ? {
-                latitude: input.location.latitude,
-                longitude: input.location.longitude,
-              }
-            : {}),
-          price: input.price,
-          condition: input.condition || "",
-          negotiable: input.negotiable,
-          attributes: input.attributes || input.specifications || {},
-          imageUploadIds,
+    const imageUploadIds = await uploadFiles(input.images, "listing_image");
+    try {
+      const data = await graphqlRequest<{
+        createAndPublishListing: ApiListing;
+      }>(
+        `mutation CreateAndPublishListing($input: ListingInput!) {
+          createAndPublishListing(input: $input) { ${LISTING_FIELDS} }
+        }`,
+        {
+          input: {
+            categoryId: input.category,
+            title: input.title,
+            description: input.description,
+            countryCode: input.location.countryCode,
+            state: input.location.state,
+            stateCode: input.location.stateCode,
+            city: input.location.city,
+            district: input.location.district || "",
+            locationToken: input.location.locationToken || undefined,
+            ...(Number.isFinite(input.location.latitude) &&
+            Number.isFinite(input.location.longitude)
+              ? {
+                  latitude: input.location.latitude,
+                  longitude: input.location.longitude,
+                }
+              : {}),
+            price: input.price,
+            condition: input.condition || "",
+            negotiable: input.negotiable,
+            attributes: input.attributes || input.specifications || {},
+            imageUploadIds,
+          },
         },
-      },
-    );
+      );
 
-    return mapSellerListing(data.createAndPublishListing);
+      return mapSellerListing(data.createAndPublishListing);
+    } catch (error) {
+      await Promise.allSettled(imageUploadIds.map(deleteUpload));
+      throw error;
+    }
   },
 };
