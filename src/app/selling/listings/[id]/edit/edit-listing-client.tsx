@@ -399,7 +399,9 @@ export function EditListingClient() {
               )}
               {mutation.isError && (
                 <p className="mt-5 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
-                  {t("common.error")}
+                  {mutation.error instanceof Error
+                    ? mutation.error.message
+                    : t("common.error")}
                 </p>
               )}
 

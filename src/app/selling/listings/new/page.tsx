@@ -284,7 +284,7 @@ export default function NewListingPage() {
         if (!resolvedLocation?.locationToken) {
           form.setError('district', {
             type: 'manual',
-            message: 'Choose one of the suggested locations.',
+            message: t('selling.new.validation.locationSuggestion'),
           });
           return;
         }
@@ -315,7 +315,7 @@ export default function NewListingPage() {
       } catch {
         form.setError('district', {
           type: 'manual',
-          message: 'Choose one of the suggested locations.',
+          message: t('selling.new.validation.locationSuggestion'),
         });
         return;
       }
@@ -339,7 +339,10 @@ export default function NewListingPage() {
 
     if (step === 2 && photos.length < MIN_LISTING_PHOTOS) {
       setPhotoError(
-        `Add at least ${MIN_LISTING_PHOTOS} photos before continuing. You currently have ${photos.length}.`,
+        t('selling.new.validation.minimumPhotos', {
+          count: MIN_LISTING_PHOTOS,
+          current: photos.length,
+        }),
       );
       return;
     }
@@ -365,12 +368,12 @@ export default function NewListingPage() {
 
     for (const file of Array.from(files)) {
       if (accepted.length >= MAX_LISTING_PHOTOS) {
-        messages.push(`You can upload at most ${MAX_LISTING_PHOTOS} photos.`);
+        messages.push(t('selling.new.photoMaximum', { count: MAX_LISTING_PHOTOS }));
         break;
       }
 
       if (SCREENSHOT_NAME_RE.test(file.name)) {
-        messages.push(`${file.name}: screenshots are not allowed.`);
+        messages.push(t('selling.new.photoScreenshot', { name: file.name }));
         continue;
       }
 
@@ -379,7 +382,10 @@ export default function NewListingPage() {
 
         if (inspected.width < MIN_PHOTO_WIDTH) {
           messages.push(
-            `${file.name}: image must be at least ${MIN_PHOTO_WIDTH}px wide.`,
+            t('selling.new.photoMinimumWidth', {
+              name: file.name,
+              width: MIN_PHOTO_WIDTH,
+            }),
           );
           continue;
         }
@@ -388,7 +394,7 @@ export default function NewListingPage() {
           file.type === 'image/png' &&
           COMMON_SCREEN_SIZES.has(`${inspected.width}x${inspected.height}`)
         ) {
-          messages.push(`${file.name}: screenshots are not allowed.`);
+          messages.push(t('selling.new.photoScreenshot', { name: file.name }));
           continue;
         }
 
@@ -400,7 +406,7 @@ export default function NewListingPage() {
           );
 
         if (duplicate) {
-          messages.push(`${file.name}: this image is already uploaded.`);
+          messages.push(t('selling.new.photoDuplicate', { name: file.name }));
           continue;
         }
 
@@ -415,7 +421,7 @@ export default function NewListingPage() {
         existingHashes.add(inspected.hash);
         existingPerceptual.push(inspected.perceptualHash);
       } catch {
-        messages.push(`${file.name}: this image could not be read.`);
+        messages.push(t('selling.new.photoUnreadable', { name: file.name }));
       }
     }
 
@@ -453,7 +459,9 @@ export default function NewListingPage() {
   const submit = form.handleSubmit((data) => {
     if (photos.length < MIN_LISTING_PHOTOS) {
       setPhotoError(
-        `Add at least ${MIN_LISTING_PHOTOS} photos before publishing.`,
+        t('selling.new.validation.minimumPhotosPublish', {
+          count: MIN_LISTING_PHOTOS,
+        }),
       );
       setStep(2);
       return;
@@ -637,7 +645,10 @@ export default function NewListingPage() {
                   <h2 className="text-xl font-black">{t('selling.new.step.photos')}</h2>
                   <p className="mt-1 text-sm text-slate-500">{t('selling.new.photosBody')}</p>
                   <p className="mt-2 text-xs font-semibold text-slate-500">
-                    At least {MIN_LISTING_PHOTOS} real photos · minimum width {MIN_PHOTO_WIDTH}px · no screenshots · no duplicate images
+                    {t('selling.new.photoRequirements', {
+                      minimum: MIN_LISTING_PHOTOS,
+                      width: MIN_PHOTO_WIDTH,
+                    })}
                   </p>
                   {photoError && (
                     <p
@@ -658,10 +669,13 @@ export default function NewListingPage() {
                   {photos.length > 0 && (
                     <>
                       <p className="mt-4 text-sm font-semibold text-slate-600">
-                        {photos.length} / {MAX_LISTING_PHOTOS} photos
+                        {t('selling.new.photoCount', {
+                          current: photos.length,
+                          maximum: MAX_LISTING_PHOTOS,
+                        })}
                         {photos.length < MIN_LISTING_PHOTOS
-                          ? ` · ${MIN_LISTING_PHOTOS - photos.length} more required`
-                          : ' · minimum reached'}
+                          ? ` · ${t('selling.new.photosMoreRequired', { count: MIN_LISTING_PHOTOS - photos.length })}`
+                          : ` · ${t('selling.new.photosMinimumReached')}`}
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {photos.map((photo, index) => (
@@ -803,7 +817,7 @@ export default function NewListingPage() {
                       role="alert"
                       className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
                     >
-                      <p className="font-bold">We could not publish this listing.</p>
+                      <p className="font-bold">{t('selling.new.publishFailureTitle')}</p>
                       <p className="mt-1 font-medium">
                         {publishErrorMessage(
                           mutation.error,

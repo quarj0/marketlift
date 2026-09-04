@@ -262,10 +262,14 @@ function SelectField({
     options.length === 1 &&
     rawValue === options[0]?.value;
 
+  // Dependent catalogs (for example make -> model -> year) must remain one
+  // control per answer. Their parent selection already narrows the option set,
+  // so a second search box only duplicates the field and makes the form noisy.
   const showCatalogSearch =
     usesCatalog &&
+    !field.dependsOn &&
     !disabledByParent &&
-    (Boolean(field.dependsOn) || (field.optionCount ?? 0) > 25);
+    (field.optionCount ?? 0) > 250;
 
   return (
     <div className="space-y-2">
@@ -321,11 +325,7 @@ function SelectField({
         )}
       </select>
 
-      {autoFilled && (
-        <p className="text-xs font-medium text-emerald-700">
-          {t('categoryFields.autoSelected')}
-        </p>
-      )}
+      {autoFilled && <span className="sr-only">{t('categoryFields.autoSelected')}</span>}
 
       {optionQuery.isError && !disabledByParent && (
         <button

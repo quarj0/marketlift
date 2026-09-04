@@ -362,6 +362,7 @@ export type ReportReason =
   | "prohibited"
   | "offensive"
   | "duplicate"
+  | "unavailable"
   | "other";
 
 export interface MarketplaceReport {

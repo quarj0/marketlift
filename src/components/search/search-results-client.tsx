@@ -512,9 +512,9 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
         >
           <option value="">{t("search.allCategories")}</option>
-          {categoryEntries.map(({ category, depth }) => (
+          {categoryEntries.map(({ category }) => (
             <option key={category.id} value={category.id}>
-              {`${"— ".repeat(depth)}${categoryName(category.id, category.name)}`}
+              {categoryName(category.id, category.name)}
             </option>
           ))}
         </select>
