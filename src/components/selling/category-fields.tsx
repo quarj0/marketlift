@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
@@ -48,13 +49,12 @@ export function validateCategoryAttributes(
     const label = tr(field.label);
 
     if (field.required && isEmpty) {
-      errors[field.id] = t ? t('categoryFields.required', { label }) : `${label} is required.`;
+      errors[field.id] = t
+        ? t('categoryFields.required', { label })
+        : `${label} is required.`;
       continue;
     }
 
-    // Inline/static choices can be checked client-side. Lazy/dependent catalogs
-    // are validated authoritatively by Django because only the current option
-    // slice is loaded into the browser.
     if (
       field.type === 'select' &&
       !isEmpty &&
@@ -65,7 +65,9 @@ export function validateCategoryAttributes(
     ) {
       const selected = String(value);
       if (!field.options.some((option) => option.value === selected)) {
-        errors[field.id] = t ? t('categoryFields.valid', { label }) : `Choose a valid ${label.toLowerCase()}.`;
+        errors[field.id] = t
+          ? t('categoryFields.valid', { label })
+          : `Choose a valid ${label.toLowerCase()}.`;
         continue;
       }
     }
@@ -73,14 +75,24 @@ export function validateCategoryAttributes(
     if (field.type === 'number' && !isEmpty) {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) {
-        errors[field.id] = t ? t('categoryFields.valid', { label }) : `Enter a valid ${label.toLowerCase()}.`;
+        errors[field.id] = t
+          ? t('categoryFields.valid', { label })
+          : `Enter a valid ${label.toLowerCase()}.`;
       } else if (field.min !== undefined && numeric < field.min) {
         errors[field.id] = t
-          ? t('categoryFields.min', { label, min: field.min, unit: field.unit ? ` ${field.unit}` : '' })
+          ? t('categoryFields.min', {
+              label,
+              min: field.min,
+              unit: field.unit ? ` ${field.unit}` : '',
+            })
           : `${label} must be at least ${field.min}${field.unit ? ` ${field.unit}` : ''}.`;
       } else if (field.max !== undefined && numeric > field.max) {
         errors[field.id] = t
-          ? t('categoryFields.max', { label, max: field.max, unit: field.unit ? ` ${field.unit}` : '' })
+          ? t('categoryFields.max', {
+              label,
+              max: field.max,
+              unit: field.unit ? ` ${field.unit}` : '',
+            })
           : `${label} must be at most ${field.max}${field.unit ? ` ${field.unit}` : ''}.`;
       }
     }
@@ -93,20 +105,42 @@ export function toListingSpecifications(
   config: CategoryConfiguration,
   values: ListingAttributes,
 ): Record<string, string | number> {
-  return Object.fromEntries(
-    config.fields.flatMap((field) => {
-      const value = values[field.id];
-      if (empty(value)) return [];
-      if (field.type === 'boolean') return [[field.label, value ? 'Yes' : 'No']];
+  const result: Record<string, string | number> = {};
+  const groups = new Map<string, string[]>();
 
-      const optionLabel = field.options?.find((option) => option.value === String(value))?.label;
-      const displayed = optionLabel ?? (
-        field.type === 'select' ? humanizeCatalogValue(String(value)) : value
-      );
-      const withUnit = field.unit && !optionLabel ? `${displayed} ${field.unit}` : displayed;
-      return [[field.label, withUnit as string | number]];
-    }),
-  );
+  for (const field of config.fields) {
+    const value = values[field.id];
+    if (field.type === 'boolean') {
+      if (field.uiGroup) {
+        if (value === true) {
+          const selected = groups.get(field.uiGroup) ?? [];
+          selected.push(field.label);
+          groups.set(field.uiGroup, selected);
+        }
+      } else if (value !== undefined) {
+        result[field.label] = value ? 'Yes' : 'No';
+      }
+      continue;
+    }
+
+    if (empty(value)) continue;
+    const optionLabel = field.options?.find(
+      (option) => option.value === String(value),
+    )?.label;
+    const displayed =
+      optionLabel ??
+      (field.type === 'select'
+        ? humanizeCatalogValue(String(value))
+        : (value as string | number));
+    result[field.label] =
+      field.unit && !optionLabel ? `${displayed} ${field.unit}` : displayed;
+  }
+
+  for (const [label, selected] of groups) {
+    if (selected.length) result[label] = selected.join(', ');
+  }
+
+  return result;
 }
 
 function descendantIds(config: CategoryConfiguration, parentId: string) {
@@ -168,12 +202,11 @@ function SelectField({
     staleTime: 10 * 60_000,
   });
 
-  const options: CategoryFieldOption[] = usesCatalog
-    ? optionQuery.data ?? []
-    : field.options ?? [];
+  const options = useMemo<CategoryFieldOption[]>(
+    () => (usesCatalog ? optionQuery.data ?? [] : field.options ?? []),
+    [field.options, optionQuery.data, usesCatalog],
+  );
 
-  // Existing listings may contain the canonical option value even before a
-  // lazy request finishes. Match by either canonical value or human label.
   const selectedOption = options.find(
     (option) => option.value === rawValue || option.label === rawValue,
   );
@@ -188,6 +221,41 @@ function SelectField({
     ? config.fields.find((item) => item.id === field.dependsOn)
     : undefined;
   const disabledByParent = Boolean(field.dependsOn && empty(parentValue));
+
+  useEffect(() => {
+    if (
+      !field.dependsOn ||
+      !field.required ||
+      disabledByParent ||
+      optionQuery.isLoading ||
+      otherSelected ||
+      rawValue !== '' ||
+      options.length !== 1
+    ) {
+      return;
+    }
+
+    // Safe deterministic prefill: when a required dependent field has exactly
+    // one known valid choice for the selected parent, choose it automatically.
+    // The seller can still switch to "Other / Not listed" where custom values
+    // are allowed.
+    onValue(options[0].value);
+  }, [
+    disabledByParent,
+    field.dependsOn,
+    field.required,
+    onValue,
+    optionQuery.isLoading,
+    options,
+    otherSelected,
+    rawValue,
+  ]);
+
+  const autoFilled =
+    Boolean(field.dependsOn) &&
+    field.required &&
+    options.length === 1 &&
+    rawValue === options[0]?.value;
 
   return (
     <div className="space-y-2">
@@ -226,6 +294,12 @@ function SelectField({
         )}
       </select>
 
+      {autoFilled && (
+        <p className="text-xs font-medium text-emerald-700">
+          Selected automatically because this is the only known option for your previous choice.
+        </p>
+      )}
+
       {optionQuery.isError && !disabledByParent && (
         <button
           type="button"
@@ -248,6 +322,66 @@ function SelectField({
   );
 }
 
+function BooleanGroup({
+  label,
+  fields,
+  values,
+  onChange,
+}: {
+  label: string;
+  fields: CategoryFieldDefinition[];
+  values: ListingAttributes;
+  onChange: (field: CategoryFieldDefinition, value: boolean) => void;
+}) {
+  const { tr } = useLocale();
+  const [open, setOpen] = useState(false);
+  const selected = fields.filter((field) => values[field.id] === true);
+  const summary =
+    selected.length === 0
+      ? 'Select options'
+      : selected.length <= 2
+        ? selected.map((field) => tr(field.label)).join(', ')
+        : `${selected.slice(0, 2).map((field) => tr(field.label)).join(', ')} +${selected.length - 2}`;
+
+  return (
+    <div className="relative sm:col-span-2">
+      <span className="mb-1.5 block text-sm font-bold">{tr(label)}</span>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-left text-sm outline-none hover:border-brand-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      >
+        <span className={selected.length ? 'font-semibold text-slate-800' : 'text-slate-500'}>
+          {summary}
+        </span>
+        <ChevronDown
+          className={`size-4 shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="mt-2 grid max-h-72 overflow-y-auto rounded-xl border bg-white sm:grid-cols-2">
+          {fields.map((field) => (
+            <label
+              key={field.id}
+              className="flex min-h-11 cursor-pointer items-center gap-3 border-b px-3 py-2 text-sm last:border-b-0 hover:bg-slate-50 sm:[&:nth-last-child(-n+2)]:border-b-0"
+            >
+              <input
+                type="checkbox"
+                checked={values[field.id] === true}
+                onChange={(event) => onChange(field, event.target.checked)}
+                className="size-4 rounded border-slate-300 accent-brand-600"
+              />
+              <span className="font-medium">{tr(field.label)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CategoryFields({
   config,
   values,
@@ -262,11 +396,52 @@ export function CategoryFields({
   const { tr } = useLocale();
 
   const descendants = useMemo(
-    () => new Map(config.fields.map((field) => [field.id, descendantIds(config, field.id)])),
+    () =>
+      new Map(
+        config.fields.map((field) => [
+          field.id,
+          descendantIds(config, field.id),
+        ]),
+      ),
     [config],
   );
 
-  const change = (field: CategoryFieldDefinition, value: CategoryFieldValue) => {
+  const renderItems = useMemo(() => {
+    const groups = new Map<string, CategoryFieldDefinition[]>();
+    for (const field of config.fields) {
+      if (!field.uiGroup || field.type !== 'boolean') continue;
+      const items = groups.get(field.uiGroup) ?? [];
+      items.push(field);
+      groups.set(field.uiGroup, items);
+    }
+
+    const seenGroups = new Set<string>();
+    const result: Array<
+      | { kind: 'field'; field: CategoryFieldDefinition }
+      | { kind: 'group'; label: string; fields: CategoryFieldDefinition[] }
+    > = [];
+
+    for (const field of config.fields) {
+      if (field.uiGroup && field.type === 'boolean') {
+        if (seenGroups.has(field.uiGroup)) continue;
+        seenGroups.add(field.uiGroup);
+        result.push({
+          kind: 'group',
+          label: field.uiGroup,
+          fields: groups.get(field.uiGroup) ?? [],
+        });
+        continue;
+      }
+      result.push({ kind: 'field', field });
+    }
+
+    return result;
+  }, [config.fields]);
+
+  const change = (
+    field: CategoryFieldDefinition,
+    value: CategoryFieldValue,
+  ) => {
     onChange(field.id, value);
     for (const childId of descendants.get(field.id) ?? []) {
       onChange(childId, '');
@@ -275,38 +450,85 @@ export function CategoryFields({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {config.fields.map((field) => {
+      {renderItems.map((item) => {
+        if (item.kind === 'group') {
+          return (
+            <BooleanGroup
+              key={`group-${item.label}`}
+              label={item.label}
+              fields={item.fields}
+              values={values}
+              onChange={(field, value) => change(field, value)}
+            />
+          );
+        }
+
+        const field = item.field;
         const inputId = `category-field-${field.id}`;
         const error = errors[field.id];
         const label = tr(field.label);
         const helpText = field.helpText ? tr(field.helpText) : undefined;
         const placeholder = field.placeholder ? tr(field.placeholder) : undefined;
-        const describedBy = [helpText ? `${inputId}-help` : '', error ? `${inputId}-error` : '']
-          .filter(Boolean)
-          .join(' ') || undefined;
+        const describedBy =
+          [
+            helpText ? `${inputId}-help` : '',
+            error ? `${inputId}-error` : '',
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined;
 
         if (field.type === 'boolean') {
+          const current = values[field.id];
           return (
-            <label key={field.id} htmlFor={inputId} className="flex min-h-16 items-center gap-3 rounded-xl border p-4 sm:col-span-2">
-              <input
-                id={inputId}
-                type="checkbox"
-                checked={Boolean(valueFor(values, field))}
-                onChange={(event) => change(field, event.target.checked)}
-                className="size-5 rounded border-slate-300 accent-brand-600"
-              />
-              <span>
-                <span className="block text-sm font-bold">{label}</span>
-                {helpText && <span id={`${inputId}-help`} className="mt-0.5 block text-xs text-slate-500">{helpText}</span>}
-              </span>
-            </label>
+            <fieldset key={field.id} className="min-w-0">
+              <legend className="mb-1.5 text-sm font-bold">{label}</legend>
+              <div className="grid grid-cols-2 overflow-hidden rounded-xl border bg-white">
+                <label className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 px-3 text-sm font-semibold ${current === true ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <input
+                    type="radio"
+                    name={inputId}
+                    checked={current === true}
+                    onChange={() => change(field, true)}
+                    className="accent-brand-600"
+                  />
+                  Yes
+                </label>
+                <label className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 border-l px-3 text-sm font-semibold ${current === false ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <input
+                    type="radio"
+                    name={inputId}
+                    checked={current === false}
+                    onChange={() => change(field, false)}
+                    className="accent-brand-600"
+                  />
+                  No
+                </label>
+              </div>
+              {helpText && (
+                <span id={`${inputId}-help`} className="mt-1 block text-xs text-slate-500">
+                  {helpText}
+                </span>
+              )}
+              {error && (
+                <span id={`${inputId}-error`} className="mt-1 block text-sm font-medium text-red-600">
+                  {error}
+                </span>
+              )}
+            </fieldset>
           );
         }
 
         return (
-          <label key={field.id} htmlFor={inputId} className={field.type === 'textarea' ? 'sm:col-span-2' : ''}>
+          <label
+            key={field.id}
+            htmlFor={inputId}
+            className={field.type === 'textarea' ? 'sm:col-span-2' : ''}
+          >
             <span className="mb-1.5 block text-sm font-bold">
-              {label}{field.required && <span className="ml-1 text-red-600" aria-hidden="true">*</span>}
+              {label}
+              {field.required && (
+                <span className="ml-1 text-red-600" aria-hidden="true">*</span>
+              )}
             </span>
 
             {field.type === 'select' ? (
@@ -362,8 +584,16 @@ export function CategoryFields({
               </div>
             )}
 
-            {helpText && <span id={`${inputId}-help`} className="mt-1 block text-xs text-slate-500">{helpText}</span>}
-            {error && <span id={`${inputId}-error`} className="mt-1 block text-sm font-medium text-red-600">{error}</span>}
+            {helpText && (
+              <span id={`${inputId}-help`} className="mt-1 block text-xs text-slate-500">
+                {helpText}
+              </span>
+            )}
+            {error && (
+              <span id={`${inputId}-error`} className="mt-1 block text-sm font-medium text-red-600">
+                {error}
+              </span>
+            )}
           </label>
         );
       })}

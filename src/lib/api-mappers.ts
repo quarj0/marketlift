@@ -67,6 +67,7 @@ export type ApiCategoryField = {
   optionCount?: number | null;
   placeholder?: string | null;
   helpText?: string | null;
+  uiGroup?: string | null;
   unit?: string | null;
   min?: number | null;
   max?: number | null;
@@ -97,7 +98,11 @@ export type ApiCategory = {
     label?: string | null;
     placeholder?: string | null;
   } | null;
-  condition?: { enabled?: boolean | null; required?: boolean | null } | null;
+  condition?: {
+    enabled?: boolean | null;
+    required?: boolean | null;
+    options?: string[] | null;
+  } | null;
   fields?: ApiCategoryField[] | null;
 };
 
@@ -396,6 +401,7 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
     condition: {
       enabled: raw.condition?.enabled !== false,
       required: Boolean(raw.condition?.required),
+      options: raw.condition?.options || [],
     },
     fields: (raw.fields || []).map((field) => ({
       id: field.id,
@@ -409,6 +415,7 @@ export function mapCategory(raw: ApiCategory): CategoryConfiguration {
       optionCount: Number(field.optionCount || 0),
       placeholder: field.placeholder || undefined,
       helpText: field.helpText || undefined,
+      uiGroup: field.uiGroup || undefined,
       unit: field.unit || undefined,
       min: field.min ?? undefined,
       max: field.max ?? undefined,

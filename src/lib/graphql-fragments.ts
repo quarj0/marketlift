@@ -53,9 +53,9 @@ export const CATEGORY_FIELDS = `
   schemaVersion
   description
   pricing { mode label placeholder }
-  condition { enabled required }
+  condition { enabled required options }
   fields {
-    id label type required filterable allowCustomValue dependsOn lazyOptions optionCount placeholder helpText unit min max step
+    id label type required filterable allowCustomValue dependsOn lazyOptions optionCount placeholder helpText uiGroup unit min max step
     options { value label }
   }
   subcategories {
