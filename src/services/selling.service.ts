@@ -212,6 +212,15 @@ export const sellingService = {
         },
       },
     );
-    return mapSellerListing(data.createListing);
+    const created = mapSellerListing(data.createListing);
+
+    const published = await graphqlRequest<{ publishListing: ApiListing }>(
+      `mutation PublishListing($listingId: ID!) {
+        publishListing(listingId: $listingId) { ${LISTING_FIELDS} }
+      }`,
+      { listingId: created.id },
+    );
+
+    return mapSellerListing(published.publishListing);
   },
 };

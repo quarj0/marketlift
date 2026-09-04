@@ -1,4 +1,4 @@
-export type ListingCondition = "Brand New" | "Refurbished" | "Used";
+export type ListingCondition = string;
 export type VerificationStatus =
   | "not_verified"
   | "pending"
@@ -78,6 +78,7 @@ export interface CategoryFieldDefinition {
   optionCount?: number;
   placeholder?: string;
   helpText?: string;
+  uiGroup?: string;
   unit?: string;
   min?: number;
   max?: number;
@@ -96,6 +97,7 @@ export interface CategoryConfiguration extends Category {
   condition: {
     enabled: boolean;
     required: boolean;
+    options: string[];
   };
   fields: CategoryFieldDefinition[];
 }
