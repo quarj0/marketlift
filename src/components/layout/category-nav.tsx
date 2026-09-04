@@ -26,7 +26,7 @@ export function CategoryNav() {
     <div className="hidden border-t bg-white lg:block">
       <nav
         className="mx-auto flex max-w-7xl items-center gap-1 overflow-visible px-8 py-2"
-        aria-label="Marketplace categories"
+        aria-label={t("categories.navigation")}
       >
         {primary.map((category) => {
           const children = (category.subcategories ?? []).filter(
