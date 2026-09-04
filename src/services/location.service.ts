@@ -16,6 +16,7 @@ type RemoteLocationRow = {
   district?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  locationToken?: string | null;
 };
 
 const cityCache = new Map<string, string[]>();
@@ -51,6 +52,7 @@ function toLocation(row: RemoteLocationRow, countryCode: string): Location | nul
       ...(row.district ? { district: String(row.district).trim() } : {}),
       ...(Number.isFinite(row.latitude) ? { latitude: Number(row.latitude) } : {}),
       ...(Number.isFinite(row.longitude) ? { longitude: Number(row.longitude) } : {}),
+      ...(row.locationToken ? { locationToken: String(row.locationToken) } : {}),
     };
   }
 
@@ -62,6 +64,7 @@ function toLocation(row: RemoteLocationRow, countryCode: string): Location | nul
     ...(row.district ? { district: String(row.district).trim() } : {}),
     ...(Number.isFinite(row.latitude) ? { latitude: Number(row.latitude) } : {}),
     ...(Number.isFinite(row.longitude) ? { longitude: Number(row.longitude) } : {}),
+    ...(row.locationToken ? { locationToken: String(row.locationToken) } : {}),
   };
 }
 
@@ -254,6 +257,71 @@ export const locationService = {
     } catch {
       return [];
     }
+  },
+
+  async resolveSelection(
+    input: Pick<Location, 'countryCode' | 'state' | 'stateCode' | 'city' | 'district'>,
+  ): Promise<Location | null> {
+    const country = (input.countryCode || 'BR').trim().toUpperCase();
+    const pieces = [
+      input.district?.trim(),
+      input.city.trim(),
+      input.state?.trim() || input.stateCode.trim(),
+      country,
+    ].filter(Boolean);
+
+    const params = new URLSearchParams({
+      q: pieces.join(', '),
+      limit: '8',
+      countryCode: country,
+    });
+    const response = await apiRequest<{ results: RemoteLocationRow[] }>(
+      `/api/v1/locations/search/?${params.toString()}`,
+    );
+
+    const candidates = (response.results ?? [])
+      .map((row) => toLocation(row, country))
+      .filter((location): location is Location => Boolean(location?.locationToken));
+
+    if (!candidates.length) return null;
+
+    const requestedCity = input.city.trim().toLocaleLowerCase(localeFor(country));
+    const requestedDistrict = (input.district || '')
+      .trim()
+      .toLocaleLowerCase(localeFor(country));
+    const requestedState = input.stateCode.trim().toUpperCase();
+
+    const exact =
+      candidates.find((candidate) => {
+        const cityMatches =
+          !requestedCity ||
+          candidate.city.trim().toLocaleLowerCase(localeFor(country)) === requestedCity;
+        const districtMatches =
+          !requestedDistrict ||
+          (candidate.district || '')
+            .trim()
+            .toLocaleLowerCase(localeFor(country)) === requestedDistrict;
+        const stateMatches =
+          !requestedState ||
+          !candidate.stateCode ||
+          candidate.stateCode.trim().toUpperCase() === requestedState;
+        return cityMatches && districtMatches && stateMatches;
+      }) ??
+      candidates.find((candidate) => {
+        const cityMatches =
+          !requestedCity ||
+          candidate.city
+            .trim()
+            .toLocaleLowerCase(localeFor(country))
+            .includes(requestedCity);
+        const stateMatches =
+          !requestedState ||
+          !candidate.stateCode ||
+          candidate.stateCode.trim().toUpperCase() === requestedState;
+        return cityMatches && stateMatches;
+      });
+
+    return exact ?? candidates[0];
   },
 
   async reverse(latitude: number, longitude: number, countryCode = 'BR'): Promise<Location | null> {

@@ -29,6 +29,7 @@ export type LocationFieldValue = {
   district: string;
   latitude?: number;
   longitude?: number;
+  locationToken?: string;
 };
 
 type Props = {
@@ -235,6 +236,7 @@ export function LocationFields({
       stateCode: value.stateCode || "",
       city: value.city || "",
       district: value.district || "",
+      locationToken: value.locationToken,
       ...patch,
     });
   }
@@ -253,6 +255,7 @@ export function LocationFields({
       district: "",
       latitude: undefined,
       longitude: undefined,
+      locationToken: undefined,
     });
   }
 
@@ -278,6 +281,7 @@ export function LocationFields({
       district: "",
       latitude: undefined,
       longitude: undefined,
+      locationToken: undefined,
     });
   }
 
@@ -296,7 +300,40 @@ export function LocationFields({
       district: "",
       latitude: undefined,
       longitude: undefined,
+      locationToken: undefined,
     });
+  }
+
+  async function chooseDistrict(district: string) {
+    const provisional = {
+      countryCode: country,
+      state: value.state || "",
+      stateCode: value.stateCode,
+      city: value.city,
+      district,
+      latitude: undefined,
+      longitude: undefined,
+      locationToken: undefined,
+    };
+    onChange(provisional);
+
+    try {
+      const resolved = await locationService.resolveSelection(provisional);
+      if (!resolved?.locationToken) return;
+      onChange({
+        countryCode: resolved.countryCode || country,
+        state: resolved.state || provisional.state,
+        stateCode: resolved.stateCode || provisional.stateCode,
+        city: resolved.city || provisional.city,
+        district: resolved.district || provisional.district,
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+        locationToken: resolved.locationToken,
+      });
+    } catch {
+      // The page-level Continue action retries resolution and shows a useful
+      // validation message if the provider cannot resolve this selection.
+    }
   }
 
   async function chooseCurrentLocation() {
@@ -314,6 +351,7 @@ export function LocationFields({
       district: resolved.district ?? "",
       latitude: resolved.latitude,
       longitude: resolved.longitude,
+      locationToken: resolved.locationToken,
     });
   }
 
@@ -434,6 +472,7 @@ export function LocationFields({
               district: "",
               latitude: undefined,
               longitude: undefined,
+              locationToken: undefined,
             })
           }
           onChoose={(city) =>
@@ -442,6 +481,7 @@ export function LocationFields({
               district: "",
               latitude: undefined,
               longitude: undefined,
+              locationToken: undefined,
             })
           }
           placeholder={placeholders?.city || `Select ${labels.city.toLowerCase()}`}
@@ -465,15 +505,10 @@ export function LocationFields({
               district,
               latitude: undefined,
               longitude: undefined,
+              locationToken: undefined,
             })
           }
-          onChoose={(district) =>
-            emit({
-              district,
-              latitude: undefined,
-              longitude: undefined,
-            })
-          }
+          onChoose={(district) => void chooseDistrict(district)}
           placeholder={
             placeholders?.district || `Select ${labels.district.toLowerCase()}`
           }

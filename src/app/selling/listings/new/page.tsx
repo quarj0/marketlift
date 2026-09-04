@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { LocationFields } from '@/components/location/location-fields';
 import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
+import { locationService } from '@/services/location.service';
 import type { ListingAttributes } from '@/types';
 import { useLocale } from '@/providers/locale-provider';
 import { useMarket } from '@/providers/market-provider';
@@ -47,6 +48,7 @@ type Form = {
   district: string;
   latitude?: number;
   longitude?: number;
+  locationToken?: string;
 };
 type PhotoPreview = {
   name: string;
@@ -156,6 +158,7 @@ const defaultValues: Form = {
   stateName: '',
   city: '',
   district: '',
+  locationToken: '',
 };
 
 function publishErrorMessage(error: unknown, fallback: string) {
@@ -202,6 +205,7 @@ export default function NewListingPage() {
     district: z.string().min(2, t('selling.new.validation.district')),
     latitude: z.number().optional(),
     longitude: z.number().optional(),
+    locationToken: z.string().optional(),
   }), [t]);
 
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: categoryService.getCategories, staleTime: 5 * 60_000 });
@@ -266,6 +270,56 @@ export default function NewListingPage() {
 
     const valid = fields.length ? await form.trigger(fields) : true;
     if (!valid) return;
+
+    if (step === 3 && !form.getValues('locationToken')) {
+      try {
+        const resolvedLocation = await locationService.resolveSelection({
+          countryCode: market.code,
+          state: form.getValues('stateName') || form.getValues('state'),
+          stateCode: form.getValues('state'),
+          city: form.getValues('city'),
+          district: form.getValues('district'),
+        });
+
+        if (!resolvedLocation?.locationToken) {
+          form.setError('district', {
+            type: 'manual',
+            message: 'Choose one of the suggested locations.',
+          });
+          return;
+        }
+
+        form.setValue('state', resolvedLocation.stateCode || form.getValues('state'), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        form.setValue(
+          'stateName',
+          resolvedLocation.state || form.getValues('stateName'),
+          { shouldDirty: true },
+        );
+        form.setValue('city', resolvedLocation.city || form.getValues('city'), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        form.setValue(
+          'district',
+          resolvedLocation.district || form.getValues('district'),
+          { shouldDirty: true, shouldValidate: true },
+        );
+        form.setValue('latitude', resolvedLocation.latitude, { shouldDirty: true });
+        form.setValue('longitude', resolvedLocation.longitude, { shouldDirty: true });
+        form.setValue('locationToken', resolvedLocation.locationToken, {
+          shouldDirty: true,
+        });
+      } catch {
+        form.setError('district', {
+          type: 'manual',
+          message: 'Choose one of the suggested locations.',
+        });
+        return;
+      }
+    }
 
     if (step === 1 && categoryConfig?.pricing.mode === 'required' && Number(values.price ?? 0) <= 0) {
       form.setError('price', { type: 'manual', message: t('selling.new.validation.pricePositive') });
@@ -433,6 +487,7 @@ export default function NewListingPage() {
         district: data.district,
         latitude: data.latitude,
         longitude: data.longitude,
+        locationToken: data.locationToken,
       },
       attributes,
       categorySchemaVersion: categoryConfig.schemaVersion,
@@ -639,6 +694,7 @@ export default function NewListingPage() {
                         district: values.district ?? '',
                         latitude: values.latitude,
                         longitude: values.longitude,
+                        locationToken: values.locationToken,
                       }}
                       onChange={(location) => {
                         form.setValue('state', location.stateCode, { shouldDirty: true, shouldValidate: true });
@@ -647,6 +703,7 @@ export default function NewListingPage() {
                         form.setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
                         form.setValue('latitude', location.latitude, { shouldDirty: true });
                         form.setValue('longitude', location.longitude, { shouldDirty: true });
+                        form.setValue('locationToken', location.locationToken || '', { shouldDirty: true });
                       }}
                       labels={{
                         region: t('search.region'),

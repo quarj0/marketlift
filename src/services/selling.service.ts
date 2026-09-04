@@ -125,6 +125,7 @@ export const sellingService = {
       stateCode: input.location.stateCode,
       city: input.location.city,
       district: input.location.district || "",
+      locationToken: input.location.locationToken || undefined,
       ...(Number.isFinite(input.location.latitude) &&
       Number.isFinite(input.location.longitude)
         ? {
@@ -201,6 +202,7 @@ export const sellingService = {
           stateCode: input.location.stateCode,
           city: input.location.city,
           district: input.location.district || "",
+      locationToken: input.location.locationToken || undefined,
           ...(Number.isFinite(input.location.latitude) &&
           Number.isFinite(input.location.longitude)
             ? {

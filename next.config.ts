@@ -30,6 +30,7 @@ const defaultMediaOrigin =
     ? "https://assets.marketlift.com.br"
     : undefined;
 const imageOrigins = [
+  remotePattern("https://assets.marketlift.com.br"),
   remotePattern(process.env.NEXT_PUBLIC_MARKETLIFT_API_URL || defaultApiOrigin),
   remotePattern(
     process.env.NEXT_PUBLIC_MARKETLIFT_MEDIA_ORIGIN || defaultMediaOrigin,

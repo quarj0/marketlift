@@ -14,6 +14,7 @@ export interface Location {
   district?: string;
   latitude?: number;
   longitude?: number;
+  locationToken?: string;
 }
 
 /**

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { ComponentType } from "react";
 import {
   Armchair,
@@ -352,6 +353,209 @@ const visualsById = new Map<string, CategoryVisual>(
   ),
 );
 
+const photoGroups: Array<{ asset: string; ids: string[] }> = [
+  { asset: "electronics", ids: ["electronics", "other-electronics"] },
+  { asset: "phones-tablets", ids: ["phones-tablets", "other-phones-tablets"] },
+  { asset: "phones", ids: ["phones"] },
+  { asset: "tablets", ids: ["tablets"] },
+  { asset: "smart-watches", ids: ["smart-watches"] },
+  { asset: "phone-accessories", ids: ["phone-accessories"] },
+  { asset: "computers", ids: ["computers"] },
+  { asset: "tvs-video", ids: ["tvs-video"] },
+  { asset: "audio", ids: ["audio"] },
+  { asset: "cameras", ids: ["cameras"] },
+  { asset: "gaming", ids: ["gaming"] },
+  { asset: "networking", ids: ["networking"] },
+  { asset: "printers-scanners", ids: ["printers-scanners"] },
+  { asset: "vehicles", ids: ["vehicles"] },
+  { asset: "cars", ids: ["cars"] },
+  { asset: "motorcycles", ids: ["motorcycles"] },
+  { asset: "trucks-commercial-vehicles", ids: ["trucks-commercial-vehicles"] },
+  { asset: "buses-vans", ids: ["buses-vans"] },
+  { asset: "vehicle-parts", ids: ["vehicle-parts", "vehicle-accessories"] },
+  { asset: "property", ids: ["property", "other-property"] },
+  {
+    asset: "apartments-houses",
+    ids: [
+      "apartments-for-sale",
+      "houses-for-sale",
+      "apartments-for-rent",
+      "houses-for-rent",
+      "short-lets",
+    ],
+  },
+  { asset: "land-plots", ids: ["land-plots"] },
+  { asset: "commercial-property", ids: ["commercial-property"] },
+  { asset: "rooms-shared", ids: ["rooms-shared"] },
+  {
+    asset: "home-furniture-appliances",
+    ids: [
+      "home",
+      "home-furniture-appliances",
+      "furniture",
+      "home-decor",
+      "lighting",
+      "other-home-furniture-appliances",
+    ],
+  },
+  { asset: "kitchen-appliances", ids: ["kitchen-appliances"] },
+  { asset: "home-appliances", ids: ["home-appliances"] },
+  { asset: "garden-outdoor", ids: ["garden-outdoor"] },
+  {
+    asset: "fashion",
+    ids: [
+      "fashion",
+      "womens-fashion",
+      "mens-fashion",
+      "shoes",
+      "bags-accessories",
+      "watches-jewelry",
+      "childrens-clothing",
+      "other-fashion",
+    ],
+  },
+  {
+    asset: "beauty-personal-care",
+    ids: [
+      "beauty-personal-care",
+      "skincare",
+      "haircare",
+      "makeup",
+      "fragrances",
+      "personal-care",
+      "beauty-tools",
+      "other-beauty-personal-care",
+    ],
+  },
+  {
+    asset: "babies-kids",
+    ids: [
+      "babies-kids",
+      "baby-clothing",
+      "baby-gear",
+      "maternity",
+      "feeding",
+      "nursery",
+      "toys-games",
+      "other-babies-kids",
+    ],
+  },
+  {
+    asset: "animals-pets",
+    ids: [
+      "animals-pets",
+      "dogs",
+      "cats",
+      "birds",
+      "livestock",
+      "pet-supplies",
+      "other-pets",
+    ],
+  },
+  {
+    asset: "food-agriculture-farming",
+    ids: [
+      "food-agriculture-farming",
+      "food-beverages",
+      "crops-produce",
+      "seeds-fertilizer",
+      "farm-machinery",
+      "livestock-poultry",
+      "animal-feed",
+      "other-food-agriculture-farming",
+    ],
+  },
+  {
+    asset: "jobs",
+    ids: [
+      "jobs",
+      "software-it",
+      "admin-office",
+      "sales-marketing",
+      "finance-accounting",
+      "engineering",
+      "healthcare",
+      "education",
+      "hospitality",
+      "trades-labor",
+      "other-jobs",
+    ],
+  },
+  {
+    asset: "services",
+    ids: [
+      "services",
+      "home-services",
+      "it-services",
+      "automotive-services",
+      "business-services",
+      "event-services",
+      "beauty-services",
+      "lessons-training",
+      "logistics-delivery",
+      "other-services",
+    ],
+  },
+  {
+    asset: "repair-construction",
+    ids: [
+      "repair-construction",
+      "building-materials",
+      "construction-tools",
+      "electrical-plumbing",
+      "construction-services",
+      "doors-windows",
+      "roofing",
+      "other-repair-construction",
+    ],
+  },
+  {
+    asset: "business-industry",
+    ids: [
+      "business",
+      "business-industry",
+      "commercial-equipments-tools",
+      "industrial-machinery",
+      "manufacturing-materials-supplies",
+      "restaurant-equipment",
+      "office-equipment",
+      "medical-equipment",
+      "printing-equipment",
+      "power-tools",
+      "hand-tools",
+      "generators",
+      "safety-equipment",
+      "measuring-tools",
+      "other-commercial-equipment",
+      "other-business-industry",
+    ],
+  },
+  {
+    asset: "leisure-activities",
+    ids: [
+      "leisure-activities",
+      "sports-fitness",
+      "musical-instruments",
+      "books-media",
+      "outdoor-camping",
+      "hobbies-collectibles",
+      "tickets-events",
+      "other-leisure-activities",
+    ],
+  },
+];
+
+const photosById = new Map(
+  photoGroups.flatMap(({ asset, ids }) =>
+    ids.map(
+      (id) => [
+        id,
+        `https://assets.marketlift.com.br/categories/photographic/v1/${asset}.webp`,
+      ] as const,
+    ),
+  ),
+);
+
 const rules: SemanticRule[] = [
   { terms: ["video game", "gaming", "console", "playstation", "xbox", "nintendo"], icon: Gamepad2, tone: "bg-violet-50 text-violet-700" },
   { terms: ["camera", "photo", "photography"], icon: Camera, tone: "bg-fuchsia-50 text-fuchsia-700" },
@@ -434,6 +638,7 @@ export function CategoryArtwork({
   iconClassName?: string;
 }) {
   const { Icon, tone } = resolveCategoryVisual(category);
+  const photo = photosById.get(String(category.id || "").trim());
 
   return (
     <div className={`relative grid size-full place-items-center overflow-hidden ${tone}`}>
@@ -445,10 +650,20 @@ export function CategoryArtwork({
         className="absolute -bottom-8 -left-5 size-20 rounded-full bg-current opacity-[0.05]"
         aria-hidden="true"
       />
-      <Icon
-        className={`relative z-10 stroke-[1.65] drop-shadow-sm ${iconClassName}`}
-        aria-hidden={true}
-      />
+      {photo ? (
+        <Image
+          src={photo}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 45vw, 180px"
+          className="relative z-10 object-contain p-2 drop-shadow-sm"
+        />
+      ) : (
+        <Icon
+          className={`relative z-10 stroke-[1.65] drop-shadow-sm ${iconClassName}`}
+          aria-hidden={true}
+        />
+      )}
     </div>
   );
 }
