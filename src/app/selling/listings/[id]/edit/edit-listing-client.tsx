@@ -87,7 +87,7 @@ export function EditListingClient() {
   const mutation = useMutation({
     mutationFn: () => {
       if (!listing || !categoryQuery.data)
-        throw new Error("Listing data is unavailable.");
+        throw new Error(t("selling.edit.dataUnavailable"));
       return sellingService.updateListing(listing.id, {
         title: form.title.trim(),
         description: form.description.trim(),
