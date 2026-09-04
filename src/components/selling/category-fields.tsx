@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useLocale } from '@/providers/locale-provider';
 import { categoryService } from '@/services/category.service';
 import type {
@@ -183,6 +184,8 @@ function SelectField({
     ? String(parentValue ?? '')
     : '__marketlift_root__';
   const [otherParentToken, setOtherParentToken] = useState<string | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const debouncedCatalogSearch = useDebouncedValue(catalogSearch, 250);
   const otherSelected = otherParentToken === parentToken;
 
   const optionQuery = useQuery({
@@ -191,12 +194,14 @@ function SelectField({
       config.id,
       field.id,
       parentValue == null ? '' : String(parentValue),
+      debouncedCatalogSearch,
     ],
     queryFn: () =>
       categoryService.getFieldOptions(
         config.id,
         field.id,
         parentValue == null ? undefined : String(parentValue),
+        debouncedCatalogSearch || undefined,
       ),
     enabled: usesCatalog && (!field.dependsOn || !empty(parentValue)),
     staleTime: 10 * 60_000,
@@ -257,8 +262,23 @@ function SelectField({
     options.length === 1 &&
     rawValue === options[0]?.value;
 
+  const showCatalogSearch =
+    usesCatalog &&
+    !disabledByParent &&
+    (Boolean(field.dependsOn) || (field.optionCount ?? 0) > 25);
+
   return (
     <div className="space-y-2">
+      {showCatalogSearch && (
+        <Input
+          value={catalogSearch}
+          onChange={(event) => setCatalogSearch(event.target.value)}
+          placeholder={`Search ${label.toLowerCase()}...`}
+          autoComplete="off"
+          aria-label={`Search ${label}`}
+        />
+      )}
+
       <select
         id={`category-field-${field.id}`}
         value={showCustom ? '__marketlift_other__' : selectedOption?.value ?? rawValue}
@@ -271,6 +291,7 @@ function SelectField({
             return;
           }
           setOtherParentToken(null);
+          setCatalogSearch('');
           onValue(next);
         }}
         aria-invalid={Boolean(error)}
@@ -282,7 +303,9 @@ function SelectField({
             ? `Choose ${parentField ? tr(parentField.label) : 'the previous answer'} first`
             : optionQuery.isLoading
               ? 'Loading choices…'
-              : placeholder ?? t('categoryFields.select', { label })}
+              : debouncedCatalogSearch && options.length === 0
+                ? `No catalog match for "${debouncedCatalogSearch}"`
+                : placeholder ?? t('categoryFields.select', { label })}
         </option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -533,6 +556,11 @@ export function CategoryFields({
 
             {field.type === 'select' ? (
               <SelectField
+                key={`${field.id}:${
+                  field.dependsOn
+                    ? String(values[field.dependsOn] ?? '')
+                    : '__marketlift_root__'
+                }`}
                 config={config}
                 field={field}
                 values={values}

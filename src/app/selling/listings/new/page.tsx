@@ -158,6 +158,13 @@ const defaultValues: Form = {
   district: '',
 };
 
+function publishErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
+
 function Field({
   label,
   error,
@@ -735,7 +742,18 @@ export default function NewListingPage() {
                   </div>
 
                   {mutation.isError && (
-                    <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{t('selling.new.publishError')}</p>
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                    >
+                      <p className="font-bold">We could not publish this listing.</p>
+                      <p className="mt-1 font-medium">
+                        {publishErrorMessage(
+                          mutation.error,
+                          t('selling.new.publishError'),
+                        )}
+                      </p>
+                    </div>
                   )}
 
                   <Button type="submit" className="mt-5 w-full" size="lg" loading={mutation.isPending} loadingText={t('selling.new.publishing')}>{t('selling.new.publish')}</Button>

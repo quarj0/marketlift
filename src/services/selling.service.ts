@@ -185,8 +185,12 @@ export const sellingService = {
     const imageUploadIds = await Promise.all(
       input.images.map((file) => uploadFile(file, "listing_image")),
     );
-    const data = await graphqlRequest<{ createListing: ApiListing }>(
-      `mutation CreateListing($input: ListingInput!) { createListing(input: $input) { ${LISTING_FIELDS} } }`,
+    const data = await graphqlRequest<{
+      createAndPublishListing: ApiListing;
+    }>(
+      `mutation CreateAndPublishListing($input: ListingInput!) {
+        createAndPublishListing(input: $input) { ${LISTING_FIELDS} }
+      }`,
       {
         input: {
           categoryId: input.category,
@@ -212,15 +216,7 @@ export const sellingService = {
         },
       },
     );
-    const created = mapSellerListing(data.createListing);
 
-    const published = await graphqlRequest<{ publishListing: ApiListing }>(
-      `mutation PublishListing($listingId: ID!) {
-        publishListing(listingId: $listingId) { ${LISTING_FIELDS} }
-      }`,
-      { listingId: created.id },
-    );
-
-    return mapSellerListing(published.publishListing);
+    return mapSellerListing(data.createAndPublishListing);
   },
 };

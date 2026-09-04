@@ -1,13 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import {
-  CategoryIcon,
-  resolveCategoryVisual,
-} from "@/components/categories/category-visual";
+import { CategoryArtwork } from "@/components/categories/category-visual";
 import type { Category } from "@/types";
 
 type Props = {
@@ -82,7 +78,6 @@ export function CategoryPicker({
           const hasChildren = Boolean(category.subcategories?.length);
           const childCount = category.subcategories?.length || 0;
           const selected = selectedId === category.id;
-          const visual = resolveCategoryVisual(category);
 
           return (
             <button
@@ -96,25 +91,8 @@ export function CategoryPicker({
                   : "border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50"
               }`}
             >
-              <div
-                className={`relative grid size-12 shrink-0 overflow-hidden rounded-lg ${
-                  category.imageUrl ? "bg-slate-100" : visual.tone
-                }`}
-              >
-                {category.imageUrl ? (
-                  <Image
-                    src={category.imageUrl}
-                    alt=""
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <CategoryIcon
-                    category={category}
-                    className="m-auto size-5"
-                  />
-                )}
+              <div className="size-12 shrink-0 overflow-hidden rounded-lg">
+                <CategoryArtwork category={category} iconClassName="size-6" />
               </div>
 
               <div className="min-w-0 flex-1">

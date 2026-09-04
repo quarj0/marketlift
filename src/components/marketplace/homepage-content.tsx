@@ -1,34 +1,20 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   BadgeCheck,
-  BriefcaseBusiness,
-  Building2,
-  Car,
   ChevronRight,
   Flag,
-  Grid3X3,
-  Laptop,
-  Map as MapIcon,
   MapPin,
   ShieldCheck,
-  Shirt,
   ShoppingBag,
-  Smartphone,
-  Sofa,
-  Store,
-  Tractor,
-  Tv,
   UserCheck,
   Users,
-  Wrench,
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
-import { resolveCategoryVisual } from "@/components/categories/category-visual";
+import { CategoryArtwork } from "@/components/categories/category-visual";
 import { ListingCard } from "@/components/listings/listing-card";
 import { SearchBar } from "@/components/search/search-bar";
 import { SellerCard } from "@/components/seller/seller-card";
@@ -39,22 +25,6 @@ import { useMarket } from "@/providers/market-provider";
 import { listingService } from "@/services/listing.service";
 import { marketplaceService } from "@/services/marketplace.service";
 import type { Category, Listing } from "@/types";
-
-const icons = {
-  Smartphone,
-  Tv,
-  Laptop,
-  Car,
-  Building2,
-  Map: MapIcon,
-  Sofa,
-  Shirt,
-  Wrench,
-  BriefcaseBusiness,
-  Tractor,
-  Store,
-  Grid3X3,
-};
 
 function SectionHeading({
   eyebrow,
@@ -210,34 +180,14 @@ function CategoryGrid({
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
       {categories?.map((category) => {
-        const semantic = resolveCategoryVisual(category);
-        const ExplicitIcon = icons[category.icon as keyof typeof icons];
-        const Icon =
-          category.icon && category.icon !== "Grid3X3"
-            ? ExplicitIcon ?? semantic.Icon
-            : semantic.Icon;
-        const tone = semantic.tone;
-
         return (
           <Link
             key={category.id}
             href={`/search?category=${category.id}`}
             className="group min-w-0 overflow-hidden rounded-2xl border bg-white text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
-            <div className="relative h-24 overflow-hidden bg-slate-100 sm:h-28">
-              {category.imageUrl ? (
-                <Image
-                  src={category.imageUrl}
-                  alt=""
-                  fill
-                  sizes="(max-width: 640px) 45vw, (max-width: 1280px) 22vw, 180px"
-                  className="object-cover transition duration-300 group-hover:scale-105"
-                />
-              ) : (
-                <div className={`grid h-full place-items-center ${tone}`}>
-                  <Icon className="size-9" aria-hidden />
-                </div>
-              )}
+            <div className="h-24 overflow-hidden transition duration-300 group-hover:scale-105 sm:h-28">
+              <CategoryArtwork category={category} iconClassName="size-11 sm:size-12" />
             </div>
 
             <div className="p-3">
