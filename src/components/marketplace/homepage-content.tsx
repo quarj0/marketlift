@@ -361,7 +361,9 @@ export function HomepageContent() {
 
                     <div className="mt-4 grid grid-cols-3 gap-4">
                       <div>
-                        <p className="text-2xl font-black">13</p>
+                        <p className="text-2xl font-black">
+                          {categoriesQuery.data?.length ?? 0}
+                        </p>
                         <p className="text-xs text-slate-500">
                           {t("home.categoriesCount")}
                         </p>

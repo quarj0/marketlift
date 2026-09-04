@@ -7,7 +7,7 @@ import {
 import type { Location } from '@/types';
 
 type RegionRow = { code: string; name: string };
-type StateRow = { code: string; name: string; regionCode?: string };
+export type StateRow = { code: string; name: string; regionCode?: string };
 type RemoteLocationRow = {
   countryCode?: string | null;
   state?: string | null;
@@ -109,6 +109,49 @@ export const locationService = {
     }
   },
 
+  async getStateSuggestions(
+    countryCode: string,
+    query = '',
+    limit = 40,
+  ): Promise<StateRow[]> {
+    const country = countryCode.trim().toUpperCase();
+    const needle = query.trim().toLocaleLowerCase(localeFor(country));
+
+    const inventory = await this.getStates(country);
+    const results: StateRow[] = [];
+    const seen = new Set<string>();
+
+    const push = (row: StateRow) => {
+      const name = row.name.trim();
+      const code = row.code.trim();
+      if (!name && !code) return;
+      const key = `${code}:${name}`.toLocaleLowerCase(localeFor(country));
+      if (seen.has(key) || results.length >= limit) return;
+      if (
+        needle &&
+        !`${name} ${code}`.toLocaleLowerCase(localeFor(country)).includes(needle)
+      ) {
+        return;
+      }
+      seen.add(key);
+      results.push({ ...row, name, code });
+    };
+
+    inventory.forEach(push);
+    if (results.length >= limit || country === 'BR' || needle.length < 2) {
+      return results;
+    }
+
+    const locations = await this.search(query, country);
+    for (const location of locations) {
+      push({
+        code: location.stateCode || location.state,
+        name: location.state || location.stateCode,
+      });
+    }
+    return results;
+  },
+
   async getCities(countryCode: string, stateCode: string, query = '', limit = 80) {
     const country = countryCode.trim().toUpperCase();
     const state = stateCode.trim().toUpperCase();
@@ -128,9 +171,35 @@ export const locationService = {
         `/api/v1/locations/cities/?${params.toString()}`,
       );
       const cities = response.cities ?? [];
-      if (cities.length || country !== 'BR') {
+      if (cities.length) {
         cityCache.set(key, cities);
         return cities;
+      }
+      if (country !== 'BR' && query.trim().length >= 2) {
+        const locations = await this.search(query, country);
+        const seen = new Set<string>();
+        const geocoded = locations
+          .filter(
+            (location) =>
+              location.city &&
+              (!state ||
+                !location.stateCode ||
+                location.stateCode.toUpperCase() === state),
+          )
+          .map((location) => location.city)
+          .filter((city) => {
+            const token = city.toLocaleLowerCase(localeFor(country));
+            if (seen.has(token)) return false;
+            seen.add(token);
+            return true;
+          })
+          .slice(0, limit);
+        cityCache.set(key, geocoded);
+        return geocoded;
+      }
+      if (country !== 'BR') {
+        cityCache.set(key, []);
+        return [];
       }
     } catch {
       // Brazil has a bundled fallback catalog. Geocoder markets simply return no inventory suggestions.
@@ -156,7 +225,32 @@ export const locationService = {
       const response = await apiRequest<{ suggestions: string[] }>(
         `/api/v1/locations/neighborhoods/?${params.toString()}`,
       );
-      return response.suggestions ?? [];
+      const suggestions = response.suggestions ?? [];
+      if (suggestions.length || country === 'BR' || query.trim().length < 2) {
+        return suggestions;
+      }
+
+      const locations = await this.search(
+        `${query.trim()}, ${city.trim()}`,
+        country,
+      );
+      const seen = new Set<string>();
+      return locations
+        .filter(
+          (location) =>
+            location.district &&
+            (!stateCode ||
+              !location.stateCode ||
+              location.stateCode.toUpperCase() === stateCode.toUpperCase()),
+        )
+        .map((location) => location.district || '')
+        .filter((district) => {
+          const token = district.toLocaleLowerCase(localeFor(country));
+          if (!district || seen.has(token)) return false;
+          seen.add(token);
+          return true;
+        })
+        .slice(0, 40);
     } catch {
       return [];
     }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LoaderCircle, LocateFixed, Search } from "lucide-react";
+import { LoaderCircle, LocateFixed } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,10 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCurrentLocation } from "@/hooks/use-current-location";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
-import { locationService } from "@/services/location.service";
+import {
+  locationService,
+  type StateRow,
+} from "@/services/location.service";
 
 export type LocationFieldValue = {
   countryCode?: string;
@@ -32,17 +35,20 @@ type Props = {
   value: LocationFieldValue;
   onChange: (value: LocationFieldValue) => void;
   labels: {
+    country?: string;
     region: string;
     state: string;
     city: string;
     district: string;
   };
   placeholders?: {
+    state?: string;
     city?: string;
     district?: string;
   };
   errors?: Partial<Record<keyof LocationFieldValue, string>>;
   className?: string;
+  showCountry?: boolean;
   showRegion?: boolean;
   showCurrentLocation?: boolean;
   countryCode?: string;
@@ -90,14 +96,14 @@ function SuggestionInput({
         aria-autocomplete="list"
       />
       {visible && (
-        <div className="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+        <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
           {loading && suggestions.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-500">
               <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
               Searching…
             </div>
           ) : (
-            suggestions.slice(0, 10).map((suggestion) => (
+            suggestions.slice(0, 20).map((suggestion) => (
               <button
                 type="button"
                 key={suggestion}
@@ -125,35 +131,60 @@ export function LocationFields({
   placeholders,
   errors,
   className = "grid gap-4 sm:grid-cols-2",
+  showCountry = true,
   showRegion = true,
   showCurrentLocation = true,
   countryCode,
 }: Props) {
   const { t } = useLocale();
-  const { market } = useMarket();
-  const country = (countryCode || value.countryCode || market.code).toUpperCase();
+  const { market, enabledMarkets, setMarket } = useMarket();
+
+  const country = (
+    countryCode ||
+    value.countryCode ||
+    market.countryCode ||
+    market.code
+  ).toUpperCase();
+  const activeMarket =
+    enabledMarkets.find(
+      (item) =>
+        item.countryCode.toUpperCase() === country ||
+        item.code.toUpperCase() === country,
+    ) || market;
+
   const isBrazil = country === "BR";
-  const { locate, locating, errorCode, clearError } = useCurrentLocation(country);
+  const { locate, locating, errorCode, clearError } =
+    useCurrentLocation(country);
   const selectedState = isBrazil ? getBrazilState(value.stateCode) : undefined;
   const [regionDraft, setRegionDraft] = useState<BrazilRegionCode>("SE");
-  const [locationQuery, setLocationQuery] = useState("");
-  const regionCode = selectedState?.regionCode ?? regionDraft;
 
+  const regionCode = selectedState?.regionCode ?? regionDraft;
+  const debouncedState = useDebouncedValue(
+    value.state || value.stateCode || "",
+    250,
+  );
   const debouncedCity = useDebouncedValue(value.city, 250);
   const debouncedDistrict = useDebouncedValue(value.district, 250);
-  const debouncedLocationQuery = useDebouncedValue(locationQuery, 300);
 
-  const states = isBrazil
+  const brazilStates = isBrazil
     ? brazilLocations.filter((state) => state.regionCode === regionCode)
     : [];
+
+  const stateSuggestionsQuery = useQuery({
+    queryKey: ["location-states", country, debouncedState],
+    queryFn: () =>
+      locationService.getStateSuggestions(country, debouncedState, 40),
+    enabled: !isBrazil && debouncedState.trim().length >= 1,
+    staleTime: 24 * 60 * 60_000,
+  });
 
   const citiesQuery = useQuery({
     queryKey: ["location-cities", country, value.stateCode, debouncedCity],
     queryFn: () =>
-      locationService.getCities(country, value.stateCode, debouncedCity, 40),
+      locationService.getCities(country, value.stateCode, debouncedCity, 80),
     enabled: isBrazil
       ? Boolean(selectedState)
-      : debouncedCity.trim().length >= 2,
+      : debouncedCity.trim().length >= 1,
     staleTime: 24 * 60 * 60_000,
   });
 
@@ -177,13 +208,6 @@ export function LocationFields({
     staleTime: 5 * 60_000,
   });
 
-  const locationSearch = useQuery({
-    queryKey: ["location-form-search", country, debouncedLocationQuery],
-    queryFn: () => locationService.search(debouncedLocationQuery, country),
-    enabled: !isBrazil && debouncedLocationQuery.trim().length >= 2,
-    staleTime: 5 * 60_000,
-  });
-
   const cities = citiesQuery.data?.length
     ? citiesQuery.data
     : isBrazil
@@ -194,6 +218,14 @@ export function LocationFields({
         )
       : [];
 
+  const stateSuggestions = useMemo(
+    () => stateSuggestionsQuery.data ?? [],
+    [stateSuggestionsQuery.data],
+  );
+  const stateNames = useMemo(
+    () => stateSuggestions.map((state) => state.name),
+    [stateSuggestions],
+  );
   const neighborhoods = neighborhoodsQuery.data ?? [];
 
   function emit(patch: Partial<LocationFieldValue>) {
@@ -207,7 +239,24 @@ export function LocationFields({
     });
   }
 
-  function updateState(stateCode: string) {
+  function changeCountry(marketCode: string) {
+    const next = enabledMarkets.find((item) => item.code === marketCode);
+    if (!next) return;
+    clearError();
+    setMarket(next.code);
+    setRegionDraft("SE");
+    onChange({
+      countryCode: next.countryCode,
+      state: "",
+      stateCode: "",
+      city: "",
+      district: "",
+      latitude: undefined,
+      longitude: undefined,
+    });
+  }
+
+  function updateBrazilState(stateCode: string) {
     clearError();
     const state = getBrazilState(stateCode);
     if (!state) {
@@ -232,6 +281,24 @@ export function LocationFields({
     });
   }
 
+  function chooseGenericState(name: string) {
+    const state =
+      stateSuggestions.find((item) => item.name === name) ||
+      ({
+        name,
+        code: name,
+      } satisfies StateRow);
+    clearError();
+    emit({
+      state: state.name,
+      stateCode: state.code || state.name,
+      city: "",
+      district: "",
+      latitude: undefined,
+      longitude: undefined,
+    });
+  }
+
   async function chooseCurrentLocation() {
     const resolved = await locate();
     if (!resolved) return;
@@ -248,22 +315,6 @@ export function LocationFields({
       latitude: resolved.latitude,
       longitude: resolved.longitude,
     });
-    setLocationQuery("");
-  }
-
-  function chooseSuggestion(
-    location: NonNullable<(typeof locationSearch.data)>[number],
-  ) {
-    emit({
-      countryCode: country,
-      state: location.state,
-      stateCode: location.stateCode,
-      city: location.city,
-      district: location.district ?? "",
-      latitude: location.latitude,
-      longitude: location.longitude,
-    });
-    setLocationQuery("");
   }
 
   const errorText =
@@ -272,78 +323,28 @@ export function LocationFields({
       : errorCode === "unsupported"
         ? t("location.unavailable")
         : errorCode === "outside_market"
-          ? `Your current location is outside ${market.countryName}.`
+          ? `Your current location is outside ${activeMarket.countryName}.`
           : t("location.failed");
 
   return (
     <div className={className}>
-      {showCurrentLocation && (
-        <div className="sm:col-span-2 lg:col-span-full">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={chooseCurrentLocation}
-            disabled={locating}
+      {showCountry && (
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-bold">
+            {labels.country || "Country"}
+          </span>
+          <select
+            value={activeMarket.code}
+            onChange={(event) => changeCountry(event.target.value)}
+            className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
           >
-            {locating ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <LocateFixed className="size-4" aria-hidden="true" />
-            )}
-            {locating ? t("location.locating") : t("location.useMine")}
-          </Button>
-          {errorCode && (
-            <p role="alert" className="mt-2 text-sm font-medium text-amber-800">
-              {errorText}
-            </p>
-          )}
-        </div>
-      )}
-
-      {!isBrazil && (
-        <div className="sm:col-span-2 lg:col-span-full">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-bold">Search location</span>
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-                aria-hidden="true"
-              />
-              <Input
-                value={locationQuery}
-                onChange={(event) => setLocationQuery(event.target.value)}
-                placeholder={`Search a city or area in ${market.countryName}`}
-                className="pl-9"
-                autoComplete="off"
-              />
-            </div>
-          </label>
-          {locationSearch.isFetching && (
-            <p className="mt-2 text-xs text-slate-500">Searching locations…</p>
-          )}
-          {locationSearch.data?.length ? (
-            <div className="mt-2 overflow-hidden rounded-xl border bg-white">
-              {locationSearch.data.slice(0, 6).map((location) => (
-                <button
-                  type="button"
-                  key={`${location.stateCode}-${location.city}-${location.district || ""}`}
-                  onClick={() => chooseSuggestion(location)}
-                  className="block min-h-11 w-full border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50"
-                >
-                  <span className="font-semibold">
-                    {location.district ? `${location.district}, ` : ""}
-                    {location.city}
-                  </span>
-                  {(location.state || location.stateCode) && (
-                    <span className="ml-1 text-slate-500">
-                      {location.state || location.stateCode}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+            {enabledMarkets.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.countryName}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       {isBrazil && showRegion && (
@@ -380,35 +381,42 @@ export function LocationFields({
         {isBrazil ? (
           <select
             value={selectedState?.code ?? ""}
-            onChange={(event) => updateState(event.target.value)}
+            onChange={(event) => updateBrazilState(event.target.value)}
             aria-invalid={Boolean(errors?.stateCode)}
             className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
           >
-            <option value="">{labels.state}</option>
-            {states.map((state) => (
+            <option value="">Select {labels.state.toLowerCase()}</option>
+            {brazilStates.map((state) => (
               <option key={state.code} value={state.code}>
                 {state.name} ({state.code})
               </option>
             ))}
           </select>
         ) : (
-          <Input
+          <SuggestionInput
             value={value.state || value.stateCode}
-            onChange={(event) =>
+            suggestions={stateNames}
+            loading={stateSuggestionsQuery.isFetching}
+            autoComplete="address-level1"
+            onChange={(state) =>
               emit({
-                state: event.target.value,
-                stateCode: event.target.value,
+                state,
+                stateCode: state,
+                city: "",
+                district: "",
                 latitude: undefined,
                 longitude: undefined,
               })
             }
-            placeholder={labels.state}
-            autoComplete="address-level1"
-            aria-invalid={Boolean(errors?.stateCode)}
+            onChoose={chooseGenericState}
+            placeholder={placeholders?.state || labels.state}
+            invalid={Boolean(errors?.stateCode)}
           />
         )}
         {errors?.stateCode && (
-          <span className="mt-1 block text-sm text-red-600">{errors.stateCode}</span>
+          <span className="mt-1 block text-sm text-red-600">
+            {errors.stateCode}
+          </span>
         )}
       </label>
 
@@ -436,7 +444,7 @@ export function LocationFields({
               longitude: undefined,
             })
           }
-          placeholder={placeholders?.city}
+          placeholder={placeholders?.city || `Select ${labels.city.toLowerCase()}`}
           invalid={Boolean(errors?.city)}
         />
         {errors?.city && (
@@ -466,13 +474,40 @@ export function LocationFields({
               longitude: undefined,
             })
           }
-          placeholder={placeholders?.district}
+          placeholder={
+            placeholders?.district || `Select ${labels.district.toLowerCase()}`
+          }
           invalid={Boolean(errors?.district)}
         />
         {errors?.district && (
-          <span className="mt-1 block text-sm text-red-600">{errors.district}</span>
+          <span className="mt-1 block text-sm text-red-600">
+            {errors.district}
+          </span>
         )}
       </label>
+
+      {showCurrentLocation && (
+        <div className="sm:col-span-2 lg:col-span-full">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={chooseCurrentLocation}
+            disabled={locating}
+          >
+            {locating ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <LocateFixed className="size-4" aria-hidden="true" />
+            )}
+            {locating ? t("location.locating") : t("location.useMine")}
+          </Button>
+          {errorCode && (
+            <p role="alert" className="mt-2 text-sm font-medium text-amber-800">
+              {errorText}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
