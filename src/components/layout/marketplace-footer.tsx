@@ -4,12 +4,26 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
 import { MarketliftLogo } from "@/components/marketplace/logo";
+import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
 
 export function MarketplaceFooter() {
   const { t, locale } = useLocale();
   const { market } = useMarket();
+  const { hydrated, isAuthenticated } = useAuth();
+
+  const accountLinks = [
+    ...(hydrated && !isAuthenticated
+      ? [
+          [t("nav.login"), "/login"],
+          [t("footer.createAccount"), "/register"],
+        ]
+      : []),
+    [t("nav.saved"), "/account/saved"],
+    [t("nav.messages"), "/messages"],
+    [t("nav.selling"), "/selling/start"],
+  ];
 
   const groups = [
     {
@@ -24,13 +38,7 @@ export function MarketplaceFooter() {
     },
     {
       title: t("footer.account"),
-      links: [
-        [t("nav.login"), "/login"],
-        [t("footer.createAccount"), "/register"],
-        [t("nav.saved"), "/account/saved"],
-        [t("nav.messages"), "/messages"],
-        [t("nav.selling"), "/selling/start"],
-      ],
+      links: accountLinks,
     },
     {
       title: t("footer.safetySupport"),

@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   BellRing,
   CheckCircle2,
@@ -19,10 +24,7 @@ import { savedSearchService } from "@/services/saved-search.service";
 import { brazilLocations, brazilRegions } from "@/data/brazil-locations";
 import { locationService } from "@/services/location.service";
 import { categoryService } from "@/services/category.service";
-import {
-  findCategoryPath,
-  flattenCategories,
-} from "@/lib/category-tree";
+import { findCategoryPath, flattenCategories } from "@/lib/category-tree";
 import { ListingCard } from "@/components/listings/listing-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,7 +82,9 @@ function hasAlertableCriteria(filters: SearchFilters) {
   );
 }
 
-function attributeFilters(params: URLSearchParams): SearchFilters["attributes"] {
+function attributeFilters(
+  params: URLSearchParams,
+): SearchFilters["attributes"] {
   const attributes: NonNullable<SearchFilters["attributes"]> = {};
 
   params.forEach((value, key) => {
@@ -95,10 +99,30 @@ function attributeFilters(params: URLSearchParams): SearchFilters["attributes"] 
       attributes[field] = range;
       return;
     }
-    attributes[field] = value === "true" ? true : value === "false" ? false : value;
+    attributes[field] =
+      value === "true" ? true : value === "false" ? false : value;
   });
 
   return attributes;
+}
+
+const PRIMARY_CATEGORY_FILTERS = new Set([
+  "product_type",
+  "make",
+  "brand",
+  "model",
+  "year",
+]);
+
+function dependentFieldIds(
+  fields: CategoryFieldDefinition[],
+  parentId: string,
+): string[] {
+  const direct = fields.filter((field) => field.dependsOn === parentId);
+  return direct.flatMap((field) => [
+    field.id,
+    ...dependentFieldIds(fields, field.id),
+  ]);
 }
 
 function useFilters(categorySlug?: string): SearchFilters {
@@ -148,11 +172,15 @@ function DynamicCategoryFilter({
   categoryId,
   field,
   attributes,
+  dependentIds,
+  dependentLabel,
   update,
 }: {
   categoryId: string;
   field: CategoryFieldDefinition;
   attributes: NonNullable<SearchFilters["attributes"]>;
+  dependentIds: string[];
+  dependentLabel?: string;
   update: (patch: Record<string, string | undefined>) => void;
 }) {
   const { t, tr } = useLocale();
@@ -160,8 +188,8 @@ function DynamicCategoryFilter({
   const parentValue = field.dependsOn
     ? String(attributes[field.dependsOn] ?? "")
     : "";
-  const needsRemoteOptions = field.type === "select" &&
-    (field.lazyOptions || Boolean(field.dependsOn));
+  const needsRemoteOptions =
+    field.type === "select" && (field.lazyOptions || Boolean(field.dependsOn));
   const optionsQuery = useQuery({
     queryKey: ["category-field-options", categoryId, field.id, parentValue],
     queryFn: () =>
@@ -173,11 +201,14 @@ function DynamicCategoryFilter({
     enabled: needsRemoteOptions && (!field.dependsOn || Boolean(parentValue)),
     staleTime: 5 * 60_000,
   });
-  const options = needsRemoteOptions ? optionsQuery.data ?? [] : field.options ?? [];
+  const options = needsRemoteOptions
+    ? (optionsQuery.data ?? [])
+    : (field.options ?? []);
   const label = tr(field.label);
 
   if (field.type === "number") {
-    const range = typeof current === "object" && current !== null ? current : {};
+    const range =
+      typeof current === "object" && current !== null ? current : {};
     return (
       <fieldset>
         <legend className="mb-2 block text-sm font-semibold">{label}</legend>
@@ -192,7 +223,9 @@ function DynamicCategoryFilter({
             step={field.step}
             placeholder={t("search.min")}
             onBlur={(event) =>
-              update({ [`attr.${field.id}.min`]: event.target.value || undefined })
+              update({
+                [`attr.${field.id}.min`]: event.target.value || undefined,
+              })
             }
           />
           <Input
@@ -205,7 +238,9 @@ function DynamicCategoryFilter({
             step={field.step}
             placeholder={t("search.max")}
             onBlur={(event) =>
-              update({ [`attr.${field.id}.max`]: event.target.value || undefined })
+              update({
+                [`attr.${field.id}.max`]: event.target.value || undefined,
+              })
             }
           />
         </div>
@@ -216,7 +251,10 @@ function DynamicCategoryFilter({
   if (field.type === "boolean") {
     return (
       <div>
-        <label className="mb-2 block text-sm font-semibold" htmlFor={`attr-${field.id}`}>
+        <label
+          className="mb-2 block text-sm font-semibold"
+          htmlFor={`attr-${field.id}`}
+        >
           {label}
         </label>
         <select
@@ -238,30 +276,53 @@ function DynamicCategoryFilter({
   if (field.type === "select") {
     return (
       <div>
-        <label className="mb-2 block text-sm font-semibold" htmlFor={`attr-${field.id}`}>
+        <label
+          className="mb-2 block text-sm font-semibold"
+          htmlFor={`attr-${field.id}`}
+        >
           {label}
         </label>
         <select
           id={`attr-${field.id}`}
           value={typeof current === "string" ? current : ""}
           disabled={Boolean(field.dependsOn) && !parentValue}
-          onChange={(event) =>
-            update({ [`attr.${field.id}`]: event.target.value || undefined })
-          }
+          onChange={(event) => {
+            const patch: Record<string, string | undefined> = {
+              [`attr.${field.id}`]: event.target.value || undefined,
+            };
+            dependentIds.forEach((id) => {
+              patch[`attr.${id}`] = undefined;
+            });
+            update(patch);
+          }}
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm disabled:bg-slate-100"
         >
-          <option value="">{t("search.all")}</option>
+          <option value="">
+            {optionsQuery.isLoading
+              ? t("search.loadingOptions")
+              : t("search.all")}
+          </option>
           {options.map((option) => (
-            <option key={option.value} value={option.value}>{tr(option.label)}</option>
+            <option key={option.value} value={option.value}>
+              {tr(option.label)}
+            </option>
           ))}
         </select>
+        {dependentLabel && !current ? (
+          <p className="mt-1.5 text-xs leading-5 text-slate-500">
+            {t("search.selectToRefine", { field: dependentLabel })}
+          </p>
+        ) : null}
       </div>
     );
   }
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold" htmlFor={`attr-${field.id}`}>
+      <label
+        className="mb-2 block text-sm font-semibold"
+        htmlFor={`attr-${field.id}`}
+      >
         {label}
       </label>
       <Input
@@ -272,7 +333,9 @@ function DynamicCategoryFilter({
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
-            update({ [`attr.${field.id}`]: event.currentTarget.value || undefined });
+            update({
+              [`attr.${field.id}`]: event.currentTarget.value || undefined,
+            });
           }
         }}
         onBlur={(event) =>
@@ -283,18 +346,26 @@ function DynamicCategoryFilter({
   );
 }
 
-export function SearchResultsClient({ categorySlug }: { categorySlug?: string } = {}) {
+export function SearchResultsClient({
+  categorySlug,
+}: { categorySlug?: string } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const filters = useFilters(categorySlug);
-  const { t, categoryName, locale } = useLocale();
+  const { t, tr, categoryName, locale } = useLocale();
   const { user } = useAuth();
   const { market } = useMarket();
   const isBrazil = market.code === "BR";
   const [mobileFilters, setMobileFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [showAllCategoryFilters, setShowAllCategoryFilters] = useState(false);
+  const searchParamsString = searchParams.toString();
+  const latestSearchParams = useRef(searchParamsString);
+  useEffect(() => {
+    latestSearchParams.current = searchParamsString;
+  }, [searchParamsString]);
   const cityFilterKey = `${filters.state}:${filters.city}`;
   const districtFilterKey = `${filters.state}:${filters.city}:${filters.district}`;
   const [cityDraftState, setCityDraftState] = useState<{
@@ -340,7 +411,8 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
   const results = useInfiniteQuery({
     queryKey: ["listing-pages", market.code, filters],
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam, signal }) => listingService.searchPage(filters, pageParam, signal),
+    queryFn: ({ pageParam, signal }) =>
+      listingService.searchPage(filters, pageParam, signal),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const { isLoading, refetch } = results;
@@ -348,18 +420,39 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
   const seen = new Set<string>();
   const sections = (results.data?.pages ?? []).map((page, index, pages) => ({
     ...page,
-    showBoundary: page.geography?.expanded && page.geography.key !== pages[index - 1]?.geography?.key,
-    items: page.items.filter((item) => { if (seen.has(item.id)) return false; seen.add(item.id); return true; }),
+    showBoundary:
+      page.geography?.expanded &&
+      page.geography.key !== pages[index - 1]?.geography?.key,
+    items: page.items.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }),
   }));
   const data = sections.flatMap((page) => page.items);
   const sentinel = useRef<HTMLDivElement>(null);
-  const { hasNextPage, isFetchingNextPage, fetchNextPage, isFetchNextPageError } = results;
+  const {
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    isFetchNextPageError,
+  } = results;
   useEffect(() => {
     const element = sentinel.current;
-    if (!element || !hasNextPage || isFetchingNextPage || isFetchNextPageError || !("IntersectionObserver" in window)) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) void fetchNextPage();
-    }, { rootMargin: "200px" });
+    if (
+      !element ||
+      !hasNextPage ||
+      isFetchingNextPage ||
+      isFetchNextPageError ||
+      !("IntersectionObserver" in window)
+    )
+      return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void fetchNextPage();
+      },
+      { rootMargin: "200px" },
+    );
     observer.observe(element);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, isFetchNextPageError]);
@@ -440,8 +533,18 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
       : [];
   const neighborhoods = neighborhoodsQuery.data ?? [];
 
+  function replaceSearchParams(next: URLSearchParams) {
+    const query = next.toString();
+    latestSearchParams.current = query;
+    window.history.replaceState(
+      null,
+      "",
+      query ? `${pathname}?${query}` : pathname,
+    );
+  }
+
   function update(patch: Record<string, string | undefined>) {
-    const next = new URLSearchParams(searchParams.toString());
+    const next = new URLSearchParams(latestSearchParams.current);
     const changesManualLocation = [
       "region",
       "state",
@@ -464,10 +567,44 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
       if (value) next.set(key, value);
       else next.delete(key);
     });
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    replaceSearchParams(next);
   }
 
-  const clear = () => router.replace(pathname);
+  function clear() {
+    setCityDraftState(null);
+    setDistrictDraftState(null);
+    setShowAllCategoryFilters(false);
+    replaceSearchParams(new URLSearchParams());
+  }
+
+  const categoryFields = (categoryConfigQuery.data?.fields ?? []).filter(
+    (field) => field.filterable,
+  );
+  const availableCategoryFields = categoryFields.filter(
+    (field) =>
+      !field.dependsOn || Boolean(filters.attributes?.[field.dependsOn]),
+  );
+  const primaryCategoryFields = availableCategoryFields.filter((field) =>
+    PRIMARY_CATEGORY_FILTERS.has(field.id),
+  );
+  const fallbackCategoryFields = primaryCategoryFields.length
+    ? []
+    : availableCategoryFields.slice(0, 3);
+  const alwaysVisibleCategoryIds = new Set([
+    ...primaryCategoryFields.map((field) => field.id),
+    ...fallbackCategoryFields.map((field) => field.id),
+    ...availableCategoryFields
+      .filter((field) => filters.attributes?.[field.id] !== undefined)
+      .map((field) => field.id),
+  ]);
+  const extraCategoryFields = availableCategoryFields.filter(
+    (field) => !alwaysVisibleCategoryIds.has(field.id),
+  );
+  const visibleCategoryFields = showAllCategoryFilters
+    ? availableCategoryFields
+    : availableCategoryFields.filter((field) =>
+        alwaysVisibleCategoryIds.has(field.id),
+      );
   const hasCoordinates =
     Number.isFinite(filters.latitude) && Number.isFinite(filters.longitude);
   const locationLabel =
@@ -478,12 +615,14 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
   const count = data.length.toLocaleString(
     locale === "pt-BR" ? "pt-BR" : "en-US",
   );
-  const countText = sections.some(page => page.geography?.expanded)
-    ? (locale === "pt-BR" ? `${count} resultados carregados nesta busca` : `${count} results loaded for this search`)
+  const countText = sections.some((page) => page.geography?.expanded)
+    ? locale === "pt-BR"
+      ? `${count} resultados carregados nesta busca`
+      : `${count} results loaded for this search`
     : t(data.length === 1 ? "search.countOne" : "search.count", {
-    count,
-    location: locationLabel,
-  });
+        count,
+        location: locationLabel,
+      });
 
   const currentSearchHref = `${pathname}${
     searchParams.toString() ? `?${searchParams.toString()}` : ""
@@ -522,11 +661,18 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
           value={filters.category}
           onChange={(event) => {
             const value = event.target.value;
+            setShowAllCategoryFilters(false);
             if (categorySlug) {
               router.replace(value ? `/category/${value}` : "/search");
               return;
             }
-            update({ category: value });
+            const next = new URLSearchParams(latestSearchParams.current);
+            [...next.keys()].forEach((key) => {
+              if (key.startsWith("attr.")) next.delete(key);
+            });
+            if (value) next.set("category", value);
+            else next.delete("category");
+            replaceSearchParams(next);
           }}
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
         >
@@ -545,23 +691,41 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
           </p>
         ) : null}
       </div>
-      {(categoryConfigQuery.data?.fields ?? []).filter((field) => field.filterable)
-        .length > 0 && (
+      {categoryFields.length > 0 && (
         <fieldset className="space-y-4 border-y border-slate-100 py-5">
           <legend className="px-1 text-sm font-bold">
             {t("search.categoryFilters")}
           </legend>
-          {(categoryConfigQuery.data?.fields ?? [])
-            .filter((field) => field.filterable)
-            .map((field) => (
+          {visibleCategoryFields.map((field) => {
+            const child = categoryFields.find(
+              (candidate) => candidate.dependsOn === field.id,
+            );
+            return (
               <DynamicCategoryFilter
                 key={field.id}
                 categoryId={filters.category || ""}
                 field={field}
                 attributes={filters.attributes ?? {}}
+                dependentIds={dependentFieldIds(categoryFields, field.id)}
+                dependentLabel={child ? tr(child.label) : undefined}
                 update={update}
               />
-            ))}
+            );
+          })}
+          {extraCategoryFields.length > 0 || showAllCategoryFilters ? (
+            <button
+              type="button"
+              aria-expanded={showAllCategoryFilters}
+              onClick={() => setShowAllCategoryFilters((current) => !current)}
+              className="flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-semibold text-brand-700 transition hover:bg-slate-50"
+            >
+              {showAllCategoryFilters
+                ? t("search.showFewerFilters")
+                : t("search.showMoreFilters", {
+                    count: extraCategoryFields.length,
+                  })}
+            </button>
+          ) : null}
         </fieldset>
       )}
       {isBrazil ? (
@@ -859,7 +1023,10 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           {categoryPath?.length ? (
-            <nav aria-label={t("search.categoryPath")} className="mb-2 flex flex-wrap items-center gap-1 text-xs font-semibold text-brand-700">
+            <nav
+              aria-label={t("search.categoryPath")}
+              className="mb-2 flex flex-wrap items-center gap-1 text-xs font-semibold text-brand-700"
+            >
               <Link href="/search">{t("search.allCategories")}</Link>
               {categoryPath.map((category) => (
                 <span key={category.id} className="flex items-center gap-1">
@@ -986,19 +1153,40 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
               {sections.map((page, index) => (
                 <div key={`${page.geography?.key}-${index}`}>
                   {page.showBoundary && (
-                    <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-4" role="status">
+                    <div
+                      className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-4"
+                      role="status"
+                    >
                       <h2 className="font-bold text-brand-950">
-                        {portuguese ? `Você viu todos os anúncios em ${index ? sections[index - 1].geography?.label : page.geography?.origin}.` : `That’s all in ${index ? sections[index - 1].geography?.label : page.geography?.origin}.`}
+                        {portuguese
+                          ? `Você viu todos os anúncios em ${index ? sections[index - 1].geography?.label : page.geography?.origin}.`
+                          : `That’s all in ${index ? sections[index - 1].geography?.label : page.geography?.origin}.`}
                       </h2>
                       <p className="mt-1 text-sm text-brand-900">
                         {page.geography?.level === "unlocated"
-                          ? portuguese ? "Mais anúncios no país, sem distância disponível." : "More listings in this country, without distance information."
-                          : portuguese ? `Continuando em ${page.geography?.label}, com os mesmos filtros de produto.` : `Continuing in ${page.geography?.label}, with the same product filters.`}
+                          ? portuguese
+                            ? "Mais anúncios no país, sem distância disponível."
+                            : "More listings in this country, without distance information."
+                          : portuguese
+                            ? `Continuando em ${page.geography?.label}, com os mesmos filtros de produto.`
+                            : `Continuing in ${page.geography?.label}, with the same product filters.`}
                       </p>
                     </div>
                   )}
-                  <div className={view === "grid" ? "grid grid-cols-2 gap-3 md:grid-cols-3" : "grid gap-3"}>
-                    {page.items.map((listing) => <ListingCard key={listing.id} listing={listing} variant={view} />)}
+                  <div
+                    className={
+                      view === "grid"
+                        ? "grid grid-cols-2 gap-3 md:grid-cols-3"
+                        : "grid gap-3"
+                    }
+                  >
+                    {page.items.map((listing) => (
+                      <ListingCard
+                        key={listing.id}
+                        listing={listing}
+                        variant={view}
+                      />
+                    ))}
                   </div>
                 </div>
               ))}
@@ -1100,9 +1288,39 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
             </div>
           )}
           <div ref={sentinel} className="mt-6 text-center" aria-live="polite">
-            {isFetchNextPageError && <p role="alert" className="mb-3 text-sm text-rose-700">{portuguese ? "Não foi possível carregar mais anúncios. Tente novamente." : "Couldn’t load more listings. Please retry."}</p>}
-            {hasNextPage && <Button variant="outline" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>{isFetchingNextPage ? (portuguese ? "Carregando…" : "Loading…") : (portuguese ? "Carregar mais anúncios" : "Load more listings")}</Button>}
-            {!hasNextPage && data.length > 0 && <p className="text-sm text-slate-600">{sections.at(-1)?.geography?.windowLimited ? (portuguese ? "Refine os filtros para ver mais resultados nesta área." : "Refine your filters to see more results in this area.") : (portuguese ? "Você viu todos os anúncios disponíveis para esta busca." : "You’ve seen all available listings for this search.")}</p>}
+            {isFetchNextPageError && (
+              <p role="alert" className="mb-3 text-sm text-rose-700">
+                {portuguese
+                  ? "Não foi possível carregar mais anúncios. Tente novamente."
+                  : "Couldn’t load more listings. Please retry."}
+              </p>
+            )}
+            {hasNextPage && (
+              <Button
+                variant="outline"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                {isFetchingNextPage
+                  ? portuguese
+                    ? "Carregando…"
+                    : "Loading…"
+                  : portuguese
+                    ? "Carregar mais anúncios"
+                    : "Load more listings"}
+              </Button>
+            )}
+            {!hasNextPage && data.length > 0 && (
+              <p className="text-sm text-slate-600">
+                {sections.at(-1)?.geography?.windowLimited
+                  ? portuguese
+                    ? "Refine os filtros para ver mais resultados nesta área."
+                    : "Refine your filters to see more results in this area."
+                  : portuguese
+                    ? "Você viu todos os anúncios disponíveis para esta busca."
+                    : "You’ve seen all available listings for this search."}
+              </p>
+            )}
           </div>
         </section>
       </div>
