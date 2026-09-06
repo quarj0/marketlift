@@ -32,21 +32,27 @@ const MESSAGE_FIELDS = `
 `;
 
 export const messagingService = {
-  async getConversations() {
+  async getConversation(id: string) {
+    const data = await graphqlRequest<{ conversation: ApiConversation }>(`query Conversation($id: ID!) { conversation(id: $id) { ${CONVERSATION_FIELDS} } }`, { id });
+    return mapConversation(data.conversation);
+  },
+  unreadCounts: () => graphqlRequest<{ unreadMessageCount: number; unreadNotificationCount: number }>(`query UnreadCounts { unreadMessageCount unreadNotificationCount }`),
+
+  async getConversations(offset = 0) {
     const data = await graphqlRequest<{ myConversations: ApiConversation[] }>(`
-      query MyConversations {
-        myConversations { ${CONVERSATION_FIELDS} }
+      query MyConversations($offset: Int!) {
+        myConversations(limit: 50, offset: $offset) { ${CONVERSATION_FIELDS} }
       }
-    `);
+    `, { offset });
     return (data.myConversations || []).map(mapConversation);
   },
 
-  async getMessages(id: string) {
+  async getMessages(id: string, before?: { createdAt: string; id: string }) {
     const data = await graphqlRequest<{ messages: ApiMessage[] }>(`
-      query ConversationMessages($id: ID!) {
-        messages(conversationId: $id, limit: 100) { ${MESSAGE_FIELDS} }
+      query ConversationMessages($id: ID!, $before: DateTime, $beforeId: ID) {
+        messages(conversationId: $id, limit: 50, before: $before, beforeId: $beforeId) { ${MESSAGE_FIELDS} }
       }
-    `, { id });
+    `, { id, before: before?.createdAt ?? null, beforeId: before?.id ?? null });
     return (data.messages || []).map(mapMessage);
   },
 

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { HomepageContent } from "@/components/marketplace/homepage-content";
-import { categoryService } from "@/services/category.service";
+import { publicCategories, publicHomeFeed } from "@/lib/public-data";
 
 export const metadata: Metadata = {
-  title: "Marketlift Brazil — Buy and Sell Online",
+  title: "Marketlift Brasil — Compre e venda online",
   description:
-    "Buy and sell cars, phones, electronics, fashion, property and everyday items across Brazil on Marketlift's trusted local marketplace.",
+    "Compre e venda carros, celulares, eletrônicos, imóveis, moda e muito mais perto de você no Marketlift Brasil.",
   alternates: { canonical: "/" },
 };
 
@@ -65,7 +65,7 @@ export default async function HomePage() {
       },
     },
   ];
-  const categories = await categoryService.getCategories().catch(() => []);
+  const [categories, feed] = await Promise.all([publicCategories(), publicHomeFeed("BR")]);
 
   return (
     <>
@@ -74,7 +74,7 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <MarketplaceShell>
-        <HomepageContent initialCategories={categories} />
+        <HomepageContent initialCategories={categories ?? []} initialFeed={feed ?? undefined} />
       </MarketplaceShell>
     </>
   );

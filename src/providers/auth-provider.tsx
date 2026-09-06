@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   createContext,
@@ -6,10 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
-} from 'react';
-import { authService } from '@/services/auth.service';
-import type { User } from '@/types';
+} from "react";
+import { QueryProvider } from "@/providers/query-provider";
+import { authService } from "@/services/auth.service";
+import type { User } from "@/types";
 
 type AuthContextValue = {
   user: User | null;
@@ -27,14 +29,17 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const sessionVersion = useRef(0);
 
   const refreshSession = useCallback(async () => {
+    const version = ++sessionVersion.current;
     try {
-      setUser(await authService.getSession());
+      const next = await authService.getSession();
+      if (version === sessionVersion.current) setUser(next);
     } catch {
-      setUser(null);
+      if (version === sessionVersion.current) setUser(null);
     } finally {
-      setHydrated(true);
+      if (version === sessionVersion.current) setHydrated(true);
     }
   }, []);
 
@@ -47,25 +52,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (input: { emailOrPhone: string; password: string }) => {
+      const version = ++sessionVersion.current;
       const next = await authService.login(input);
-      setUser(next);
-      setHydrated(true);
+      if (version === sessionVersion.current) {
+        setUser(next);
+        setHydrated(true);
+      }
       return next;
     },
     [],
   );
 
   const logout = useCallback(async () => {
+    const version = ++sessionVersion.current;
     try {
       await authService.logout();
     } finally {
-      setUser(null);
+      if (version === sessionVersion.current) setUser(null);
     }
   }, []);
 
   const activateSelling = useCallback(async () => {
+    const version = ++sessionVersion.current;
     const next = await authService.activateSelling();
-    setUser(next);
+    if (version === sessionVersion.current) setUser(next);
     return next;
   }, []);
 
@@ -83,11 +93,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user, hydrated, login, refreshSession, activateSelling, logout],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <QueryProvider key={user?.id ?? "anonymous"}>{children}</QueryProvider>
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used inside AuthProvider');
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }

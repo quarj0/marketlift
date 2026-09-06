@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BellRing,
   CheckCircle2,
@@ -337,15 +337,32 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
     staleTime: 5 * 60_000,
   });
 
-  const {
-    data = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ["listings", market.code, filters],
-    queryFn: () => listingService.getListings(filters),
+  const results = useInfiniteQuery({
+    queryKey: ["listing-pages", market.code, filters],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) => listingService.searchPage(filters, pageParam, signal),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+  const { isLoading, refetch } = results;
+  const isError = results.isError && !results.data;
+  const seen = new Set<string>();
+  const sections = (results.data?.pages ?? []).map((page, index, pages) => ({
+    ...page,
+    showBoundary: page.geography?.expanded && page.geography.key !== pages[index - 1]?.geography?.key,
+    items: page.items.filter((item) => { if (seen.has(item.id)) return false; seen.add(item.id); return true; }),
+  }));
+  const data = sections.flatMap((page) => page.items);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage, isFetchNextPageError } = results;
+  useEffect(() => {
+    const element = sentinel.current;
+    if (!element || !hasNextPage || isFetchingNextPage || isFetchNextPageError || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) void fetchNextPage();
+    }, { rootMargin: "200px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isFetchNextPageError]);
 
   const saveAlert = useMutation({
     mutationFn: () =>
@@ -461,7 +478,9 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
   const count = data.length.toLocaleString(
     locale === "pt-BR" ? "pt-BR" : "en-US",
   );
-  const countText = t(data.length === 1 ? "search.countOne" : "search.count", {
+  const countText = sections.some(page => page.geography?.expanded)
+    ? (locale === "pt-BR" ? `${count} resultados carregados nesta busca` : `${count} results loaded for this search`)
+    : t(data.length === 1 ? "search.countOne" : "search.count", {
     count,
     location: locationLabel,
   });
@@ -963,19 +982,25 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
               </Button>
             </div>
           ) : data.length ? (
-            <div
-              className={
-                view === "grid"
-                  ? "grid grid-cols-2 gap-3 md:grid-cols-3"
-                  : "grid gap-3"
-              }
-            >
-              {data.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  variant={view}
-                />
+            <div className="space-y-5">
+              {sections.map((page, index) => (
+                <div key={`${page.geography?.key}-${index}`}>
+                  {page.showBoundary && (
+                    <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-4" role="status">
+                      <h2 className="font-bold text-brand-950">
+                        {portuguese ? `Você viu todos os anúncios em ${index ? sections[index - 1].geography?.label : page.geography?.origin}.` : `That’s all in ${index ? sections[index - 1].geography?.label : page.geography?.origin}.`}
+                      </h2>
+                      <p className="mt-1 text-sm text-brand-900">
+                        {page.geography?.level === "unlocated"
+                          ? portuguese ? "Mais anúncios no país, sem distância disponível." : "More listings in this country, without distance information."
+                          : portuguese ? `Continuando em ${page.geography?.label}, com os mesmos filtros de produto.` : `Continuing in ${page.geography?.label}, with the same product filters.`}
+                      </p>
+                    </div>
+                  )}
+                  <div className={view === "grid" ? "grid grid-cols-2 gap-3 md:grid-cols-3" : "grid gap-3"}>
+                    {page.items.map((listing) => <ListingCard key={listing.id} listing={listing} variant={view} />)}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -1074,6 +1099,11 @@ export function SearchResultsClient({ categorySlug }: { categorySlug?: string } 
               </Button>
             </div>
           )}
+          <div ref={sentinel} className="mt-6 text-center" aria-live="polite">
+            {isFetchNextPageError && <p role="alert" className="mb-3 text-sm text-rose-700">{portuguese ? "Não foi possível carregar mais anúncios. Tente novamente." : "Couldn’t load more listings. Please retry."}</p>}
+            {hasNextPage && <Button variant="outline" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>{isFetchingNextPage ? (portuguese ? "Carregando…" : "Loading…") : (portuguese ? "Carregar mais anúncios" : "Load more listings")}</Button>}
+            {!hasNextPage && data.length > 0 && <p className="text-sm text-slate-600">{sections.at(-1)?.geography?.windowLimited ? (portuguese ? "Refine os filtros para ver mais resultados nesta área." : "Refine your filters to see more results in this area.") : (portuguese ? "Você viu todos os anúncios disponíveis para esta busca." : "You’ve seen all available listings for this search.")}</p>}
+          </div>
         </section>
       </div>
 

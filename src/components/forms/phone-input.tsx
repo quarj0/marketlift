@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import { Input } from "@/components/ui/input";
 
 const FALLBACK_DIAL_CODES: Record<string, string> = {
@@ -13,7 +14,8 @@ const FALLBACK_DIAL_CODES: Record<string, string> = {
 
 function normalizeDialCode(countryCode?: string, dialCode?: string) {
   const configured = dialCode?.trim();
-  if (configured) return configured.startsWith("+") ? configured : `+${configured}`;
+  if (configured)
+    return configured.startsWith("+") ? configured : `+${configured}`;
   return FALLBACK_DIAL_CODES[(countryCode || "").trim().toUpperCase()] || "+";
 }
 
@@ -41,6 +43,11 @@ export function PhoneInput({
   id,
   disabled,
   invalid,
+  describedBy,
+  placeholder = "Número de telefone",
+  ref,
+  onBlur,
+  name,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -49,6 +56,11 @@ export function PhoneInput({
   id?: string;
   disabled?: boolean;
   invalid?: boolean;
+  describedBy?: string;
+  placeholder?: string;
+  ref?: Ref<HTMLInputElement>;
+  onBlur?: () => void;
+  name?: string;
 }) {
   const prefix = normalizeDialCode(countryCode, dialCode);
   const local = localDigits(value || "", prefix);
@@ -64,6 +76,10 @@ export function PhoneInput({
       </span>
       <Input
         id={id}
+        ref={ref}
+        onBlur={onBlur}
+        name={name}
+        aria-describedby={describedBy}
         value={local}
         type="tel"
         inputMode="tel"
@@ -71,7 +87,7 @@ export function PhoneInput({
         disabled={disabled}
         aria-invalid={invalid}
         className="h-full rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
-        placeholder="Phone number"
+        placeholder={placeholder}
         onChange={(event) => {
           const nextLocal = event.target.value.replace(/\D/g, "");
           onChange(nextLocal ? `${prefix}${nextLocal}` : "");

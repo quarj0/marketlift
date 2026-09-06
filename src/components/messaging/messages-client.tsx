@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
   CheckCheck,
@@ -71,28 +71,35 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
-  const conversations = useQuery({
-    queryKey: ["conversations"],
-    queryFn: messagingService.getConversations,
+  const conversationPages = useInfiniteQuery({
+    queryKey: ["conversations", "pages"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => messagingService.getConversations(pageParam),
+    getNextPageParam: (page, pages) => page.length === 50 ? pages.length * 50 : undefined,
   });
-
+  const conversations = { ...conversationPages, data: [...new Map(conversationPages.data?.pages.flat().map((item) => [item.id, item])).values()] };
   const activeId = selectedId || conversations.data?.[0]?.id || "";
-
-  const current = conversations.data?.find(
-    (conversation) => conversation.id === activeId,
-  );
-
-  const messages = useQuery({
-    queryKey: ["messages", activeId],
-    queryFn: () => messagingService.getMessages(activeId),
+  const selectedConversation = useQuery({
+    queryKey: ["conversation", activeId],
+    queryFn: () => messagingService.getConversation(activeId),
+    enabled: Boolean(activeId) && !conversations.data.some((item) => item.id === activeId),
+  });
+  const current = conversations.data.find((conversation) => conversation.id === activeId) ?? selectedConversation.data;
+  const messagePages = useInfiniteQuery({
+    queryKey: ["messages", activeId, "pages"],
+    initialPageParam: undefined as { createdAt: string; id: string } | undefined,
+    queryFn: ({ pageParam }) => messagingService.getMessages(activeId, pageParam),
+    getNextPageParam: (page) => page.length === 50 ? { createdAt: page[0].createdAt, id: page[0].id } : undefined,
     enabled: Boolean(activeId),
   });
+  const messages = { ...messagePages, data: [...new Map(messagePages.data?.pages.slice().reverse().flat().map((item) => [item.id, item])).values()] };
 
+  const latestMessageId = messages.data.at(-1)?.id;
   useEffect(() => {
     if (activeId) {
-      void messagingService.markRead(activeId);
+      void messagingService.markRead(activeId).catch(() => { /* Reconcile on the next refresh. */ });
     }
-  }, [activeId]);
+  }, [activeId, latestMessageId]);
 
   useEffect(() => {
     return () => {
@@ -289,6 +296,8 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
             </button>
           ))}
         </div>
+        {conversationPages.hasNextPage && <Button className="m-3" variant="outline" disabled={conversationPages.isFetchingNextPage} onClick={() => void conversationPages.fetchNextPage()}>{locale === "pt-BR" ? "Mais conversas" : "More conversations"}</Button>}
+        {conversationPages.isFetchNextPageError && <p role="alert" className="p-3 text-sm text-rose-700">{t("messages.loadError")}</p>}
       </aside>
 
       {/* Active conversation */}
@@ -413,6 +422,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
               className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3 sm:p-4"
               aria-live="polite"
             >
+              {messagePages.hasNextPage && <Button variant="outline" disabled={messagePages.isFetchingNextPage} onClick={() => void messagePages.fetchNextPage()}>{locale === "pt-BR" ? "Mensagens anteriores" : "Earlier messages"}</Button>}
               {messages.isLoading && (
                 <PageLoading label={t("messages.loadingThread")} />
               )}

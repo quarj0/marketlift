@@ -10,13 +10,13 @@ import {
   Bell,
   Eye,
   Languages,
-  LockKeyhole,
   Mail,
   MessageCircle,
   Shield,
   Smartphone,
 } from "lucide-react";
 
+import { AccountSecurityControls } from "@/components/account/account-security-controls";
 import { AccountSidebar } from "@/components/account/account-sidebar";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { Button } from "@/components/ui/button";
@@ -344,30 +344,9 @@ function SettingsForm({
         </div>
       </section>
 
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="flex items-start gap-3">
-          <LockKeyhole className="mt-0.5 size-5 text-slate-500" />
+      <AccountSecurityControls />
 
-          <div>
-            <h2 className="font-bold">
-              {t("settings.security")}
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              {t("settings.securityBody")}
-            </p>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              disabled
-            >
-              {t("settings.changePassword")}
-            </Button>
-          </div>
-        </div>
-      </section>
+      {mutation.isError && <p role="alert" className="text-sm text-rose-700">{mutation.error.message}</p>}
 
       <div className="sticky bottom-20 flex items-center justify-between gap-3 rounded-2xl border bg-white/95 p-4 shadow-lg backdrop-blur md:bottom-4">
         <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   BadgeCheck,
   ChevronRight,
@@ -162,15 +163,16 @@ function CategoryGrid({
   categories?: Category[];
   loading: boolean;
 }) {
-  const { categoryName } = useLocale();
+  const { categoryName, locale } = useLocale();
+  const [expanded, setExpanded] = useState(false);
 
   if (loading) {
     return (
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        {Array.from({ length: 13 }).map((_, index) => (
+      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+        {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="min-h-28 animate-pulse rounded-2xl border bg-white"
+            className="min-h-40 animate-pulse rounded-2xl border bg-white"
           />
         ))}
       </div>
@@ -178,13 +180,13 @@ function CategoryGrid({
   }
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-      {categories?.map((category) => {
+    <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+      {categories?.map((category, index) => {
         return (
           <Link
             key={category.id}
             href={`/category/${category.id}`}
-            className="group min-w-0 overflow-hidden rounded-2xl border bg-white text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className={`group min-w-0 overflow-hidden rounded-2xl border bg-white text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${!expanded && index >= 6 ? "hidden sm:block" : ""}`}
           >
             <div className="h-24 overflow-hidden transition duration-300 group-hover:scale-105 sm:h-28">
               <CategoryArtwork category={category} iconClassName="size-11 sm:size-12" />
@@ -206,16 +208,19 @@ function CategoryGrid({
           </Link>
         );
       })}
+      {(categories?.length ?? 0) > 6 && <Button className="col-span-2 sm:hidden" variant="outline" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? (locale === "pt-BR" ? "Mostrar menos" : "Show fewer") : (locale === "pt-BR" ? "Todas as categorias" : "All categories")}</Button>}
     </div>
   );
 }
 
 export function HomepageContent({
   initialCategories = [],
+  initialFeed,
 }: {
   initialCategories?: Category[];
+  initialFeed?: Awaited<ReturnType<typeof marketplaceService.getHomeFeed>>;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { market } = useMarket();
   const { location } = useMarketplaceLocation();
 
@@ -230,7 +235,8 @@ export function HomepageContent({
   const homeFeedQuery = useQuery({
     queryKey: ["marketplace", "home-feed", market.code],
     queryFn: () => marketplaceService.getHomeFeed(market.code),
-    staleTime: 30_000,
+    staleTime: 60_000,
+    initialData: market.code === "BR" ? initialFeed : undefined,
   });
 
   const nearbyQuery = useQuery({
@@ -325,9 +331,9 @@ export function HomepageContent({
                       </div>
 
                       <div>
-                        <p className="text-2xl font-black">9</p>
+                        <p className="text-2xl font-black">{market.code === "BR" ? 27 : "—"}</p>
                         <p className="text-xs text-slate-500">
-                          {t("home.regionsCount")}
+                          {locale === "pt-BR" ? "Estados e DF" : "States and DF"}
                         </p>
                       </div>
 
@@ -391,7 +397,7 @@ export function HomepageContent({
         </div>
       </section>
 
-      <section className="order-first mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:order-none lg:px-8 lg:py-14">
+      <section className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-14">
         <SectionHeading
           eyebrow={t("home.explore")}
           title={t("home.browseCategories")}
@@ -410,7 +416,7 @@ export function HomepageContent({
         )}
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      {(nearbyQuery.isLoading || nearbyQuery.isError || Boolean(nearbyQuery.data?.length)) && <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <SectionHeading
           eyebrow={`${location.city}, ${location.stateCode}`}
           title={t("home.nearbyTitle")}
@@ -441,15 +447,15 @@ export function HomepageContent({
             emptyMessage={t("home.noNearby")}
           />
         )}
-      </section>
+      </section>}
 
-      <section className="bg-white py-12 lg:py-16">
+      {Boolean(homeFeedQuery.data?.featuredListings.length) && <section className="bg-white py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow={t("home.premium")}
             title={t("home.featured")}
             description={t("home.featuredBody")}
-            href="/search?featured=true"
+            href="/search"
             action={t("home.seeFeatured")}
           />
 
@@ -463,7 +469,7 @@ export function HomepageContent({
             />
           )}
         </div>
-      </section>
+      </section>}
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <SectionHeading
@@ -480,9 +486,13 @@ export function HomepageContent({
           <ListingSection
             listings={homeFeedQuery.data?.recentListings}
             loading={homeFeedQuery.isLoading}
-            emptyMessage={t("home.noRecent")}
+            emptyMessage={locale === "pt-BR" ? "Ainda não há anúncios aqui. Publique o primeiro ou salve uma busca para receber novidades." : "No listings here yet. Post the first or save a search to hear about new arrivals."}
           />
         )}
+        {homeFeedQuery.isSuccess && !homeFeedQuery.data.recentListings.length && <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Button asChild><Link href="/selling/listings/new">{locale === "pt-BR" ? "Publicar anúncio" : "Post a listing"}</Link></Button>
+          <Button asChild variant="outline"><Link href="/search">{locale === "pt-BR" ? "Criar uma busca" : "Create a search"}</Link></Button>
+        </div>}
       </section>
 
       {(homeFeedQuery.data?.verifiedSellers.length ?? 0) > 0 && (

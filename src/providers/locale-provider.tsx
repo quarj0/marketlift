@@ -76,7 +76,8 @@ export function LocaleProvider({
   );
 
   useEffect(() => {
-    const hasPreference = Boolean(window.localStorage.getItem(LOCALE_STORAGE_KEY));
+    let hasPreference = false;
+    try { hasPreference = Boolean(window.localStorage.getItem(LOCALE_STORAGE_KEY)); } catch { /* Browser storage can be disabled. */ }
     if (!hasPreference) {
       const marketLocale = normalizeLocale(market.locale);
       if (marketLocale !== locale) {
@@ -85,7 +86,7 @@ export function LocaleProvider({
       }
     }
     document.documentElement.lang = locale;
-    if (!hasPreference) window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    if (!hasPreference) { try { window.localStorage.setItem(LOCALE_STORAGE_KEY, locale); } catch { /* Keep the in-memory locale. */ } }
   }, [locale, market.locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {

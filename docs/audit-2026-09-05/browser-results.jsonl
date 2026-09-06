@@ -1,0 +1,19 @@
+{"name":"1440-_","status":200,"title":"Marketlift Brazil — Buy and Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":3044,"cls":0.041981307167084626},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-_search","status":200,"title":"Products for Sale Across Brazil | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":1756,"cls":0.32404163702819566},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-_help","status":200,"title":"Help Center | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":1540,"cls":0.03786088200740526},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-_help_report","status":200,"title":"Help Center | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":1504,"cls":0.03673145184301055},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-_login","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":1352,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-_register","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":1592,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-_forgot-password","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":864,"cls":0.003431100585267704},"violations":[],"errors":[],"badResponses":[]}
+{"name":"1440-admin-login","status":200,"title":"Marketlift Admin","lang":"en","overflow":false,"perf":{"lcp":1752,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_","status":200,"title":"Marketlift Brazil — Buy and Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":2436,"cls":0.0014378370330800886},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_search","status":200,"title":"Products for Sale Across Brazil | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":324,"cls":0.16251697530864198},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_help","status":200,"title":"Help Center | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":304,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_help_report","status":200,"title":"Help Center | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":728,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_login","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":628,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_register","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":572,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-_forgot-password","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":288,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"390-admin-login","status":200,"title":"Marketlift Admin","lang":"en","overflow":false,"perf":{"lcp":1248,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"320-_","status":200,"title":"Marketlift Brazil — Buy and Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":2044,"cls":0},"violations":[],"errors":[],"badResponses":[]}
+{"name":"320-_search","status":200,"title":"Products for Sale Across Brazil | Marketlift","lang":"pt-BR","overflow":false,"perf":{"lcp":356,"cls":0.24996444444444446},"violations":[],"errors":[],"badResponses":[]}
+{"name":"320-_register","status":200,"title":"Marketlift Brazil — Buy & Sell Online","lang":"pt-BR","overflow":false,"perf":{"lcp":536,"cls":0},"violations":[{"id":"color-contrast","impact":"serious","count":1}],"errors":[],"badResponses":[]}

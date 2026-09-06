@@ -4,9 +4,9 @@ import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { SearchResultsClient } from "@/components/search/search-results-client";
 
 export const metadata: Metadata = {
-  title: "Products for Sale Across Brazil",
+  title: "Produtos à venda em todo o Brasil",
   description:
-    "Search cars, phones, electronics, fashion, property and more from local sellers across Brazil on Marketlift.",
+    "Encontre carros, celulares, eletrônicos, moda, imóveis e muito mais de vendedores locais em todo o Brasil na Marketlift.",
   alternates: { canonical: "/search" },
 };
 
@@ -15,7 +15,7 @@ export default function SearchPage() {
     <MarketplaceShell>
       <Suspense
         fallback={
-          <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <main className="mx-auto min-h-[75dvh] max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             <div className="h-10 w-72 animate-pulse rounded-xl bg-slate-100" />
           </main>
         }

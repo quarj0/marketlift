@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { messagingService } from '@/services/messaging.service';
 import { resolveApiUrl } from '@/lib/api-client';
 import { mapNotification, type ApiNotification } from '@/lib/api-mappers';
 import { realtimeClient, type RealtimeEvent } from '@/lib/realtime-client';
@@ -97,7 +98,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const handleEvent = (event: RealtimeEvent) => {
       const data = event.data || {};
 
+      if (['realtime.ready', 'message.created', 'conversation.read'].includes(event.type)) {
+        void queryClient.invalidateQueries({ queryKey: ['messages'] });
+        void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        void queryClient.invalidateQueries({ queryKey: ['conversation'] });
+      }
       if (event.type === 'realtime.ready') {
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
         setConnected(true);
         setUnreadMessageCount(Number(data.unreadMessageCount || 0));
         setUnreadNotificationCount(Number(data.unreadNotificationCount || 0));
@@ -175,9 +182,29 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = realtimeClient.subscribe(handleEvent);
     realtimeClient.connect();
+    let disposed = false;
+    const reconcile = async () => {
+      if (realtimeClient.connected || document.visibilityState === 'hidden') return;
+      try {
+        const counts = await messagingService.unreadCounts();
+        if (disposed) return;
+        setUnreadMessageCount(counts.unreadMessageCount);
+        setUnreadNotificationCount(counts.unreadNotificationCount);
+        for (const key of ['messages', 'conversations', 'conversation', 'notifications']) {
+          void queryClient.invalidateQueries({ queryKey: [key] });
+        }
+      } catch { /* Visible queries retain their retry state during outages. */ }
+    };
+    void reconcile();
+    const fallbackPoll = window.setInterval(() => void reconcile(), 30_000);
+    document.addEventListener('visibilitychange', reconcile);
     const connectionPoll = window.setInterval(() => setConnected(realtimeClient.connected), 1500);
 
     return () => {
+      disposed = true;
+      realtimeClient.disconnect();
+      window.clearInterval(fallbackPoll);
+      document.removeEventListener('visibilitychange', reconcile);
       unsubscribe();
       window.clearInterval(connectionPoll);
     };

@@ -67,7 +67,7 @@ export function MarketliftLogo({
             width={logoSources.compact.width}
             height={logoSources.compact.height}
             priority={priority}
-            className="block h-auto w-38 object-contain sm:w-42"
+            className="block h-auto w-32 object-contain min-[375px]:w-38 sm:w-42"
           />
         </>
       ) : (

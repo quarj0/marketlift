@@ -12,7 +12,7 @@ export function MarketplaceShell({
   footer?: boolean;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-50">
+    <div className="flex min-h-dvh min-w-0 flex-col bg-slate-50">
       <MarketplaceHeader />
 
       <div id="main-content" className="flex-1" tabIndex={-1}>

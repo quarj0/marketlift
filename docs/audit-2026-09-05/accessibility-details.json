@@ -1,0 +1,319 @@
+[
+  {
+    "name": "1440-_",
+    "path": "/",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy and Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 3044,
+      "cls": 0.041981307167084626
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-_forgot-password",
+    "path": "/forgot-password",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 864,
+      "cls": 0.003431100585267704
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-_help",
+    "path": "/help",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Help Center | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 1540,
+      "cls": 0.03786088200740526
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-_help_report",
+    "path": "/help/report",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Help Center | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 1504,
+      "cls": 0.03673145184301055
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-_login",
+    "path": "/login",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 1352,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-_register",
+    "path": "/register",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 1592,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-_search",
+    "path": "/search",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Products for Sale Across Brazil | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 1756,
+      "cls": 0.32404163702819566
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "1440-admin-login",
+    "path": "https://dash.marketlift.com.br/login",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "status": 200,
+    "title": "Marketlift Admin",
+    "lang": "en",
+    "perf": {
+      "lcp": 1752,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "320-_",
+    "path": "/",
+    "width": 325,
+    "scrollWidth": 325,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy and Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 2044,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "320-_register",
+    "path": "/register",
+    "width": 386,
+    "scrollWidth": 386,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 536,
+      "cls": 0
+    },
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": [
+          {
+            "html": "<a class=\"inline-flex min-h-11 items-center rounded-xl border border-white/15 px-3 py-2 text-sm font-bold text-white focus-visible:ring-2 focus-visible:ring-white\" href=\"/\">Explorar</a>",
+            "target": [".min-h-11"],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.04 (foreground color: #ffffff, background color: #f8fafc, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "320-_search",
+    "path": "/search",
+    "width": 325,
+    "scrollWidth": 325,
+    "status": 200,
+    "title": "Products for Sale Across Brazil | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 356,
+      "cls": 0.24996444444444446
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_",
+    "path": "/",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy and Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 2436,
+      "cls": 0.0014378370330800886
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_forgot-password",
+    "path": "/forgot-password",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 288,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_help",
+    "path": "/help",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Help Center | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 304,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_help_report",
+    "path": "/help/report",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Help Center | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 728,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_login",
+    "path": "/login",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 628,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_register",
+    "path": "/register",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Marketlift Brazil \u2014 Buy & Sell Online",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 572,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-_search",
+    "path": "/search",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Products for Sale Across Brazil | Marketlift",
+    "lang": "pt-BR",
+    "perf": {
+      "lcp": 324,
+      "cls": 0.16251697530864198
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  },
+  {
+    "name": "390-admin-login",
+    "path": "https://dash.marketlift.com.br/login",
+    "width": 390,
+    "scrollWidth": 390,
+    "status": 200,
+    "title": "Marketlift Admin",
+    "lang": "en",
+    "perf": {
+      "lcp": 1248,
+      "cls": 0
+    },
+    "violations": [],
+    "errors": [],
+    "badResponses": []
+  }
+]

@@ -2,9 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useAuth } from '@/providers/auth-provider';
 import { useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -189,7 +190,8 @@ function Field({
 export default function NewListingPage() {
   'use no memo';
 
-  const { t, tr, categoryName: localizedCategoryName } = useLocale();
+  const { user } = useAuth();
+  const { t, tr, locale, categoryName: localizedCategoryName } = useLocale();
   const { market, formatMoney } = useMarket();
   const steps = [t('selling.new.step.category'), t('selling.new.step.basic'), t('selling.new.step.photos'), t('selling.new.step.location'), t('selling.new.step.details'), t('selling.new.step.review')];
   const schema = useMemo(() => z.object({
@@ -224,7 +226,51 @@ export default function NewListingPage() {
     defaultValues,
   });
 
+  const draftKey = `marketlift-listing-draft:v1:${user?.id}:${market.code}`;
+  const draftLoaded = useRef(false);
+  const draftSubmitted = useRef(false);
+  const [draftNotice, setDraftNotice] = useState('');
+  const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    if (!user || draftLoaded.current) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft.version === 1 && Date.now() - draft.savedAt < 7 * 86400000 && draft.values && typeof draft.values === 'object') {
+            // Expired location tokens and file handles must be selected again.
+            form.reset({ ...defaultValues, ...draft.values, locationToken: '' });
+            setAttributes(draft.attributes || {});
+            setDraftNotice(locale === 'pt-BR' ? 'Rascunho restaurado. Confira os dados, selecione as fotos e confirme a localização novamente.' : 'Draft restored. Review the details, select photos and confirm the location again.');
+          }
+        }
+      } catch { /* Malformed or unavailable storage does not prevent posting. */ }
+      draftLoaded.current = true;
+      setDraftReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftKey, form, locale, user]);
   const values = useWatch({ control: form.control });
+  useEffect(() => {
+    if (!draftReady || done) return;
+    const save = () => {
+      if (draftSubmitted.current) return;
+      try {
+        const current = form.getValues();
+        if (current.category || current.title || current.description) {
+          sessionStorage.setItem(draftKey, JSON.stringify({ version: 1, savedAt: Date.now(), values: { ...current, locationToken: '' }, attributes }));
+        }
+      } catch { /* The unload prompt still protects unsaved input. */ }
+    };
+    const timer = window.setTimeout(save, 400);
+    const warn = (event: BeforeUnloadEvent) => {
+      save();
+      if (form.getValues('title') || photos.length) { event.preventDefault(); event.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => { window.clearTimeout(timer); save(); window.removeEventListener('beforeunload', warn); };
+  }, [draftReady, draftKey, values, attributes, done, form, photos.length]);
   const selectedCategory = categories.find((category) => category.id === values.category);
   const categoryName = selectedCategory ? localizedCategoryName(selectedCategory.id, selectedCategory.name) : t('selling.new.step.details');
 
@@ -239,7 +285,7 @@ export default function NewListingPage() {
 
   const mutation = useMutation({
     mutationFn: sellingService.createListing,
-    onSuccess: () => setDone(true),
+    onSuccess: () => { draftSubmitted.current = true; setDone(true); try { sessionStorage.removeItem(draftKey); } catch { /* Storage may be disabled. */ } },
   });
 
   const chooseCategory = (categoryId: string) => {
@@ -443,6 +489,8 @@ export default function NewListingPage() {
   };
 
   const resetWizard = () => {
+    draftSubmitted.current = false;
+    setDraftNotice('');
     photos.forEach((photo) => {
       if (photo.url.startsWith('blob:')) URL.revokeObjectURL(photo.url);
     });
@@ -507,6 +555,8 @@ export default function NewListingPage() {
     return (
       <MarketplaceShell>
         <main className="mx-auto max-w-2xl px-4 py-16 text-center">
+
+
           <div className="rounded-3xl border bg-white p-8 shadow-sm sm:p-10">
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-brand-50 text-brand-700">
               <Check className="size-7" />
@@ -528,6 +578,8 @@ export default function NewListingPage() {
   return (
     <MarketplaceShell>
       <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+        {draftNotice && <div role="status" className="mb-5 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-950">{draftNotice}</div>}
+        {draftReady && <p className="mb-4 text-xs text-slate-600">{locale === 'pt-BR' ? 'O texto é salvo nesta aba por até 7 dias. Fotos precisam ser selecionadas novamente após recarregar.' : 'Text is saved in this tab for up to 7 days. Select photos again after reloading.'}</p>}
         <div className="mb-5 sm:mb-7">
           <p className="text-sm font-bold uppercase tracking-wider text-brand-700">{t('selling.new.title')}</p>
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{t('selling.new.heading')}</h1>
