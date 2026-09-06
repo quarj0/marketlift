@@ -35,6 +35,63 @@ test("search exhausts local pages before announcing another area", async ({ page
   expect(requests.every(url=>url.searchParams.get("q")==="samsung" && url.searchParams.get("minPrice")==="50" && url.searchParams.get("expandRegions")==="true")).toBe(true);
 });
 
+test("search keeps category filters compact and clears dependent values immediately", async ({ page }) => {
+  await mockApi(page);
+  const audioCategory = {
+    id: "audio",
+    name: "Áudio",
+    active: true,
+    subcategories: [],
+    schemaVersion: 2,
+    description: "",
+    pricing: { mode: "required", label: "Preço" },
+    condition: { enabled: true, required: false, options: ["Used"] },
+    fields: [
+      { id: "product_type", label: "Product type", type: "select", filterable: true, options: [{ value: "speaker", label: "Speaker" }] },
+      { id: "brand", label: "Brand", type: "select", filterable: true, options: [{ value: "jbl", label: "JBL" }] },
+      { id: "model", label: "Model", type: "select", filterable: true, lazyOptions: true, dependsOn: "brand", options: [] },
+      ...["speaker_distortion", "battery_issue", "connectivity_issue", "feature_bluetooth", "feature_wifi"].map((id) => ({ id, label: id.replaceAll("_", " "), type: "boolean", filterable: true, options: [] })),
+    ],
+  };
+  await page.route("**/graphql/", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const { query } = route.request().postDataJSON();
+    if (query.includes("CategoryFieldOptions")) {
+      return respond(route, { data: { categoryFieldOptions: [{ value: "flip", label: "Flip 7" }] } });
+    }
+    if (query.includes("query Categories")) {
+      return respond(route, { data: { categories: [audioCategory] } });
+    }
+    if (query.includes("query Category")) {
+      return respond(route, { data: { category: audioCategory } });
+    }
+    return route.fallback();
+  });
+
+  await page.goto("/search?category=audio&attr.brand=jbl&attr.model=flip&state=SP&city=S%C3%A3o+Paulo");
+  await expect(page.locator("#attr-model")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Mostrar mais 5 filtros|Show 5 more filters/ })).toBeVisible();
+  await expect(page.locator("#attr-speaker_distortion")).toHaveCount(0);
+
+  await page.locator("#attr-brand").selectOption("");
+  await expect(page.locator("#attr-model")).toHaveCount(0);
+  await expect(page).not.toHaveURL(/attr\.brand|attr\.model/);
+
+  await page.getByRole("button", { name: /Redefinir filtros|Reset filters/ }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:3101/search");
+  await expect(page.locator("#search-filter-state")).toHaveValue("");
+  await expect(page.locator("#search-filter-city")).toHaveValue("");
+});
+
+test("signed-in footer omits guest account actions", async ({ page }) => {
+  await mockApi(page, true);
+  await page.goto("/about");
+  const footer = page.locator("footer");
+  await expect(footer.getByRole("link", { name: /Entrar|Log in/, exact: true })).toHaveCount(0);
+  await expect(footer.getByRole("link", { name: /Criar conta|Create account/, exact: true })).toHaveCount(0);
+  await expect(footer.getByRole("link", { name: /Anúncios salvos|Saved listings/, exact: true })).toBeVisible();
+});
+
 test("support preserves input on failure and displays a real ticket reference", async ({ page }) => {
   await mockApi(page,true);
   let attempts=0;
