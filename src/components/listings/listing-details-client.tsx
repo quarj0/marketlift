@@ -39,7 +39,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
 
-export function ListingDetailsClient({ slug }: { slug: string }) {
+export function ListingDetailsClient({ slug, initialListing }: { slug: string; initialListing?: Awaited<ReturnType<typeof listingService.getListing>> }) {
   const { isAuthenticated } = useAuth();
   const { t, locale, tr, categoryName } = useLocale();
   const { formatMoney } = useMarket();
@@ -53,6 +53,7 @@ export function ListingDetailsClient({ slug }: { slug: string }) {
   const listingQuery = useQuery({
     queryKey: ["listing", slug],
     queryFn: () => listingService.getListing(slug),
+    initialData: initialListing,
   });
   const listing = listingQuery.data;
   const sellerQuery = useQuery({

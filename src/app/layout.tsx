@@ -1,3 +1,4 @@
+import { WebVitals } from "@/components/telemetry/web-vitals";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 
@@ -14,11 +15,11 @@ import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 
 const siteDescription =
-  "Marketlift is Brazil's online marketplace to buy and sell cars, phones, electronics, fashion, property and everyday items from local sellers.";
+  "Compre e venda carros, celulares, eletrônicos, imóveis, moda e muito mais com vendedores locais no Marketlift Brasil.";
 
 export const metadata: Metadata = {
   title: {
-    default: "Marketlift Brazil — Buy & Sell Online",
+    default: "Marketlift Brasil — Compre e venda online",
     template: "%s | Marketlift",
   },
   description: siteDescription,
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
     siteName: "Marketlift",
     locale: "pt_BR",
     alternateLocale: ["en_US"],
-    title: "Marketlift Brazil — Buy & Sell Online",
+    title: "Marketlift Brasil — Compre e venda online",
     description: siteDescription,
     images: [
       {
@@ -74,7 +75,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Marketlift Brazil — Buy & Sell Online",
+    title: "Marketlift Brasil — Compre e venda online",
     description: siteDescription,
     images: [
       {
@@ -153,12 +154,13 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="pt-BR"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
       className="font-sans"
     >
       <body>
+        <WebVitals />
         <Suspense fallback={<AppPrerenderFallback />}>
           <QueryProvider>
             <MarketProvider>

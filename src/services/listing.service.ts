@@ -59,7 +59,14 @@ type SearchListingRow = Omit<
   categorySchemaVersion?: number;
 };
 
+export type SearchGeography = {
+  key: string; level: string; label: string; origin: string;
+  expanded: boolean; areaExhausted: boolean; windowLimited: boolean;
+};
+
 type SearchResponse = {
+  nextCursor?: string | null;
+  geography?: SearchGeography | null;
   results?: SearchListingRow[];
   items?: SearchListingRow[];
   count?: number;
@@ -97,6 +104,18 @@ async function fetchListings(filters: SearchFilters = {}, pageSize = 24) {
 }
 
 export const listingService = {
+  async searchPage(filters: SearchFilters, cursor: string | null, signal?: AbortSignal) {
+    const params = paramsFromFilters(filters);
+    params.set("expandRegions", "true");
+    if (cursor) params.set("cursor", cursor);
+    const data = await apiRequest<SearchResponse>(`/api/v1/search/listings/?${params}`, { signal });
+    return {
+      items: (data.results ?? []).map((row) => mapListing(normalizeSearchListing(row))),
+      nextCursor: data.nextCursor ?? null,
+      totalCount: data.totalCount ?? 0,
+      geography: data.geography,
+    };
+  },
   getListings: (filters: SearchFilters = {}) => fetchListings(filters, 50),
 
   async getListing(slug: string) {

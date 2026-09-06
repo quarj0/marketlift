@@ -82,9 +82,15 @@ function RegisterForm() {
             {...register("fullName")}
             autoComplete="name"
             aria-invalid={Boolean(errors.fullName)}
+            aria-describedby={
+              errors.fullName ? "register-name-error" : undefined
+            }
           />
           {errors.fullName && (
-            <p className="mt-1.5 text-sm font-medium text-rose-600">
+            <p
+              id="register-name-error"
+              className="mt-1.5 text-sm font-medium text-rose-600"
+            >
               {errors.fullName.message}
             </p>
           )}
@@ -104,9 +110,15 @@ function RegisterForm() {
               {...register("email")}
               autoComplete="email"
               aria-invalid={Boolean(errors.email)}
+              aria-describedby={
+                errors.email ? "register-email-error" : undefined
+              }
             />
             {errors.email && (
-              <p className="mt-1.5 text-sm font-medium text-rose-600">
+              <p
+                id="register-email-error"
+                className="mt-1.5 text-sm font-medium text-rose-600"
+              >
                 {errors.email.message}
               </p>
             )}
@@ -124,17 +136,27 @@ function RegisterForm() {
               defaultValue=""
               render={({ field }) => (
                 <PhoneInput
+                    ref={field.ref}
+                    onBlur={field.onBlur}
+                    name={field.name}
                   id="register-phone"
                   value={field.value || ""}
                   onChange={field.onChange}
                   countryCode={market.code}
                   dialCode={market.dialCode}
                   invalid={Boolean(errors.phone)}
+                  describedBy={
+                    errors.phone ? "register-phone-error" : undefined
+                  }
+                  placeholder={t("auth.phone")}
                 />
               )}
             />
             {errors.phone && (
-              <p className="mt-1.5 text-sm font-medium text-rose-600">
+              <p
+                id="register-phone-error"
+                className="mt-1.5 text-sm font-medium text-rose-600"
+              >
                 {errors.phone.message}
               </p>
             )}
@@ -154,9 +176,15 @@ function RegisterForm() {
               {...register("password")}
               autoComplete="new-password"
               aria-invalid={Boolean(errors.password)}
+              aria-describedby={
+                errors.password ? "register-password-error" : undefined
+              }
             />
             {errors.password && (
-              <p className="mt-1.5 text-sm font-medium text-rose-600">
+              <p
+                id="register-password-error"
+                className="mt-1.5 text-sm font-medium text-rose-600"
+              >
                 {errors.password.message}
               </p>
             )}
@@ -173,9 +201,15 @@ function RegisterForm() {
               {...register("confirmPassword")}
               autoComplete="new-password"
               aria-invalid={Boolean(errors.confirmPassword)}
+              aria-describedby={
+                errors.confirmPassword ? "register-confirm-error" : undefined
+              }
             />
             {errors.confirmPassword && (
-              <p className="mt-1.5 text-sm font-medium text-rose-600">
+              <p
+                id="register-confirm-error"
+                className="mt-1.5 text-sm font-medium text-rose-600"
+              >
                 {errors.confirmPassword.message}
               </p>
             )}
@@ -187,6 +221,8 @@ function RegisterForm() {
             type="checkbox"
             className="mt-1 size-5 shrink-0 accent-brand-600"
             {...register("terms")}
+            aria-invalid={Boolean(errors.terms)}
+            aria-describedby={errors.terms ? "register-terms-error" : undefined}
           />
           <span>
             {t("auth.register.accept")}{" "}
@@ -207,7 +243,11 @@ function RegisterForm() {
           </span>
         </label>
         {errors.terms && (
-          <p className="text-sm font-medium text-rose-600">
+          <p
+            id="register-terms-error"
+            role="alert"
+            className="text-sm font-medium text-rose-600"
+          >
             {errors.terms.message}
           </p>
         )}

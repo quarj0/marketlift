@@ -1,3 +1,11 @@
+function requestFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  const deadline = AbortSignal.timeout(15_000);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, deadline])
+    : deadline;
+  return fetch(input, { ...init, signal });
+}
+
 export type GraphQLErrorExtensions = {
   code?: string;
   status?: number;
@@ -75,7 +83,7 @@ export async function ensureCsrfToken() {
   const existing = getCookie("csrftoken");
   if (existing) return existing;
   if (!csrfPromise) {
-    csrfPromise = fetch(resolveApiUrl("/api/v1/auth/csrf/"), {
+    csrfPromise = requestFetch(resolveApiUrl("/api/v1/auth/csrf/"), {
       method: "GET",
       credentials: "include",
       headers: { Accept: "application/json" },
@@ -113,7 +121,7 @@ export async function apiRequest<T>(
     if (token) nextHeaders.set("X-CSRFToken", token);
   }
 
-  const response = await fetch(resolveApiUrl(path), {
+  const response = await requestFetch(resolveApiUrl(path), {
     ...rest,
     credentials: "include",
     cache: rest.cache ?? "no-store",
@@ -143,12 +151,22 @@ export async function graphqlRequest<T>(
   query: string,
   variables: Record<string, unknown> = {},
 ): Promise<T> {
+  // Anonymous server reads use GET, avoiding a redundant CSRF round trip.
+  // Cached callers never forward request cookies or user-specific headers.
+  if (typeof document === "undefined" && /^\s*(query\b|\{)/.test(query)) {
+    const params = new URLSearchParams({ query, variables: JSON.stringify(variables) });
+    const response = await requestFetch(resolveApiUrl(`/graphql/?${params}`), { headers: { Accept: "application/json" }, credentials: "omit", cache: "no-store" });
+    const payload = await response.json() as { data?: T; errors?: GraphQLErrorPayload[] };
+    if (!response.ok) throw new MarketliftApiError("GraphQL request failed.", { status: response.status });
+    if (payload.errors?.length) throw new MarketliftApiError(payload.errors[0].message, payload.errors[0].extensions);
+    if (!payload.data) throw new MarketliftApiError("The API returned no data.");
+    return payload.data;
+  }
   let csrf = "";
   let serverCookie = "";
 
-  
   let serverOrigin = "";
-if (typeof document === "undefined") {
+  if (typeof document === "undefined") {
     const configuredOrigin =
       process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
       process.env.NEXT_PUBLIC_MARKETPLACE_URL?.trim();
@@ -170,11 +188,14 @@ if (typeof document === "undefined") {
       serverOrigin = fallbackOrigin;
     }
 
-    const csrfResponse = await fetch(resolveApiUrl("/api/v1/auth/csrf/"), {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
+    const csrfResponse = await requestFetch(
+      resolveApiUrl("/api/v1/auth/csrf/"),
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      },
+    );
     if (!csrfResponse.ok)
       throw new MarketliftApiError(
         "Unable to initialize a secure API request.",
@@ -189,7 +210,7 @@ if (typeof document === "undefined") {
     csrf = await ensureCsrfToken();
   }
 
-  const response = await fetch(resolveApiUrl("/graphql/"), {
+  const response = await requestFetch(resolveApiUrl("/graphql/"), {
     method: "POST",
     credentials: "include",
     cache: "no-store",

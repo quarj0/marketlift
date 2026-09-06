@@ -8,7 +8,7 @@ import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
 
 export function MarketplaceFooter() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { market } = useMarket();
 
   const groups = [
@@ -52,7 +52,9 @@ export function MarketplaceFooter() {
           <MarketliftLogo />
 
           <p className="mt-5 max-w-sm text-sm leading-6 text-slate-300">
-            {`A simple, trusted way to discover local products and connect with sellers in ${market.countryName}.`}
+            {locale === "pt-BR"
+              ? "Uma forma simples de descobrir produtos locais e encontrar vendedores no Brasil."
+              : `A simple way to discover local products and connect with sellers in ${market.countryName}.`}
           </p>
 
           <div className="mt-5 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/6 p-4 text-sm text-slate-200">

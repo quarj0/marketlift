@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { ListingDetailsClient } from "@/components/listings/listing-details-client";
-import { listingService } from "@/services/listing.service";
+import { publicListing } from "@/lib/public-data";
 import { marketService, type MarketProfile } from "@/services/market.service";
 
 type ListingPageProps = {
@@ -12,7 +12,7 @@ type ListingPageProps = {
 };
 
 function fallbackMarket(countryCode?: string | null): MarketProfile {
-  const code = (countryCode || "GH").toUpperCase();
+  const code = (countryCode || "BR").toUpperCase();
   const profiles: Record<
     string,
     Pick<
@@ -81,7 +81,7 @@ function fallbackMarket(countryCode?: string | null): MarketProfile {
       currencySymbol: "FCFA",
     },
   };
-  const base = profiles[code] || profiles.GH;
+  const base = profiles[code] || profiles.BR;
   return {
     code,
     ...base,
@@ -121,11 +121,11 @@ export async function generateMetadata({
   params,
 }: ListingPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const listing = await listingService.getListing(slug);
+  const listing = await publicListing(slug);
 
   if (!listing) {
     return {
-      title: "Listing not found",
+      title: "Anúncio não encontrado",
       robots: { index: false, follow: false },
     };
   }
@@ -174,7 +174,7 @@ function ListingFallback() {
 
 async function ListingContent({ params }: ListingPageProps) {
   const { slug } = await params;
-  const listing = await listingService.getListing(slug);
+  const listing = await publicListing(slug);
   const market = listing
     ? await listingMarket(listing.location.countryCode)
     : null;
@@ -208,10 +208,10 @@ async function ListingContent({ params }: ListingPageProps) {
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
       )}
-      <ListingDetailsClient slug={slug} />
+      <ListingDetailsClient slug={slug} initialListing={listing} />
     </>
   );
 }
