@@ -363,6 +363,7 @@ export function SearchResultsClient({
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showAllCategoryFilters, setShowAllCategoryFilters] = useState(false);
   const [categoryFilterModal, setCategoryFilterModal] = useState(false);
+  const restoreMobileFiltersAfterCategoryModal = useRef(false);
   const searchParamsString = searchParams.toString();
   const latestSearchParams = useRef(searchParamsString);
   useEffect(() => {
@@ -576,8 +577,18 @@ export function SearchResultsClient({
     setCityDraftState(null);
     setDistrictDraftState(null);
     setShowAllCategoryFilters(false);
+    restoreMobileFiltersAfterCategoryModal.current = false;
     setCategoryFilterModal(false);
     replaceSearchParams(new URLSearchParams());
+  }
+
+  function closeCategoryFilterModal() {
+    const restoreMobileFilters = restoreMobileFiltersAfterCategoryModal.current;
+    restoreMobileFiltersAfterCategoryModal.current = false;
+    setCategoryFilterModal(false);
+    if (restoreMobileFilters) {
+      window.requestAnimationFrame(() => setMobileFilters(true));
+    }
   }
 
   const categoryFields = (categoryConfigQuery.data?.fields ?? []).filter(
@@ -677,6 +688,7 @@ export function SearchResultsClient({
           onChange={(event) => {
             const value = event.target.value;
             setShowAllCategoryFilters(false);
+            restoreMobileFiltersAfterCategoryModal.current = false;
             setCategoryFilterModal(false);
             if (categorySlug) {
               router.replace(value ? `/category/${value}` : "/search");
@@ -733,6 +745,7 @@ export function SearchResultsClient({
               type="button"
               aria-haspopup="dialog"
               onClick={() => {
+                restoreMobileFiltersAfterCategoryModal.current = mobileFilters;
                 setMobileFilters(false);
                 setCategoryFilterModal(true);
               }}
@@ -1388,7 +1401,13 @@ export function SearchResultsClient({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={categoryFilterModal} onOpenChange={setCategoryFilterModal}>
+      <Dialog
+        open={categoryFilterModal}
+        onOpenChange={(open) => {
+          if (open) setCategoryFilterModal(true);
+          else closeCategoryFilterModal();
+        }}
+      >
         <DialogContent className="max-h-[88dvh] overflow-y-auto sm:max-w-2xl">
           <div>
             <DialogTitle>{t("search.moreFiltersTitle")}</DialogTitle>
@@ -1414,7 +1433,7 @@ export function SearchResultsClient({
               );
             })}
           </div>
-          <Button type="button" onClick={() => setCategoryFilterModal(false)}>
+          <Button type="button" onClick={closeCategoryFilterModal}>
             {t("common.done")}
           </Button>
         </DialogContent>
