@@ -83,6 +83,40 @@ test("search keeps category filters compact and clears dependent values immediat
   await expect(page.locator("#search-filter-city")).toHaveValue("");
 });
 
+test("search moves more than five secondary category filters into a modal", async ({ page }) => {
+  await mockApi(page);
+  const audioCategory = {
+    id: "audio",
+    name: "Áudio",
+    active: true,
+    subcategories: [],
+    schemaVersion: 2,
+    description: "",
+    pricing: { mode: "required", label: "Preço" },
+    condition: { enabled: true, required: false, options: ["Used"] },
+    fields: [
+      { id: "product_type", label: "Product type", type: "select", filterable: true, options: [] },
+      { id: "brand", label: "Brand", type: "select", filterable: true, options: [] },
+      ...["battery_issue", "body_damage", "connectivity_issue", "feature_bluetooth", "feature_wifi", "needs_repair"].map((id) => ({ id, label: id.replaceAll("_", " "), type: "boolean", filterable: true, options: [] })),
+    ],
+  };
+  await page.route("**/graphql/", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const { query } = route.request().postDataJSON();
+    if (query.includes("query Categories")) return respond(route, { data: { categories: [audioCategory] } });
+    if (query.includes("query Category")) return respond(route, { data: { category: audioCategory } });
+    return route.fallback();
+  });
+
+  await page.goto("/search?category=audio");
+  await page.getByRole("button", { name: /Mostrar mais 6 filtros|Show 6 more filters/ }).click();
+  const dialog = page.getByRole("dialog", { name: /Mais filtros da categoria|More category filters/ });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("#attr-feature_wifi")).toBeVisible();
+  await dialog.getByRole("button", { name: /Concluído|Done/ }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
 test("signed-in footer omits guest account actions", async ({ page }) => {
   await mockApi(page, true);
   await page.goto("/about");
