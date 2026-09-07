@@ -84,6 +84,7 @@ test("search keeps category filters compact and clears dependent values immediat
 });
 
 test("search moves more than five secondary category filters into a modal", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   const audioCategory = {
     id: "audio",
@@ -109,12 +110,16 @@ test("search moves more than five secondary category filters into a modal", asyn
   });
 
   await page.goto("/search?category=audio");
-  await page.getByRole("button", { name: /Mostrar mais 6 filtros|Show 6 more filters/ }).click();
+  await page.getByRole("button", { name: /^Filtros$|^Filters$/ }).click();
+  const mobileFilters = page.getByRole("dialog", { name: /^Filtros$|^Filters$/ });
+  await expect(mobileFilters).toBeVisible();
+  await mobileFilters.getByRole("button", { name: /Mostrar mais 6 filtros|Show 6 more filters/ }).click();
   const dialog = page.getByRole("dialog", { name: /Mais filtros da categoria|More category filters/ });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("#attr-feature_wifi")).toBeVisible();
   await dialog.getByRole("button", { name: /Concluído|Done/ }).click();
   await expect(dialog).toHaveCount(0);
+  await expect(mobileFilters).toBeVisible();
 });
 
 test("signed-in footer omits guest account actions", async ({ page }) => {
