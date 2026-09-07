@@ -113,6 +113,7 @@ const PRIMARY_CATEGORY_FILTERS = new Set([
   "model",
   "year",
 ]);
+const INLINE_CATEGORY_FILTER_LIMIT = 5;
 
 function dependentFieldIds(
   fields: CategoryFieldDefinition[],
@@ -361,6 +362,7 @@ export function SearchResultsClient({
   const [mobileFilters, setMobileFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showAllCategoryFilters, setShowAllCategoryFilters] = useState(false);
+  const [categoryFilterModal, setCategoryFilterModal] = useState(false);
   const searchParamsString = searchParams.toString();
   const latestSearchParams = useRef(searchParamsString);
   useEffect(() => {
@@ -574,6 +576,7 @@ export function SearchResultsClient({
     setCityDraftState(null);
     setDistrictDraftState(null);
     setShowAllCategoryFilters(false);
+    setCategoryFilterModal(false);
     replaceSearchParams(new URLSearchParams());
   }
 
@@ -590,9 +593,17 @@ export function SearchResultsClient({
   const fallbackCategoryFields = primaryCategoryFields.length
     ? []
     : availableCategoryFields.slice(0, 3);
-  const alwaysVisibleCategoryIds = new Set([
+  const baseCategoryFieldIds = new Set([
     ...primaryCategoryFields.map((field) => field.id),
     ...fallbackCategoryFields.map((field) => field.id),
+  ]);
+  const secondaryCategoryFields = availableCategoryFields.filter(
+    (field) => !baseCategoryFieldIds.has(field.id),
+  );
+  const categoryFiltersUseModal =
+    secondaryCategoryFields.length > INLINE_CATEGORY_FILTER_LIMIT;
+  const alwaysVisibleCategoryIds = new Set([
+    ...baseCategoryFieldIds,
     ...availableCategoryFields
       .filter((field) => filters.attributes?.[field.id] !== undefined)
       .map((field) => field.id),
@@ -600,11 +611,15 @@ export function SearchResultsClient({
   const extraCategoryFields = availableCategoryFields.filter(
     (field) => !alwaysVisibleCategoryIds.has(field.id),
   );
-  const visibleCategoryFields = showAllCategoryFilters
-    ? availableCategoryFields
-    : availableCategoryFields.filter((field) =>
-        alwaysVisibleCategoryIds.has(field.id),
-      );
+  const visibleCategoryFields = categoryFiltersUseModal
+    ? availableCategoryFields.filter((field) =>
+        baseCategoryFieldIds.has(field.id),
+      )
+    : showAllCategoryFilters
+      ? availableCategoryFields
+      : availableCategoryFields.filter((field) =>
+          alwaysVisibleCategoryIds.has(field.id),
+        );
   const hasCoordinates =
     Number.isFinite(filters.latitude) && Number.isFinite(filters.longitude);
   const locationLabel =
@@ -662,6 +677,7 @@ export function SearchResultsClient({
           onChange={(event) => {
             const value = event.target.value;
             setShowAllCategoryFilters(false);
+            setCategoryFilterModal(false);
             if (categorySlug) {
               router.replace(value ? `/category/${value}` : "/search");
               return;
@@ -712,7 +728,21 @@ export function SearchResultsClient({
               />
             );
           })}
-          {extraCategoryFields.length > 0 || showAllCategoryFilters ? (
+          {categoryFiltersUseModal ? (
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => {
+                setMobileFilters(false);
+                setCategoryFilterModal(true);
+              }}
+              className="flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-semibold text-brand-700 transition hover:bg-slate-50"
+            >
+              {t("search.showMoreFilters", {
+                count: secondaryCategoryFields.length,
+              })}
+            </button>
+          ) : extraCategoryFields.length > 0 || showAllCategoryFilters ? (
             <button
               type="button"
               aria-expanded={showAllCategoryFilters}
@@ -1354,6 +1384,38 @@ export function SearchResultsClient({
             onClick={() => setMobileFilters(false)}
           >
             {t("search.showResults", { count })}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={categoryFilterModal} onOpenChange={setCategoryFilterModal}>
+        <DialogContent className="max-h-[88dvh] overflow-y-auto sm:max-w-2xl">
+          <div>
+            <DialogTitle>{t("search.moreFiltersTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("search.moreFiltersDescription")}
+            </DialogDescription>
+          </div>
+          <div className="grid gap-5 py-2 sm:grid-cols-2">
+            {secondaryCategoryFields.map((field) => {
+              const child = categoryFields.find(
+                (candidate) => candidate.dependsOn === field.id,
+              );
+              return (
+                <DynamicCategoryFilter
+                  key={field.id}
+                  categoryId={filters.category || ""}
+                  field={field}
+                  attributes={filters.attributes ?? {}}
+                  dependentIds={dependentFieldIds(categoryFields, field.id)}
+                  dependentLabel={child ? tr(child.label) : undefined}
+                  update={update}
+                />
+              );
+            })}
+          </div>
+          <Button type="button" onClick={() => setCategoryFilterModal(false)}>
+            {t("common.done")}
           </Button>
         </DialogContent>
       </Dialog>
