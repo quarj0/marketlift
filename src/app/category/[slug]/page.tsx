@@ -4,28 +4,21 @@ import { Suspense } from "react";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { SearchResultsClient } from "@/components/search/search-results-client";
 import { translate } from "@/i18n/translations";
-import { categoryService } from "@/services/category.service";
 
 type CategoryPageProps = { params: Promise<{ slug: string }> };
 
-async function categoryDetails(slug: string) {
-  try {
-    return await categoryService.getConfiguration(slug);
-  } catch {
-    return null;
-  }
-}
-
-function localizedName(slug: string, fallback: string) {
+function localizedName(slug: string) {
   const translated = translate("pt-BR", `category.${slug}`);
-  return translated === `category.${slug}` ? fallback : translated;
+  return translated === `category.${slug}`
+    ? slug.replaceAll("-", " ")
+    : translated;
 }
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = await categoryDetails(slug);
-  const fallback = category?.name || slug.replaceAll("-", " ");
-  const name = localizedName(slug, fallback);
+  // Metadata must remain available even when the marketplace API is slow or
+  // temporarily unavailable. The client view loads category data separately.
+  const name = localizedName(slug);
   const title = `${name} à venda no Brasil`;
   const description = `Encontre anúncios de ${name.toLocaleLowerCase("pt-BR")} perto de você no Marketlift Brasil.`;
 
