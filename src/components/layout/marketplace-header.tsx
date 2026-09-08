@@ -309,7 +309,7 @@ export function MarketplaceHeader() {
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
         <DialogContent
           showCloseButton={false}
-          className="top-auto bottom-0 left-0 flex max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-b-none rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:hidden"
+          className="top-0 right-0 bottom-0 left-auto flex h-dvh w-[min(88vw,22rem)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-slate-200 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:hidden"
         >
           <div className="flex items-center justify-between gap-4">
             <MarketliftLogo size="compact" />
@@ -365,7 +365,7 @@ export function MarketplaceHeader() {
             <Link
               href="/search"
               onClick={() => setMenuOpen(false)}
-              className="min-h-20 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
+              className="flex min-h-12 items-center rounded-xl border px-4 py-3 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
             >
               {t("nav.browseMarketplace")}
             </Link>

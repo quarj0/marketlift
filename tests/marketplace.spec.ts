@@ -19,7 +19,7 @@ for (const path of ["/", "/search", "/register"]) {
   });
 }
 
-test("guest mobile menu uses a compact full-width navigation layout", async ({ page }) => {
+test("guest mobile menu opens as a compact right-side drawer", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await page.goto("/about");
@@ -33,13 +33,19 @@ test("guest mobile menu uses a compact full-width navigation layout", async ({ p
   await expect(browse).toBeVisible();
   await expect
     .poll(() =>
-      browse.evaluate((element) => {
-        const browseWidth = element.getBoundingClientRect().width;
-        const dialogWidth = element.closest('[role="dialog"]')?.getBoundingClientRect().width ?? 0;
-        return browseWidth / dialogWidth;
+      dialog.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          height: rect.height,
+          right: window.innerWidth - rect.right,
+          top: rect.top,
+        };
       }),
     )
-    .toBeGreaterThan(0.8);
+    .toEqual({ height: 844, right: 0, top: 0 });
+  await expect
+    .poll(() => browse.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeLessThanOrEqual(56);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
