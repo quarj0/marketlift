@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { HomepageContent } from "@/components/marketplace/homepage-content";
 import { publicCategories, publicHomeFeed } from "@/lib/public-data";
@@ -9,6 +10,20 @@ export const metadata: Metadata = {
     "Compre e venda carros, celulares, eletrônicos, imóveis, moda e muito mais perto de você no Marketlift Brasil.",
   alternates: { canonical: "/" },
 };
+
+async function HomepageData() {
+  const [categories, feed] = await Promise.all([
+    publicCategories(),
+    publicHomeFeed("BR"),
+  ]);
+
+  return (
+    <HomepageContent
+      initialCategories={categories ?? []}
+      initialFeed={feed ?? undefined}
+    />
+  );
+}
 
 export default async function HomePage() {
   const siteUrl = (
@@ -65,8 +80,6 @@ export default async function HomePage() {
       },
     },
   ];
-  const [categories, feed] = await Promise.all([publicCategories(), publicHomeFeed("BR")]);
-
   return (
     <>
       <script
@@ -74,7 +87,9 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <MarketplaceShell>
-        <HomepageContent initialCategories={categories ?? []} initialFeed={feed ?? undefined} />
+        <Suspense fallback={<HomepageContent />}>
+          <HomepageData />
+        </Suspense>
       </MarketplaceShell>
     </>
   );

@@ -309,7 +309,7 @@ export function MarketplaceHeader() {
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
         <DialogContent
           showCloseButton={false}
-          className="top-0 right-0 bottom-0 left-auto flex h-dvh w-[min(88vw,22rem)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-slate-200 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:hidden"
+          className="top-0 right-0 bottom-0 left-auto flex h-dvh w-[min(88vw,22rem)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-none border-l border-slate-200 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl duration-200 data-open:slide-in-from-right-full data-open:zoom-in-100 data-closed:slide-out-to-right-full data-closed:zoom-out-100 sm:hidden"
         >
           <div className="flex items-center justify-between gap-4">
             <MarketliftLogo size="compact" />
