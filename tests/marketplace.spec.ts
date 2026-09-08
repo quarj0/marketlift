@@ -19,6 +19,39 @@ for (const path of ["/", "/search", "/register"]) {
   });
 }
 
+test("guest mobile menu uses a compact full-width navigation layout", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.goto("/about");
+  await page.getByRole("button", { name: /Abrir menu|Open menu/ }).click();
+
+  const dialog = page.getByRole("dialog");
+  const browse = dialog.getByRole("link", {
+    name: /Explorar o marketplace|Browse marketplace/,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(browse).toBeVisible();
+  await expect
+    .poll(() =>
+      browse.evaluate((element) => {
+        const browseWidth = element.getBoundingClientRect().width;
+        const dialogWidth = element.closest('[role="dialog"]')?.getBoundingClientRect().width ?? 0;
+        return browseWidth / dialogWidth;
+      }),
+    )
+    .toBeGreaterThan(0.8);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("category navigation does not require a server metadata API request", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/search");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Celulares" }).click();
+
+  await expect(page).toHaveURL(/\/category\/phones$/);
+  await expect(page.getByRole("heading", { name: /Celulares|Phones/ }).first()).toBeVisible({ timeout: 20_000 });
+});
+
 test("search exhausts local pages before announcing another area", async ({ page }) => {
   await mockApi(page);
   const requests: URL[]=[];

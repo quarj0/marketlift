@@ -309,7 +309,7 @@ export function MarketplaceHeader() {
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
         <DialogContent
           showCloseButton={false}
-          className="top-auto bottom-0 left-0 max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:hidden"
+          className="top-auto bottom-0 left-0 flex max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-b-none rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:hidden"
         >
           <div className="flex items-center justify-between gap-4">
             <MarketliftLogo size="compact" />
@@ -359,7 +359,7 @@ export function MarketplaceHeader() {
           </div>
 
           <nav
-            className="mt-5 grid grid-cols-2 gap-2"
+            className={`mt-5 grid gap-2 ${user ? "grid-cols-2" : "grid-cols-1"}`}
             aria-label={t("nav.openMenu")}
           >
             <Link
