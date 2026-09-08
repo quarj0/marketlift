@@ -19,6 +19,8 @@ import {
   type Locale,
 } from "@/i18n/config";
 import { translate, translateValue } from "@/i18n/translations";
+import { useMarket } from "@/providers/market-provider";
+import { normalizeLocale } from "@/i18n/config";
 
 interface LocaleContextValue {
   locale: Locale;
@@ -66,6 +68,7 @@ export function LocaleProvider({
 }: {
   children: ReactNode;
 }) {
+  const { market } = useMarket();
   const locale = useSyncExternalStore(
     subscribe,
     readStoredLocale,
@@ -73,12 +76,18 @@ export function LocaleProvider({
   );
 
   useEffect(() => {
-    document.documentElement.lang = locale;
-
-    if (!window.localStorage.getItem(LOCALE_STORAGE_KEY)) {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    let hasPreference = false;
+    try { hasPreference = Boolean(window.localStorage.getItem(LOCALE_STORAGE_KEY)); } catch { /* Browser storage can be disabled. */ }
+    if (!hasPreference) {
+      const marketLocale = normalizeLocale(market.locale);
+      if (marketLocale !== locale) {
+        persistLocale(marketLocale);
+        return;
+      }
     }
-  }, [locale]);
+    document.documentElement.lang = locale;
+    if (!hasPreference) { try { window.localStorage.setItem(LOCALE_STORAGE_KEY, locale); } catch { /* Keep the in-memory locale. */ } }
+  }, [locale, market.locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     persistLocale(nextLocale);

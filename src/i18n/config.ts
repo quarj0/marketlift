@@ -2,7 +2,7 @@ export const SUPPORTED_LOCALES = ["en", "pt-BR"] as const;
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "pt-BR";
 export const LOCALE_STORAGE_KEY = "marketlift-locale";
 export const LOCALE_CHANGE_EVENT = "marketlift:locale-change";
 
@@ -28,13 +28,21 @@ export function readStoredLocale(): Locale {
     return DEFAULT_LOCALE;
   }
 
-  return normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
+  try {
+    return normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
+  } catch {
+    return DEFAULT_LOCALE;
+  }
 }
 
 export function persistLocale(locale: Locale): void {
   if (typeof window === "undefined") return;
 
-  window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  try {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch {
+    /* Preference storage may be disabled. */
+  }
   window.dispatchEvent(
     new CustomEvent(LOCALE_CHANGE_EVENT, {
       detail: { locale },

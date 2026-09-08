@@ -1,214 +1,1063 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { Grid2X2, List, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
-import { listingService } from '@/services/listing.service';
-import { brazilLocations, brazilRegions } from '@/data/brazil-locations';
-import { locationService } from '@/services/location.service';
-import { categoryService } from '@/services/category.service';
-import { ListingCard } from '@/components/listings/listing-card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { useLocale } from '@/providers/locale-provider';
-import type { ListingCondition, SearchFilters, SellerType } from '@/types';
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  BellRing,
+  CheckCircle2,
+  Grid2X2,
+  List,
+  RotateCcw,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { listingService } from "@/services/listing.service";
+import { savedSearchService } from "@/services/saved-search.service";
+import { brazilLocations, brazilRegions } from "@/data/brazil-locations";
+import { locationService } from "@/services/location.service";
+import { categoryService } from "@/services/category.service";
+import { findCategoryPath, flattenCategories } from "@/lib/category-tree";
+import { ListingCard } from "@/components/listings/listing-card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useLocale } from "@/providers/locale-provider";
+import { useAuth } from "@/providers/auth-provider";
+import { useMarket } from "@/providers/market-provider";
+import type {
+  CategoryFieldDefinition,
+  ListingCondition,
+  SearchFilters,
+  SellerType,
+} from "@/types";
 
-const toNum = (value: string | null) => value && !Number.isNaN(Number(value)) ? Number(value) : undefined;
+const toNum = (value: string | null) =>
+  value && !Number.isNaN(Number(value)) ? Number(value) : undefined;
 
-function useFilters(): SearchFilters {
+function alertCriteria(filters: SearchFilters) {
+  const criteria: Record<string, unknown> = {
+    q: filters.q,
+    category: filters.category,
+    countryCode: filters.countryCode,
+    state: filters.state,
+    city: filters.city,
+    district: filters.district,
+    latitude: filters.latitude,
+    longitude: filters.longitude,
+    radiusKm: filters.radiusKm,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    condition: filters.condition,
+    sellerType: filters.sellerType,
+    verifiedOnly: filters.verifiedOnly || undefined,
+    dateListed: filters.dateListed,
+  };
+  return Object.fromEntries(
+    Object.entries(criteria).filter(
+      ([, value]) =>
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        value !== false,
+    ),
+  );
+}
+
+function hasAlertableCriteria(filters: SearchFilters) {
+  return Object.keys(alertCriteria(filters)).some(
+    (key) => key !== "countryCode",
+  );
+}
+
+function attributeFilters(
+  params: URLSearchParams,
+): SearchFilters["attributes"] {
+  const attributes: NonNullable<SearchFilters["attributes"]> = {};
+
+  params.forEach((value, key) => {
+    const match = key.match(/^attr\.([a-z0-9_]+)(?:\.(min|max))?$/);
+    if (!match || !value) return;
+    const [, field, bound] = match;
+    if (bound) {
+      const current = attributes[field];
+      const range =
+        typeof current === "object" && current !== null ? current : {};
+      range[bound as "min" | "max"] = Number(value);
+      attributes[field] = range;
+      return;
+    }
+    attributes[field] =
+      value === "true" ? true : value === "false" ? false : value;
+  });
+
+  return attributes;
+}
+
+const PRIMARY_CATEGORY_FILTERS = new Set([
+  "product_type",
+  "make",
+  "brand",
+  "model",
+  "year",
+]);
+const INLINE_CATEGORY_FILTER_LIMIT = 5;
+
+function dependentFieldIds(
+  fields: CategoryFieldDefinition[],
+  parentId: string,
+): string[] {
+  const direct = fields.filter((field) => field.dependsOn === parentId);
+  return direct.flatMap((field) => [
+    field.id,
+    ...dependentFieldIds(fields, field.id),
+  ]);
+}
+
+function useFilters(categorySlug?: string): SearchFilters {
   const params = useSearchParams();
+  const { market } = useMarket();
+  const legacyLocation = params.get("location") || "";
+  const legacyMatch = legacyLocation.match(
+    /^(.*?)(?:,|\s)\s*([A-Za-z]{2})\s*$/,
+  );
+  const legacyState =
+    legacyMatch && market.code === "BR"
+      ? brazilLocations.find(
+          (state) => state.code === legacyMatch[2].toUpperCase(),
+        )
+      : undefined;
+  const state = params.get("state") || legacyState?.code || "";
+  const city =
+    params.get("city") || (legacyState ? legacyMatch?.[1].trim() || "" : "");
+  const stateRow =
+    market.code === "BR"
+      ? brazilLocations.find((item) => item.code === state)
+      : undefined;
+
   return {
-    q: params.get('q') || '',
-    category: params.get('category') || '',
-    region: params.get('region') || '',
-    state: params.get('state') || '',
-    city: params.get('city') || '',
-    district: params.get('district') || '',
-    minPrice: toNum(params.get('minPrice')),
-    maxPrice: toNum(params.get('maxPrice')),
-    condition: (params.get('condition') || '') as ListingCondition | '',
-    sellerType: (params.get('sellerType') || '') as SellerType | '',
-    verifiedOnly: params.get('verified') === '1',
-    dateListed: (params.get('date') || '') as SearchFilters['dateListed'],
-    sort: (params.get('sort') || 'relevant') as SearchFilters['sort'],
+    countryCode: market.code,
+    q: params.get("q") || "",
+    category: params.get("category") || categorySlug || "",
+    region: params.get("region") || stateRow?.regionCode || "",
+    state,
+    city,
+    district: params.get("district") || "",
+    latitude: toNum(params.get("latitude") || params.get("lat")),
+    longitude: toNum(params.get("longitude") || params.get("lng")),
+    radiusKm: toNum(params.get("radiusKm") || params.get("radius_km")),
+    minPrice: toNum(params.get("minPrice")),
+    maxPrice: toNum(params.get("maxPrice")),
+    attributes: attributeFilters(params),
+    condition: (params.get("condition") || "") as ListingCondition | "",
+    sellerType: (params.get("sellerType") || "") as SellerType | "",
+    verifiedOnly: params.get("verified") === "1",
+    dateListed: (params.get("date") || "") as SearchFilters["dateListed"],
+    sort: (params.get("sort") || "relevant") as SearchFilters["sort"],
   };
 }
 
-export function SearchResultsClient() {
+function DynamicCategoryFilter({
+  categoryId,
+  field,
+  attributes,
+  dependentIds,
+  dependentLabel,
+  update,
+}: {
+  categoryId: string;
+  field: CategoryFieldDefinition;
+  attributes: NonNullable<SearchFilters["attributes"]>;
+  dependentIds: string[];
+  dependentLabel?: string;
+  update: (patch: Record<string, string | undefined>) => void;
+}) {
+  const { t, tr } = useLocale();
+  const current = attributes[field.id];
+  const parentValue = field.dependsOn
+    ? String(attributes[field.dependsOn] ?? "")
+    : "";
+  const needsRemoteOptions =
+    field.type === "select" && (field.lazyOptions || Boolean(field.dependsOn));
+  const optionsQuery = useQuery({
+    queryKey: ["category-field-options", categoryId, field.id, parentValue],
+    queryFn: () =>
+      categoryService.getFieldOptions(
+        categoryId,
+        field.id,
+        parentValue || undefined,
+      ),
+    enabled: needsRemoteOptions && (!field.dependsOn || Boolean(parentValue)),
+    staleTime: 5 * 60_000,
+  });
+  const options = needsRemoteOptions
+    ? (optionsQuery.data ?? [])
+    : (field.options ?? []);
+  const label = tr(field.label);
+
+  if (field.type === "number") {
+    const range =
+      typeof current === "object" && current !== null ? current : {};
+    return (
+      <fieldset>
+        <legend className="mb-2 block text-sm font-semibold">{label}</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            aria-label={`${label} ${t("search.min")}`}
+            type="number"
+            defaultValue={range.min}
+            key={`${field.id}-min-${range.min ?? ""}`}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            placeholder={t("search.min")}
+            onBlur={(event) =>
+              update({
+                [`attr.${field.id}.min`]: event.target.value || undefined,
+              })
+            }
+          />
+          <Input
+            aria-label={`${label} ${t("search.max")}`}
+            type="number"
+            defaultValue={range.max}
+            key={`${field.id}-max-${range.max ?? ""}`}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            placeholder={t("search.max")}
+            onBlur={(event) =>
+              update({
+                [`attr.${field.id}.max`]: event.target.value || undefined,
+              })
+            }
+          />
+        </div>
+      </fieldset>
+    );
+  }
+
+  if (field.type === "boolean") {
+    return (
+      <div>
+        <label
+          className="mb-2 block text-sm font-semibold"
+          htmlFor={`attr-${field.id}`}
+        >
+          {label}
+        </label>
+        <select
+          id={`attr-${field.id}`}
+          value={typeof current === "boolean" ? String(current) : ""}
+          onChange={(event) =>
+            update({ [`attr.${field.id}`]: event.target.value || undefined })
+          }
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+        >
+          <option value="">{t("search.all")}</option>
+          <option value="true">{t("common.yes")}</option>
+          <option value="false">{t("common.no")}</option>
+        </select>
+      </div>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <div>
+        <label
+          className="mb-2 block text-sm font-semibold"
+          htmlFor={`attr-${field.id}`}
+        >
+          {label}
+        </label>
+        <select
+          id={`attr-${field.id}`}
+          value={typeof current === "string" ? current : ""}
+          disabled={Boolean(field.dependsOn) && !parentValue}
+          onChange={(event) => {
+            const patch: Record<string, string | undefined> = {
+              [`attr.${field.id}`]: event.target.value || undefined,
+            };
+            dependentIds.forEach((id) => {
+              patch[`attr.${id}`] = undefined;
+            });
+            update(patch);
+          }}
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm disabled:bg-slate-100"
+        >
+          <option value="">
+            {optionsQuery.isLoading
+              ? t("search.loadingOptions")
+              : t("search.all")}
+          </option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {tr(option.label)}
+            </option>
+          ))}
+        </select>
+        {dependentLabel && !current ? (
+          <p className="mt-1.5 text-xs leading-5 text-slate-500">
+            {t("search.selectToRefine", { field: dependentLabel })}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label
+        className="mb-2 block text-sm font-semibold"
+        htmlFor={`attr-${field.id}`}
+      >
+        {label}
+      </label>
+      <Input
+        id={`attr-${field.id}`}
+        defaultValue={typeof current === "string" ? current : ""}
+        key={`${field.id}-${String(current ?? "")}`}
+        placeholder={field.placeholder ? tr(field.placeholder) : label}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            update({
+              [`attr.${field.id}`]: event.currentTarget.value || undefined,
+            });
+          }
+        }}
+        onBlur={(event) =>
+          update({ [`attr.${field.id}`]: event.target.value || undefined })
+        }
+      />
+    </div>
+  );
+}
+
+export function SearchResultsClient({
+  categorySlug,
+}: { categorySlug?: string } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const filters = useFilters();
-  const { t, categoryName, locale } = useLocale();
+  const queryClient = useQueryClient();
+  const filters = useFilters(categorySlug);
+  const { t, tr, categoryName, locale } = useLocale();
+  const { user } = useAuth();
+  const { market } = useMarket();
+  const isBrazil = market.code === "BR";
   const [mobileFilters, setMobileFilters] = useState(false);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [showAllCategoryFilters, setShowAllCategoryFilters] = useState(false);
+  const [categoryFilterModal, setCategoryFilterModal] = useState(false);
+  const restoreMobileFiltersAfterCategoryModal = useRef(false);
+  const searchParamsString = searchParams.toString();
+  const latestSearchParams = useRef(searchParamsString);
+  useEffect(() => {
+    latestSearchParams.current = searchParamsString;
+  }, [searchParamsString]);
+  const cityFilterKey = `${filters.state}:${filters.city}`;
+  const districtFilterKey = `${filters.state}:${filters.city}:${filters.district}`;
+  const [cityDraftState, setCityDraftState] = useState<{
+    key: string;
+    value: string;
+  } | null>(null);
+  const [districtDraftState, setDistrictDraftState] = useState<{
+    key: string;
+    value: string;
+  } | null>(null);
+  const cityDraft =
+    cityDraftState?.key === cityFilterKey
+      ? cityDraftState.value
+      : filters.city || "";
+  const districtDraft =
+    districtDraftState?.key === districtFilterKey
+      ? districtDraftState.value
+      : filters.district || "";
+  const setCityDraft = (value: string) =>
+    setCityDraftState({ key: cityFilterKey, value });
+  const setDistrictDraft = (value: string) =>
+    setDistrictDraftState({ key: districtFilterKey, value });
+  const debouncedCityDraft = useDebouncedValue(cityDraft, 250);
+  const debouncedDistrictDraft = useDebouncedValue(districtDraft, 250);
 
   const categoriesQuery = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: categoryService.getCategories,
     staleTime: 5 * 60_000,
   });
   const categories = categoriesQuery.data ?? [];
-
-  const { data = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['listings', filters],
-    queryFn: () => listingService.getListings(filters),
+  const categoryEntries = flattenCategories(categories);
+  const categoryPath = filters.category
+    ? findCategoryPath(categories, filters.category)
+    : undefined;
+  const categoryConfigQuery = useQuery({
+    queryKey: ["category-configuration", filters.category],
+    queryFn: () => categoryService.getConfiguration(filters.category || ""),
+    enabled: Boolean(filters.category),
+    staleTime: 5 * 60_000,
   });
 
-  const selectedState = brazilLocations.find((state) => state.code === filters.state);
-  const selectedRegionCode = filters.region || selectedState?.regionCode || '';
-  const selectedRegion = brazilRegions.find((region) => region.code === selectedRegionCode);
-  const states = selectedRegionCode
-    ? brazilLocations.filter((state) => state.regionCode === selectedRegionCode)
-    : brazilLocations;
+  const results = useInfiniteQuery({
+    queryKey: ["listing-pages", market.code, filters],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      listingService.searchPage(filters, pageParam, signal),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+  });
+  const { isLoading, refetch } = results;
+  const isError = results.isError && !results.data;
+  const seen = new Set<string>();
+  const sections = (results.data?.pages ?? []).map((page, index, pages) => ({
+    ...page,
+    showBoundary:
+      page.geography?.expanded &&
+      page.geography.key !== pages[index - 1]?.geography?.key,
+    items: page.items.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }),
+  }));
+  const data = sections.flatMap((page) => page.items);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const {
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    isFetchNextPageError,
+  } = results;
+  useEffect(() => {
+    const element = sentinel.current;
+    if (
+      !element ||
+      !hasNextPage ||
+      isFetchingNextPage ||
+      isFetchNextPageError ||
+      !("IntersectionObserver" in window)
+    )
+      return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void fetchNextPage();
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isFetchNextPageError]);
+
+  const saveAlert = useMutation({
+    mutationFn: () =>
+      savedSearchService.create({
+        name:
+          filters.q?.trim() ||
+          `Search in ${filters.city || market.countryName}`,
+        criteria: alertCriteria(filters),
+        alertsEnabled: true,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["saved-searches"] });
+    },
+  });
+
+  const selectedState = isBrazil
+    ? brazilLocations.find((state) => state.code === filters.state)
+    : undefined;
+  const selectedRegionCode = filters.region || selectedState?.regionCode || "";
+  const selectedRegion = isBrazil
+    ? brazilRegions.find((region) => region.code === selectedRegionCode)
+    : undefined;
+  const states = isBrazil
+    ? selectedRegionCode
+      ? brazilLocations.filter(
+          (state) => state.regionCode === selectedRegionCode,
+        )
+      : brazilLocations
+    : [];
   const citiesQuery = useQuery({
-    queryKey: ['location-cities', filters.state],
-    queryFn: () => locationService.getCities(filters.state || ''),
-    enabled: Boolean(filters.state),
+    queryKey: [
+      "location-cities",
+      market.code,
+      filters.state,
+      debouncedCityDraft,
+    ],
+    queryFn: () =>
+      locationService.getCities(
+        market.code,
+        filters.state || "",
+        debouncedCityDraft,
+        40,
+      ),
+    enabled: isBrazil
+      ? Boolean(filters.state)
+      : debouncedCityDraft.trim().length >= 2,
     staleTime: 24 * 60 * 60_000,
   });
   const neighborhoodsQuery = useQuery({
-    queryKey: ['location-neighborhoods', filters.state, filters.city],
-    queryFn: () => locationService.getNeighborhoods(filters.state || '', filters.city || ''),
-    enabled: Boolean(filters.state && filters.city),
+    queryKey: [
+      "location-neighborhoods",
+      market.code,
+      filters.state,
+      filters.city,
+      debouncedDistrictDraft,
+    ],
+    queryFn: () =>
+      locationService.getNeighborhoods(
+        market.code,
+        filters.state || "",
+        filters.city || "",
+        debouncedDistrictDraft,
+      ),
+    enabled: Boolean(filters.city),
     staleTime: 5 * 60_000,
   });
-  const cities = citiesQuery.data?.length ? citiesQuery.data : [...(selectedState?.cities ?? [])];
+  const cities = citiesQuery.data?.length
+    ? citiesQuery.data
+    : isBrazil
+      ? [...(selectedState?.cities ?? [])].filter((city) =>
+          city
+            .toLocaleLowerCase("pt-BR")
+            .includes(cityDraft.toLocaleLowerCase("pt-BR")),
+        )
+      : [];
   const neighborhoods = neighborhoodsQuery.data ?? [];
 
+  function replaceSearchParams(next: URLSearchParams) {
+    const query = next.toString();
+    latestSearchParams.current = query;
+    window.history.replaceState(
+      null,
+      "",
+      query ? `${pathname}?${query}` : pathname,
+    );
+  }
+
   function update(patch: Record<string, string | undefined>) {
-    const next = new URLSearchParams(searchParams.toString());
+    const next = new URLSearchParams(latestSearchParams.current);
+    const changesManualLocation = [
+      "region",
+      "state",
+      "city",
+      "district",
+      "location",
+    ].some((key) => Object.prototype.hasOwnProperty.call(patch, key));
+
+    if (changesManualLocation) {
+      next.delete("latitude");
+      next.delete("longitude");
+      next.delete("lat");
+      next.delete("lng");
+      next.delete("radiusKm");
+      next.delete("radius_km");
+      if (next.get("sort") === "distance") next.set("sort", "relevant");
+    }
+
     Object.entries(patch).forEach(([key, value]) => {
       if (value) next.set(key, value);
       else next.delete(key);
     });
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    replaceSearchParams(next);
   }
 
-  const clear = () => router.replace(pathname);
-  const locationLabel = filters.city || selectedState?.name || selectedRegion?.name || t('search.brazil');
-  const count = data.length.toLocaleString(locale === 'pt-BR' ? 'pt-BR' : 'en-US');
-  const countText = t(data.length === 1 ? 'search.countOne' : 'search.count', { count, location: locationLabel });
+  function clear() {
+    setCityDraftState(null);
+    setDistrictDraftState(null);
+    setShowAllCategoryFilters(false);
+    restoreMobileFiltersAfterCategoryModal.current = false;
+    setCategoryFilterModal(false);
+    replaceSearchParams(new URLSearchParams());
+  }
+
+  function closeCategoryFilterModal() {
+    const restoreMobileFilters = restoreMobileFiltersAfterCategoryModal.current;
+    restoreMobileFiltersAfterCategoryModal.current = false;
+    setCategoryFilterModal(false);
+    if (restoreMobileFilters) {
+      window.requestAnimationFrame(() => setMobileFilters(true));
+    }
+  }
+
+  const categoryFields = (categoryConfigQuery.data?.fields ?? []).filter(
+    (field) => field.filterable,
+  );
+  const availableCategoryFields = categoryFields.filter(
+    (field) =>
+      !field.dependsOn || Boolean(filters.attributes?.[field.dependsOn]),
+  );
+  const primaryCategoryFields = availableCategoryFields.filter((field) =>
+    PRIMARY_CATEGORY_FILTERS.has(field.id),
+  );
+  const fallbackCategoryFields = primaryCategoryFields.length
+    ? []
+    : availableCategoryFields.slice(0, 3);
+  const baseCategoryFieldIds = new Set([
+    ...primaryCategoryFields.map((field) => field.id),
+    ...fallbackCategoryFields.map((field) => field.id),
+  ]);
+  const secondaryCategoryFields = availableCategoryFields.filter(
+    (field) => !baseCategoryFieldIds.has(field.id),
+  );
+  const categoryFiltersUseModal =
+    secondaryCategoryFields.length > INLINE_CATEGORY_FILTER_LIMIT;
+  const alwaysVisibleCategoryIds = new Set([
+    ...baseCategoryFieldIds,
+    ...availableCategoryFields
+      .filter((field) => filters.attributes?.[field.id] !== undefined)
+      .map((field) => field.id),
+  ]);
+  const extraCategoryFields = availableCategoryFields.filter(
+    (field) => !alwaysVisibleCategoryIds.has(field.id),
+  );
+  const visibleCategoryFields = categoryFiltersUseModal
+    ? availableCategoryFields.filter((field) =>
+        baseCategoryFieldIds.has(field.id),
+      )
+    : showAllCategoryFilters
+      ? availableCategoryFields
+      : availableCategoryFields.filter((field) =>
+          alwaysVisibleCategoryIds.has(field.id),
+        );
+  const hasCoordinates =
+    Number.isFinite(filters.latitude) && Number.isFinite(filters.longitude);
+  const locationLabel =
+    filters.city ||
+    selectedState?.name ||
+    selectedRegion?.name ||
+    market.countryName;
+  const count = data.length.toLocaleString(
+    locale === "pt-BR" ? "pt-BR" : "en-US",
+  );
+  const countText = sections.some((page) => page.geography?.expanded)
+    ? locale === "pt-BR"
+      ? `${count} resultados carregados nesta busca`
+      : `${count} results loaded for this search`
+    : t(data.length === 1 ? "search.countOne" : "search.count", {
+        count,
+        location: locationLabel,
+      });
+
+  const currentSearchHref = `${pathname}${
+    searchParams.toString() ? `?${searchParams.toString()}` : ""
+  }`;
+  const alertable = hasAlertableCriteria(filters);
+  const portuguese = locale === "pt-BR";
 
   const panel = (
     <div className="space-y-5">
       <div>
-        <label htmlFor="search-filter-keyword" className="mb-2 block text-sm font-semibold">{t('search.keyword')}</label>
-        <Input id="search-filter-keyword" defaultValue={filters.q} key={`q-${filters.q}`} placeholder={t('search.what')} onKeyDown={(event) => { if (event.key === 'Enter') update({ q: event.currentTarget.value }); }} />
+        <label
+          htmlFor="search-filter-keyword"
+          className="mb-2 block text-sm font-semibold"
+        >
+          {t("search.keyword")}
+        </label>
+        <Input
+          id="search-filter-keyword"
+          defaultValue={filters.q}
+          key={`q-${filters.q}`}
+          placeholder={t("search.what")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") update({ q: event.currentTarget.value });
+          }}
+        />
       </div>
       <div>
-        <label htmlFor="search-filter-category" className="mb-2 block text-sm font-semibold">{t('search.category')}</label>
-        <select id="search-filter-category" value={filters.category} onChange={(event) => update({ category: event.target.value })} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
-          <option value="">{t('search.allCategories')}</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{categoryName(category.id, category.name)}</option>)}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="search-filter-region" className="mb-2 block text-sm font-semibold">{t('search.region')}</label>
+        <label
+          htmlFor="search-filter-category"
+          className="mb-2 block text-sm font-semibold"
+        >
+          {t("search.category")}
+        </label>
         <select
-          id="search-filter-region"
-          value={selectedRegionCode}
-          onChange={(event) => update({ region: event.target.value, state: undefined, city: undefined, district: undefined })}
+          id="search-filter-category"
+          value={filters.category}
+          onChange={(event) => {
+            const value = event.target.value;
+            setShowAllCategoryFilters(false);
+            restoreMobileFiltersAfterCategoryModal.current = false;
+            setCategoryFilterModal(false);
+            if (categorySlug) {
+              router.replace(value ? `/category/${value}` : "/search");
+              return;
+            }
+            const next = new URLSearchParams(latestSearchParams.current);
+            [...next.keys()].forEach((key) => {
+              if (key.startsWith("attr.")) next.delete(key);
+            });
+            if (value) next.set("category", value);
+            else next.delete("category");
+            replaceSearchParams(next);
+          }}
           className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
         >
-          <option value="">{t('search.all')}</option>
-          {brazilRegions.map((region) => <option key={region.code} value={region.code}>{region.name}</option>)}
+          <option value="">{t("search.allCategories")}</option>
+          {categoryEntries.map(({ category }) => (
+            <option key={category.id} value={category.id}>
+              {categoryName(category.id, category.name)}
+            </option>
+          ))}
         </select>
+        {categoryPath?.length ? (
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            {categoryPath
+              .map((category) => categoryName(category.id, category.name))
+              .join(" › ")}
+          </p>
+        ) : null}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label htmlFor="search-filter-state" className="mb-2 block text-sm font-semibold">{t('search.state')}</label>
-          <select
-            id="search-filter-state"
-            value={filters.state}
-            onChange={(event) => {
-              const state = brazilLocations.find((item) => item.code === event.target.value);
-              update({
-                state: event.target.value,
-                region: state?.regionCode || filters.region || undefined,
-                city: undefined,
-                district: undefined,
-              });
-            }}
-            className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
-          >
-            <option value="">{t('search.all')}</option>
-            {states.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}
-          </select>
+      {categoryFields.length > 0 && (
+        <fieldset className="space-y-4 border-y border-slate-100 py-5">
+          <legend className="px-1 text-sm font-bold">
+            {t("search.categoryFilters")}
+          </legend>
+          {visibleCategoryFields.map((field) => {
+            const child = categoryFields.find(
+              (candidate) => candidate.dependsOn === field.id,
+            );
+            return (
+              <DynamicCategoryFilter
+                key={field.id}
+                categoryId={filters.category || ""}
+                field={field}
+                attributes={filters.attributes ?? {}}
+                dependentIds={dependentFieldIds(categoryFields, field.id)}
+                dependentLabel={child ? tr(child.label) : undefined}
+                update={update}
+              />
+            );
+          })}
+          {categoryFiltersUseModal ? (
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => {
+                restoreMobileFiltersAfterCategoryModal.current = mobileFilters;
+                setMobileFilters(false);
+                setCategoryFilterModal(true);
+              }}
+              className="flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-semibold text-brand-700 transition hover:bg-slate-50"
+            >
+              {t("search.showMoreFilters", {
+                count: secondaryCategoryFields.length,
+              })}
+            </button>
+          ) : extraCategoryFields.length > 0 || showAllCategoryFilters ? (
+            <button
+              type="button"
+              aria-expanded={showAllCategoryFilters}
+              onClick={() => setShowAllCategoryFilters((current) => !current)}
+              className="flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-semibold text-brand-700 transition hover:bg-slate-50"
+            >
+              {showAllCategoryFilters
+                ? t("search.showFewerFilters")
+                : t("search.showMoreFilters", {
+                    count: extraCategoryFields.length,
+                  })}
+            </button>
+          ) : null}
+        </fieldset>
+      )}
+      {isBrazil ? (
+        <>
+          <div>
+            <label
+              htmlFor="search-filter-region"
+              className="mb-2 block text-sm font-semibold"
+            >
+              {t("search.region")}
+            </label>
+            <select
+              id="search-filter-region"
+              value={selectedRegionCode}
+              onChange={(event) => {
+                setCityDraft("");
+                setDistrictDraft("");
+                update({
+                  region: event.target.value,
+                  state: undefined,
+                  city: undefined,
+                  district: undefined,
+                  location: undefined,
+                });
+              }}
+              className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+            >
+              <option value="">{t("search.all")}</option>
+              {brazilRegions.map((region) => (
+                <option key={region.code} value={region.code}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label
+                htmlFor="search-filter-state"
+                className="mb-2 block text-sm font-semibold"
+              >
+                {t("search.state")}
+              </label>
+              <select
+                id="search-filter-state"
+                value={filters.state}
+                onChange={(event) => {
+                  const state = brazilLocations.find(
+                    (item) => item.code === event.target.value,
+                  );
+                  setCityDraft("");
+                  setDistrictDraft("");
+                  update({
+                    state: event.target.value,
+                    region: state?.regionCode || filters.region || undefined,
+                    city: undefined,
+                    district: undefined,
+                    location: undefined,
+                  });
+                }}
+                className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+              >
+                <option value="">{t("search.all")}</option>
+                {states.map((state) => (
+                  <option key={state.code} value={state.code}>
+                    {state.name} ({state.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="search-filter-city"
+                className="mb-2 block text-sm font-semibold"
+              >
+                {t("search.city")}
+              </label>
+              <Input
+                id="search-filter-city"
+                disabled={!filters.state}
+                value={cityDraft}
+                list="search-city-suggestions"
+                placeholder={
+                  filters.state ? t("search.allCities") : t("search.state")
+                }
+                onChange={(event) => setCityDraft(event.target.value)}
+                onBlur={() => {
+                  setDistrictDraft("");
+                  update({
+                    city: cityDraft.trim() || undefined,
+                    district: undefined,
+                    location: undefined,
+                  });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    setDistrictDraft("");
+                    update({
+                      city: cityDraft.trim() || undefined,
+                      district: undefined,
+                      location: undefined,
+                    });
+                  }
+                }}
+              />
+              <datalist id="search-city-suggestions">
+                {cities.map((city) => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label
+              htmlFor="search-filter-state"
+              className="mb-2 block text-sm font-semibold"
+            >
+              State / region
+            </label>
+            <Input
+              id="search-filter-state"
+              value={filters.state}
+              placeholder="State or region"
+              onChange={(event) =>
+                update({ state: event.target.value || undefined })
+              }
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="search-filter-city"
+              className="mb-2 block text-sm font-semibold"
+            >
+              {t("search.city")}
+            </label>
+            <Input
+              id="search-filter-city"
+              value={cityDraft}
+              list="search-city-suggestions"
+              placeholder={`City in ${market.countryName}`}
+              onChange={(event) => setCityDraft(event.target.value)}
+              onBlur={() => {
+                setDistrictDraft("");
+                update({
+                  city: cityDraft.trim() || undefined,
+                  district: undefined,
+                });
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  update({ city: cityDraft.trim() || undefined });
+                }
+              }}
+            />
+            <datalist id="search-city-suggestions">
+              {cities.map((city) => (
+                <option key={city} value={city} />
+              ))}
+            </datalist>
+          </div>
         </div>
-        <div>
-          <label htmlFor="search-filter-city" className="mb-2 block text-sm font-semibold">{t('search.city')}</label>
-          <Input
-            id="search-filter-city"
-            disabled={!filters.state}
-            defaultValue={filters.city}
-            key={`city-${filters.state}-${filters.city}`}
-            list="search-city-suggestions"
-            placeholder={filters.state ? t('search.allCities') : t('search.state')}
-            onBlur={(event) => update({ city: event.currentTarget.value, district: undefined })}
-            onKeyDown={(event) => { if (event.key === 'Enter') update({ city: event.currentTarget.value, district: undefined }); }}
-          />
-          <datalist id="search-city-suggestions">
-            {cities.map((city) => <option key={city} value={city} />)}
-          </datalist>
-        </div>
-      </div>
+      )}
       <div>
-        <label htmlFor="search-filter-neighborhood" className="mb-2 block text-sm font-semibold">{t('search.neighborhood')}</label>
+        <label
+          htmlFor="search-filter-neighborhood"
+          className="mb-2 block text-sm font-semibold"
+        >
+          {t("search.neighborhood")}
+        </label>
         <Input
           id="search-filter-neighborhood"
           disabled={!filters.city}
-          defaultValue={filters.district}
-          key={`d-${filters.state}-${filters.city}-${filters.district}`}
+          value={districtDraft}
           list="search-neighborhood-suggestions"
-          placeholder={t('selling.new.districtPlaceholder')}
-          onBlur={(event) => update({ district: event.currentTarget.value })}
-          onKeyDown={(event) => { if (event.key === 'Enter') update({ district: event.currentTarget.value }); }}
+          placeholder={t("selling.new.districtPlaceholder")}
+          onChange={(event) => setDistrictDraft(event.target.value)}
+          onBlur={() => update({ district: districtDraft.trim() || undefined })}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              update({ district: districtDraft.trim() || undefined });
+            }
+          }}
         />
         <datalist id="search-neighborhood-suggestions">
-          {neighborhoods.map((district) => <option key={district} value={district} />)}
+          {neighborhoods.map((district) => (
+            <option key={district} value={district} />
+          ))}
         </datalist>
       </div>
       <fieldset>
-        <legend className="mb-2 block text-sm font-semibold">{t('search.priceRange')}</legend>
+        <legend className="mb-2 block text-sm font-semibold">
+          {t("search.priceRange")}
+        </legend>
         <div className="grid grid-cols-2 gap-2">
-          <Input aria-label={t('search.min')} inputMode="numeric" defaultValue={filters.minPrice} key={`min-${filters.minPrice}`} placeholder={t('search.min')} onBlur={(event) => update({ minPrice: event.target.value })} />
-          <Input aria-label={t('search.max')} inputMode="numeric" defaultValue={filters.maxPrice} key={`max-${filters.maxPrice}`} placeholder={t('search.max')} onBlur={(event) => update({ maxPrice: event.target.value })} />
+          <Input
+            aria-label={t("search.min")}
+            inputMode="numeric"
+            defaultValue={filters.minPrice}
+            key={`min-${filters.minPrice}`}
+            placeholder={t("search.min")}
+            onBlur={(event) => update({ minPrice: event.target.value })}
+          />
+          <Input
+            aria-label={t("search.max")}
+            inputMode="numeric"
+            defaultValue={filters.maxPrice}
+            key={`max-${filters.maxPrice}`}
+            placeholder={t("search.max")}
+            onBlur={(event) => update({ maxPrice: event.target.value })}
+          />
         </div>
       </fieldset>
       <div>
-        <label htmlFor="search-filter-condition" className="mb-2 block text-sm font-semibold">{t('search.condition')}</label>
-        <select id="search-filter-condition" value={filters.condition} onChange={(event) => update({ condition: event.target.value })} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
-          <option value="">{t('search.anyCondition')}</option>
-          <option value="New">{t('search.condition.new')}</option>
-          <option value="Like new">{t('search.condition.likeNew')}</option>
-          <option value="Used">{t('search.condition.used')}</option>
+        <label
+          htmlFor="search-filter-condition"
+          className="mb-2 block text-sm font-semibold"
+        >
+          {t("search.condition")}
+        </label>
+        <select
+          id="search-filter-condition"
+          value={filters.condition}
+          onChange={(event) => update({ condition: event.target.value })}
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+        >
+          <option value="">{t("search.anyCondition")}</option>
+          <option value="Brand New">{t("search.condition.new")}</option>
+          <option value="Refurbished">{t("search.condition.likeNew")}</option>
+          <option value="Used">{t("search.condition.used")}</option>
         </select>
       </div>
       <div>
-        <label htmlFor="search-filter-seller" className="mb-2 block text-sm font-semibold">{t('search.sellerType')}</label>
-        <select id="search-filter-seller" value={filters.sellerType} onChange={(event) => update({ sellerType: event.target.value })} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
-          <option value="">{t('search.anySeller')}</option>
-          <option value="individual">{t('search.individual')}</option>
-          <option value="business">{t('search.business')}</option>
+        <label
+          htmlFor="search-filter-seller"
+          className="mb-2 block text-sm font-semibold"
+        >
+          {t("search.sellerType")}
+        </label>
+        <select
+          id="search-filter-seller"
+          value={filters.sellerType}
+          onChange={(event) => update({ sellerType: event.target.value })}
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+        >
+          <option value="">{t("search.anySeller")}</option>
+          <option value="individual">{t("search.individual")}</option>
+          <option value="business">{t("search.business")}</option>
         </select>
       </div>
       <div>
-        <label htmlFor="search-filter-date" className="mb-2 block text-sm font-semibold">{t('search.dateListed')}</label>
-        <select id="search-filter-date" value={filters.dateListed} onChange={(event) => update({ date: event.target.value })} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
-          <option value="">{t('search.anyTime')}</option>
-          <option value="today">{t('search.today')}</option>
-          <option value="week">{t('search.last7')}</option>
-          <option value="month">{t('search.last30')}</option>
+        <label
+          htmlFor="search-filter-date"
+          className="mb-2 block text-sm font-semibold"
+        >
+          {t("search.dateListed")}
+        </label>
+        <select
+          id="search-filter-date"
+          value={filters.dateListed}
+          onChange={(event) => update({ date: event.target.value })}
+          className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+        >
+          <option value="">{t("search.anyTime")}</option>
+          <option value="today">{t("search.today")}</option>
+          <option value="week">{t("search.last7")}</option>
+          <option value="month">{t("search.last30")}</option>
         </select>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={!!filters.verifiedOnly} onChange={(event) => update({ verified: event.target.checked ? '1' : undefined })} className="size-4 accent-brand-600" />
-        {t('search.verifiedOnly')}
+        <input
+          type="checkbox"
+          checked={!!filters.verifiedOnly}
+          onChange={(event) =>
+            update({ verified: event.target.checked ? "1" : undefined })
+          }
+          className="size-4 accent-brand-600"
+        />
+        {t("search.verifiedOnly")}
       </label>
-      <Button variant="outline" className="w-full" onClick={clear}><RotateCcw className="size-4" />{t('search.reset')}</Button>
+      <Button variant="outline" className="w-full" onClick={clear}>
+        <RotateCcw className="size-4" />
+        {t("search.reset")}
+      </Button>
     </div>
   );
 
@@ -216,44 +1065,306 @@ export function SearchResultsClient() {
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{t('search.resultsTitle')}</h1>
-          <p className="mt-1 text-sm text-slate-500" role="status" aria-live="polite">{isLoading ? t('search.searching') : countText}</p>
+          {categoryPath?.length ? (
+            <nav
+              aria-label={t("search.categoryPath")}
+              className="mb-2 flex flex-wrap items-center gap-1 text-xs font-semibold text-brand-700"
+            >
+              <Link href="/search">{t("search.allCategories")}</Link>
+              {categoryPath.map((category) => (
+                <span key={category.id} className="flex items-center gap-1">
+                  <span aria-hidden="true">›</span>
+                  <Link href={`/category/${category.id}`}>
+                    {categoryName(category.id, category.name)}
+                  </Link>
+                </span>
+              ))}
+            </nav>
+          ) : null}
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
+            {categoryPath?.length
+              ? t("search.categoryResultsTitle", {
+                  category: categoryName(
+                    categoryPath.at(-1)?.id || "",
+                    categoryPath.at(-1)?.name,
+                  ),
+                })
+              : t("search.resultsTitle")}
+          </h1>
+          <p
+            className="mt-1 text-sm text-slate-500"
+            role="status"
+            aria-live="polite"
+          >
+            {isLoading ? t("search.searching") : countText}
+          </p>
         </div>
-        <Button variant="outline" className="lg:hidden" onClick={() => setMobileFilters(true)}><SlidersHorizontal className="size-4" />{t('search.filters')}</Button>
+        <Button
+          variant="outline"
+          className="lg:hidden"
+          onClick={() => setMobileFilters(true)}
+        >
+          <SlidersHorizontal className="size-4" />
+          {t("search.filters")}
+        </Button>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
         <aside className="hidden self-start rounded-2xl border bg-white p-5 lg:sticky lg:top-32 lg:block">
-          <div className="mb-5 flex items-center justify-between"><h2 className="font-bold">{t('search.filters')}</h2><button type="button" onClick={clear} className="inline-flex min-h-11 items-center text-xs font-semibold text-brand-700">{t('search.clear')}</button></div>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-bold">{t("search.filters")}</h2>
+            <button
+              type="button"
+              onClick={clear}
+              className="inline-flex min-h-11 items-center text-xs font-semibold text-brand-700"
+            >
+              {t("search.clear")}
+            </button>
+          </div>
           {panel}
         </aside>
 
         <section className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-500">{isLoading ? t('common.loading') : t('search.showing', { count })}</p>
+            <p className="text-sm text-slate-500">
+              {isLoading ? t("common.loading") : t("search.showing", { count })}
+            </p>
             <div className="flex items-center gap-2">
               <div className="hidden rounded-xl border p-1 sm:flex">
-                <button type="button" aria-pressed={view === 'grid'} onClick={() => setView('grid')} className={`grid size-11 place-items-center rounded-lg ${view === 'grid' ? 'bg-slate-100' : ''}`} aria-label={t('search.grid')}><Grid2X2 className="size-4" /></button>
-                <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')} className={`grid size-11 place-items-center rounded-lg ${view === 'list' ? 'bg-slate-100' : ''}`} aria-label={t('search.list')}><List className="size-4" /></button>
+                <button
+                  type="button"
+                  aria-pressed={view === "grid"}
+                  onClick={() => setView("grid")}
+                  className={`grid size-11 place-items-center rounded-lg ${view === "grid" ? "bg-slate-100" : ""}`}
+                  aria-label={t("search.grid")}
+                >
+                  <Grid2X2 className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={view === "list"}
+                  onClick={() => setView("list")}
+                  className={`grid size-11 place-items-center rounded-lg ${view === "list" ? "bg-slate-100" : ""}`}
+                  aria-label={t("search.list")}
+                >
+                  <List className="size-4" />
+                </button>
               </div>
-              <select aria-label={t('search.sortLabel')} value={filters.sort} onChange={(event) => update({ sort: event.target.value })} className="h-11 rounded-xl border bg-white px-3 text-sm">
-                <option value="relevant">{t('search.sort.relevant')}</option>
-                <option value="newest">{t('search.sort.newest')}</option>
-                <option value="price_asc">{t('search.sort.lowest')}</option>
-                <option value="price_desc">{t('search.sort.highest')}</option>
+              <select
+                aria-label={t("search.sortLabel")}
+                value={filters.sort}
+                onChange={(event) => update({ sort: event.target.value })}
+                className="h-11 rounded-xl border bg-white px-3 text-sm"
+              >
+                <option value="relevant">{t("search.sort.relevant")}</option>
+                {hasCoordinates && (
+                  <option value="distance">{t("search.sort.distance")}</option>
+                )}
+                <option value="newest">{t("search.sort.newest")}</option>
+                <option value="price_asc">{t("search.sort.lowest")}</option>
+                <option value="price_desc">{t("search.sort.highest")}</option>
               </select>
             </div>
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border bg-white"><div className="aspect-[4/3] animate-pulse bg-slate-100" /><div className="space-y-3 p-4"><div className="h-6 w-1/3 animate-pulse rounded bg-slate-100" /><div className="h-4 animate-pulse rounded bg-slate-100" /><div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" /></div></div>)}</div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-2xl border bg-white"
+                >
+                  <div className="aspect-4/3 animate-pulse bg-slate-100" />
+                  <div className="space-y-3 p-4">
+                    <div className="h-6 w-1/3 animate-pulse rounded bg-slate-100" />
+                    <div className="h-4 animate-pulse rounded bg-slate-100" />
+                    <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : isError ? (
-            <div className="rounded-2xl border bg-white p-10 text-center"><h2 className="text-xl font-bold">{t('search.loadError')}</h2><p className="mt-2 text-slate-500">{t('search.loadErrorBody')}</p><Button className="mt-5" onClick={() => refetch()}>{t('common.retry')}</Button></div>
+            <div className="rounded-2xl border bg-white p-10 text-center">
+              <h2 className="text-xl font-bold">{t("search.loadError")}</h2>
+              <p className="mt-2 text-slate-500">{t("search.loadErrorBody")}</p>
+              <Button className="mt-5" onClick={() => refetch()}>
+                {t("common.retry")}
+              </Button>
+            </div>
           ) : data.length ? (
-            <div className={view === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3' : 'grid gap-3'}>{data.map((listing) => <ListingCard key={listing.id} listing={listing} variant={view} />)}</div>
+            <div className="space-y-5">
+              {sections.map((page, index) => (
+                <div key={`${page.geography?.key}-${index}`}>
+                  {page.showBoundary && (
+                    <div
+                      className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-4"
+                      role="status"
+                    >
+                      <h2 className="font-bold text-brand-950">
+                        {portuguese
+                          ? `Você viu todos os anúncios em ${index ? sections[index - 1].geography?.label : page.geography?.origin}.`
+                          : `That’s all in ${index ? sections[index - 1].geography?.label : page.geography?.origin}.`}
+                      </h2>
+                      <p className="mt-1 text-sm text-brand-900">
+                        {page.geography?.level === "unlocated"
+                          ? portuguese
+                            ? "Mais anúncios no país, sem distância disponível."
+                            : "More listings in this country, without distance information."
+                          : portuguese
+                            ? `Continuando em ${page.geography?.label}, com os mesmos filtros de produto.`
+                            : `Continuing in ${page.geography?.label}, with the same product filters.`}
+                      </p>
+                    </div>
+                  )}
+                  <div
+                    className={
+                      view === "grid"
+                        ? "grid grid-cols-2 gap-3 md:grid-cols-3"
+                        : "grid gap-3"
+                    }
+                  >
+                    {page.items.map((listing) => (
+                      <ListingCard
+                        key={listing.id}
+                        listing={listing}
+                        variant={view}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="rounded-2xl border bg-white p-10 text-center"><h2 className="text-xl font-bold">{t('search.noResults')}</h2><p className="mt-2 text-slate-500">{t('search.noResultsBody')}</p><Button variant="outline" className="mt-5" onClick={clear}>{t('search.clearFilters')}</Button></div>
+            <div className="rounded-2xl border bg-white p-8 text-center sm:p-10">
+              <h2 className="text-xl font-bold">{t("search.noResults")}</h2>
+              <p className="mt-2 text-slate-500">{t("search.noResultsBody")}</p>
+
+              {alertable && (
+                <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-brand-100 bg-brand-50 p-5 text-left">
+                  <div className="flex gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-brand-700 shadow-sm">
+                      {saveAlert.isSuccess ? (
+                        <CheckCircle2 className="size-5" />
+                      ) : (
+                        <BellRing className="size-5" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-black text-brand-950">
+                        {saveAlert.isSuccess
+                          ? portuguese
+                            ? "Alerta salvo"
+                            : "Alert saved"
+                          : portuguese
+                            ? "Quer saber quando aparecer?"
+                            : "Want to know when it appears?"}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-brand-900/80">
+                        {saveAlert.isSuccess
+                          ? portuguese
+                            ? "Avisaremos quando um novo anúncio corresponder a esta busca."
+                            : "We’ll notify you when a new listing matches this search."
+                          : portuguese
+                            ? "Salve esta busca e o Marketlift avisará quando um novo anúncio corresponder aos mesmos termos e filtros."
+                            : "Save this search and Marketlift will notify you when a new listing matches the same terms and filters."}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {user ? (
+                          <Button
+                            type="button"
+                            disabled={
+                              saveAlert.isPending || saveAlert.isSuccess
+                            }
+                            onClick={() => saveAlert.mutate()}
+                          >
+                            <BellRing className="size-4" />
+                            {saveAlert.isSuccess
+                              ? portuguese
+                                ? "Alerta ativo"
+                                : "Alert active"
+                              : saveAlert.isPending
+                                ? portuguese
+                                  ? "Salvando…"
+                                  : "Saving…"
+                                : portuguese
+                                  ? "Avise-me"
+                                  : "Notify me"}
+                          </Button>
+                        ) : (
+                          <>
+                            <Button asChild>
+                              <Link
+                                href={`/register?returnTo=${encodeURIComponent(currentSearchHref)}`}
+                              >
+                                {portuguese
+                                  ? "Criar conta para receber alertas"
+                                  : "Create account for alerts"}
+                              </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                              <Link
+                                href={`/login?returnTo=${encodeURIComponent(currentSearchHref)}`}
+                              >
+                                {portuguese ? "Entrar" : "Sign in"}
+                              </Link>
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {saveAlert.isError && (
+                        <p className="mt-3 text-xs font-semibold text-rose-700">
+                          {portuguese
+                            ? "Não foi possível salvar o alerta. Tente novamente."
+                            : "Couldn’t save the alert. Please try again."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Button variant="outline" className="mt-5" onClick={clear}>
+                {t("search.clearFilters")}
+              </Button>
+            </div>
           )}
+          <div ref={sentinel} className="mt-6 text-center" aria-live="polite">
+            {isFetchNextPageError && (
+              <p role="alert" className="mb-3 text-sm text-rose-700">
+                {portuguese
+                  ? "Não foi possível carregar mais anúncios. Tente novamente."
+                  : "Couldn’t load more listings. Please retry."}
+              </p>
+            )}
+            {hasNextPage && (
+              <Button
+                variant="outline"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                {isFetchingNextPage
+                  ? portuguese
+                    ? "Carregando…"
+                    : "Loading…"
+                  : portuguese
+                    ? "Carregar mais anúncios"
+                    : "Load more listings"}
+              </Button>
+            )}
+            {!hasNextPage && data.length > 0 && (
+              <p className="text-sm text-slate-600">
+                {sections.at(-1)?.geography?.windowLimited
+                  ? portuguese
+                    ? "Refine os filtros para ver mais resultados nesta área."
+                    : "Refine your filters to see more results in this area."
+                  : portuguese
+                    ? "Você viu todos os anúncios disponíveis para esta busca."
+                    : "You’ve seen all available listings for this search."}
+              </p>
+            )}
+          </div>
         </section>
       </div>
 
@@ -264,15 +1375,67 @@ export function SearchResultsClient() {
         >
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <DialogTitle className="text-lg font-bold">{t('search.filters')}</DialogTitle>
-              <DialogDescription className="text-xs text-slate-500">{t('search.refine')}</DialogDescription>
+              <DialogTitle className="text-lg font-bold">
+                {t("search.filters")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {t("search.refine")}
+              </DialogDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setMobileFilters(false)} aria-label={t('search.closeFilters')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileFilters(false)}
+              aria-label={t("search.closeFilters")}
+            >
               <X className="size-5" aria-hidden="true" />
             </Button>
           </div>
           {panel}
-          <Button className="mt-5 w-full" onClick={() => setMobileFilters(false)}>{t('search.showResults', { count })}</Button>
+          <Button
+            className="mt-5 w-full"
+            onClick={() => setMobileFilters(false)}
+          >
+            {t("search.showResults", { count })}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={categoryFilterModal}
+        onOpenChange={(open) => {
+          if (open) setCategoryFilterModal(true);
+          else closeCategoryFilterModal();
+        }}
+      >
+        <DialogContent className="max-h-[88dvh] overflow-y-auto sm:max-w-2xl">
+          <div>
+            <DialogTitle>{t("search.moreFiltersTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("search.moreFiltersDescription")}
+            </DialogDescription>
+          </div>
+          <div className="grid gap-5 py-2 sm:grid-cols-2">
+            {secondaryCategoryFields.map((field) => {
+              const child = categoryFields.find(
+                (candidate) => candidate.dependsOn === field.id,
+              );
+              return (
+                <DynamicCategoryFilter
+                  key={field.id}
+                  categoryId={filters.category || ""}
+                  field={field}
+                  attributes={filters.attributes ?? {}}
+                  dependentIds={dependentFieldIds(categoryFields, field.id)}
+                  dependentLabel={child ? tr(child.label) : undefined}
+                  update={update}
+                />
+              );
+            })}
+          </div>
+          <Button type="button" onClick={closeCategoryFilterModal}>
+            {t("common.done")}
+          </Button>
         </DialogContent>
       </Dialog>
     </main>

@@ -1,12 +1,20 @@
-export type ListingCondition = 'New' | 'Like new' | 'Used';
-export type VerificationStatus = 'not_verified' | 'pending' | 'verified' | 'rejected';
-export type SellerType = 'individual' | 'business';
+export type ListingCondition = string;
+export type VerificationStatus =
+  | "not_verified"
+  | "pending"
+  | "verified"
+  | "rejected";
+export type SellerType = "individual" | "business";
 
 export interface Location {
+  countryCode?: string;
   state: string;
   stateCode: string;
   city: string;
   district?: string;
+  latitude?: number;
+  longitude?: number;
+  locationToken?: string;
 }
 
 /**
@@ -15,12 +23,14 @@ export interface Location {
  */
 export interface UserSellerProfile {
   sellerId: string;
+  sellerVerified?: boolean;
   activatedAt: string;
   verified: boolean;
 }
 
 export interface User {
   id: string;
+  countryCode?: string;
   name: string;
   email?: string;
   phone?: string;
@@ -29,6 +39,7 @@ export interface User {
 
 export interface Seller {
   id: string;
+  countryCode?: string;
   name: string;
   avatar: string;
   phone?: string;
@@ -42,7 +53,12 @@ export interface Seller {
   type?: SellerType;
 }
 
-export type CategoryFieldType = 'text' | 'textarea' | 'number' | 'select' | 'boolean';
+export type CategoryFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "select"
+  | "boolean";
 export type CategoryFieldValue = string | number | boolean;
 export type ListingAttributes = Record<string, CategoryFieldValue>;
 
@@ -58,8 +74,12 @@ export interface CategoryFieldDefinition {
   required: boolean;
   filterable: boolean;
   allowCustomValue?: boolean;
+  dependsOn?: string;
+  lazyOptions?: boolean;
+  optionCount?: number;
   placeholder?: string;
   helpText?: string;
+  uiGroup?: string;
   unit?: string;
   min?: number;
   max?: number;
@@ -71,13 +91,14 @@ export interface CategoryConfiguration extends Category {
   schemaVersion: number;
   description: string;
   pricing: {
-    mode: 'required' | 'optional';
+    mode: "required" | "optional";
     label: string;
     placeholder?: string;
   };
   condition: {
     enabled: boolean;
     required: boolean;
+    options: string[];
   };
   fields: CategoryFieldDefinition[];
 }
@@ -93,6 +114,7 @@ export interface Listing {
   location: Location;
   images: string[];
   sellerId: string;
+  sellerVerified?: boolean;
   createdAt: string;
   views: number;
   featured?: boolean;
@@ -107,22 +129,33 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
+  imageUrl?: string;
+  active?: boolean;
+  subcategories?: Category[];
 }
 
 export interface SearchFilters {
   q?: string;
+  countryCode?: string;
   category?: string;
   region?: string;
   state?: string;
   city?: string;
   district?: string;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
   minPrice?: number;
   maxPrice?: number;
-  condition?: ListingCondition | '';
-  sellerType?: SellerType | '';
+  attributes?: Record<
+    string,
+    string | number | boolean | { min?: number; max?: number }
+  >;
+  condition?: ListingCondition | "";
+  sellerType?: SellerType | "";
   verifiedOnly?: boolean;
-  dateListed?: 'today' | 'week' | 'month' | '';
-  sort?: 'relevant' | 'newest' | 'price_asc' | 'price_desc';
+  dateListed?: "today" | "week" | "month" | "";
+  sort?: "relevant" | "newest" | "price_asc" | "price_desc" | "distance";
 }
 
 /**
@@ -131,14 +164,14 @@ export interface SearchFilters {
  * reports, or category rules require additional moderation.
  */
 export type ListingStatus =
-  | 'draft'
-  | 'published'
-  | 'paused'
-  | 'sold'
-  | 'expired'
-  | 'under_review'
-  | 'rejected'
-  | 'removed';
+  | "draft"
+  | "published"
+  | "paused"
+  | "sold"
+  | "expired"
+  | "under_review"
+  | "rejected"
+  | "removed";
 
 export interface SellerListing extends Listing {
   status: ListingStatus;
@@ -160,8 +193,8 @@ export interface AccountProfile {
 }
 
 export interface AccountSettings {
-  language: 'en' | 'pt-BR';
-  currency: 'BRL';
+  language: "en" | "pt-BR";
+  currency: string;
   emailMessages: boolean;
   emailListingUpdates: boolean;
   emailRecommendations: boolean;
@@ -196,13 +229,22 @@ export interface SellingDashboardData {
   recentListings: SellerListing[];
 }
 
-export type BillingCycle = 'monthly' | 'yearly';
-export type PaymentMethod = 'pix' | 'card' | 'boleto';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled';
+export type BillingCycle = "monthly" | "yearly";
+export type PaymentMethod =
+  | "pix"
+  | "card"
+  | "boleto"
+  | "mobile_money"
+  | "bank_transfer"
+  | "ussd"
+  | "eft";
+export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
 export interface SellerPlan {
   id: string;
   name: string;
+  countryCode?: string;
+  currency?: string;
   monthlyPrice: number;
   yearlyPrice: number;
   listingLimit: number;
@@ -214,7 +256,9 @@ export interface SellerPlan {
 
 export interface Payment {
   id: string;
-  purpose: 'subscription' | 'promotion';
+  currency?: string;
+  provider?: string;
+  purpose: "subscription" | "promotion";
   amount: number;
   method: PaymentMethod;
   status: PaymentStatus;
@@ -227,12 +271,14 @@ export interface Payment {
   promotionId?: string;
 }
 
-export type PromotionType = 'featured' | 'top_search' | 'urgent' | 'homepage';
+export type PromotionType = "featured" | "top_search" | "urgent" | "homepage";
 
 export interface PromotionOption {
   id: PromotionType;
   name: string;
   description: string;
+  countryCode?: string;
+  currency?: string;
   durationDays: number;
   price: number;
 }
@@ -271,7 +317,10 @@ export interface SendMessagePayload {
 
 export interface VerificationSubmission {
   id: string;
-  cpfMasked: string;
+  countryCode?: string;
+  identityType?: string;
+  identityMasked: string;
+  cpfMasked?: string;
   fullName: string;
   birthDate: string;
   status: VerificationStatus;
@@ -292,7 +341,13 @@ export interface Review {
 
 export interface NotificationItem {
   id: string;
-  type: 'message' | 'listing' | 'subscription' | 'payment' | 'review' | 'verification';
+  type:
+    | "message"
+    | "listing"
+    | "subscription"
+    | "payment"
+    | "review"
+    | "verification";
   title: string;
   body: string;
   createdAt: string;
@@ -301,21 +356,22 @@ export interface NotificationItem {
 }
 
 export type ReportReason =
-  | 'fraud'
-  | 'fake_listing'
-  | 'incorrect_info'
-  | 'prohibited'
-  | 'offensive'
-  | 'duplicate'
-  | 'other';
+  | "fraud"
+  | "fake_listing"
+  | "incorrect_info"
+  | "prohibited"
+  | "offensive"
+  | "duplicate"
+  | "unavailable"
+  | "other";
 
 export interface MarketplaceReport {
   id: string;
-  targetType: 'listing' | 'seller' | 'message';
+  targetType: "listing" | "seller" | "message";
   targetId: string;
   reporter: string;
   reason: ReportReason;
   description: string;
   createdAt: string;
-  status: 'open' | 'dismissed' | 'actioned';
+  status: "open" | "dismissed" | "actioned";
 }

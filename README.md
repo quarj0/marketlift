@@ -2,35 +2,26 @@
 
 Consumer marketplace frontend for Marketlift, built with Next.js, TypeScript, Tailwind CSS, TanStack Query, React Hook Form and Zod.
 
-## Current product model
+## Product model
 
-- One Marketlift customer account. There are no separate buyer and seller logins.
-- Any registered user can enable selling on the same account.
-- Public seller profiles remain available at `/seller/[sellerId]`.
-- Private selling tools live under `/selling`.
-- Ordinary listings publish immediately after automated validation.
-- `under_review` is exceptional and reserved for risk signals, reports or future category rules.
-- Seller identity verification is optional by default and never exposes CPF publicly.
-- Buyers and sellers arrange product payment and delivery independently in V1.
-- Mercado Pago-ready checkout is only for Marketlift subscriptions, boosts, promotions and service fees.
-- The internal administration product is intentionally excluded from this repository and will be developed/deployed separately (for example `dash.marketlift.br`).
-
-## Demo authentication
-
-- `marketlift@demo.marketlift` — registered account with selling already enabled.
-- `new@demo.marketlift` — registered account without selling enabled, useful for testing the Start Selling flow.
-- Any password with at least 6 characters works in the mock frontend.
-- OTP demo code: `123456`.
+- One customer account; the same user can enable selling.
+- Public seller profiles plus private `/selling` tools.
+- Listings/search/location are market-aware and support administrator-enabled countries.
+- Seller plans, promotions, identity labels and payment methods come from backend market configuration.
+- Buyers and sellers arrange the item transaction independently; Marketlift only processes seller plan/promotion charges.
+- Provider capability is discovered at runtime from `/api/v1/market/`; there are no frontend payment/verification release flags.
 
 ## Development
 
 ```bash
 pnpm install
 pnpm dev
-```
-
-Production check:
-
-```bash
+pnpm lint
 pnpm build
 ```
+
+## Deployment configuration
+
+Copy `.env.example` into your deployment settings and replace the local URLs. `NEXT_PUBLIC_MARKETLIFT_MEDIA_ORIGIN` is only needed when public listing images are served from a separate CDN/storage origin.
+
+Country enable/disable/default changes do not require rebuilding this frontend. They are controlled from the admin/backend.

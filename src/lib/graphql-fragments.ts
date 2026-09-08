@@ -14,7 +14,8 @@ export const SELLER_FIELDS = `
   followerCount
   isFollowed
   memberSince
-  location { state stateCode city district }
+  countryCode
+  location { countryCode state stateCode city district }
 `;
 
 export const LISTING_FIELDS = `
@@ -27,7 +28,7 @@ export const LISTING_FIELDS = `
   categoryName
   categorySchemaVersion
   condition
-  location { state stateCode city district }
+  location { countryCode state stateCode city district }
   images
   seller { ${SELLER_FIELDS} }
   createdAt
@@ -47,14 +48,23 @@ export const CATEGORY_FIELDS = `
   id
   name
   icon
+  imageUrl
   active
   schemaVersion
   description
   pricing { mode label placeholder }
-  condition { enabled required }
+  condition { enabled required options }
   fields {
-    id label type required filterable allowCustomValue placeholder helpText unit min max step
+    id label type required filterable allowCustomValue dependsOn lazyOptions optionCount placeholder helpText uiGroup unit min max step
     options { value label }
   }
-  subcategories { id name icon active }
+  subcategories {
+    id name icon imageUrl active
+    subcategories {
+      id name icon imageUrl active
+      subcategories {
+        id name icon imageUrl active
+      }
+    }
+  }
 `;

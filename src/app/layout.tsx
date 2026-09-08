@@ -1,33 +1,39 @@
+import { WebVitals } from "@/components/telemetry/web-vitals";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Figtree } from "next/font/google";
 
 import "./globals.css";
 
 import { AccessController } from "@/components/auth/access-controller";
 import { PwaRegister } from "@/components/pwa-register";
 import { SkipLink } from "@/components/i18n/skip-link";
-import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/providers/auth-provider";
 import { LocaleProvider } from "@/providers/locale-provider";
+import { MarketProvider } from "@/providers/market-provider";
+import { MarketplaceLocationProvider } from "@/providers/marketplace-location-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 
-const figtree = Figtree({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  preload: false,
-});
+const siteDescription =
+  "Compre e venda carros, celulares, eletrônicos, imóveis, moda e muito mais com vendedores locais no Marketlift Brasil.";
 
 export const metadata: Metadata = {
   title: {
-    default: "Marketlift — Buy & Sell in Brazil",
+    default: "Marketlift Brasil — Compre e venda online",
     template: "%s | Marketlift",
   },
-  description: "Discover great local deals and trusted sellers across Brazil.",
+  description: siteDescription,
   manifest: "/manifest.webmanifest",
-  metadataBase: new URL("https://marketlift.com.br"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.NODE_ENV === "production"
+        ? "https://marketlift.com.br"
+        : "http://localhost:3001"),
+  ),
   applicationName: "Marketlift",
+  creator: "Marketlift",
+  publisher: "Marketlift",
+  category: "marketplace",
   appleWebApp: {
     capable: true,
     title: "Marketlift",
@@ -36,10 +42,66 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Marketlift",
+    locale: "pt_BR",
+    alternateLocale: ["en_US"],
+    title: "Marketlift Brasil — Compre e venda online",
+    description: siteDescription,
+    images: [
+      {
+        url: "/seo/marketlift-social-card.png",
+        width: 1732,
+        height: 908,
+        alt: "Marketlift — Buy, sell and grow locally",
+      },
+      {
+        url: "/seo/marketlift-social-square.png",
+        width: 1254,
+        height: 1254,
+        alt: "Marketlift — Buy, sell and grow locally",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Marketlift Brasil — Compre e venda online",
+    description: siteDescription,
+    images: [
+      {
+        url: "/seo/marketlift-social-card.png",
+        width: 1732,
+        height: 908,
+        alt: "Marketlift — Buy, sell and grow locally",
+      },
+    ],
   },
   icons: {
-    icon: "/brand/marketlift-mark.png",
-    apple: "/brand/marketlift-mark.png",
+    icon: [
+      {
+        url: "/brand/marketlift-mark.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
+    shortcut: "/brand/marketlift-mark.png",
+    apple: [
+      {
+        url: "/brand/marketlift-mark.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
   },
 };
 
@@ -49,7 +111,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
 };
-
 
 function AppPrerenderFallback() {
   return (
@@ -93,24 +154,29 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="pt-BR"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={cn("font-sans", figtree.variable)}
+      className="font-sans"
     >
       <body>
+        <WebVitals />
         <Suspense fallback={<AppPrerenderFallback />}>
-          <LocaleProvider>
-            <SkipLink />
-            <QueryProvider>
-              <AuthProvider>
-                <RealtimeProvider>
-                  <PwaRegister />
-                  <AccessController>{children}</AccessController>
-                </RealtimeProvider>
-              </AuthProvider>
-            </QueryProvider>
-          </LocaleProvider>
+          <QueryProvider>
+            <MarketProvider>
+              <LocaleProvider>
+                <SkipLink />
+                <MarketplaceLocationProvider>
+                  <AuthProvider>
+                    <RealtimeProvider>
+                      <PwaRegister />
+                      <AccessController>{children}</AccessController>
+                    </RealtimeProvider>
+                  </AuthProvider>
+                </MarketplaceLocationProvider>
+              </LocaleProvider>
+            </MarketProvider>
+          </QueryProvider>
         </Suspense>
       </body>
     </html>

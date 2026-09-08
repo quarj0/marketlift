@@ -7,13 +7,28 @@ import { verificationService } from '@/services/verification.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
+import { useAuth } from '@/providers/auth-provider';
+
+const ID_PLACEHOLDER: Record<string, string> = {
+  BR: '000.000.000-00',
+  GH: 'GHA-000000000-0',
+  NG: 'Enter your NIN',
+  KE: 'Enter your national ID',
+  ZA: 'Enter your ID number',
+  CI: 'Enter your identity number',
+};
 
 export function VerificationClient() {
   const queryClient = useQueryClient();
   const { t } = useLocale();
+  const { user } = useAuth();
+  const { market, enabledMarkets } = useMarket();
+  const sellerCountry = user?.countryCode || market.code;
+  const sellerMarket = enabledMarkets.find((item) => item.code === sellerCountry) || market;
   const query = useQuery({ queryKey: ['seller-verification'], queryFn: verificationService.getStatus });
   const [step, setStep] = useState(1);
-  const [cpf, setCpf] = useState('');
+  const [identityNumber, setIdentityNumber] = useState('');
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +36,13 @@ export function VerificationClient() {
   async function submit() {
     setSubmitting(true);
     try {
-      await verificationService.submit({ cpf, fullName: name, birthDate });
+      await verificationService.submit({
+        identityNumber,
+        identityType: sellerMarket.identityKey,
+        countryCode: sellerMarket.code,
+        fullName: name,
+        birthDate,
+      });
       await queryClient.invalidateQueries({ queryKey: ['seller-verification'] });
       setStep(3);
     } finally {
@@ -32,19 +53,20 @@ export function VerificationClient() {
   if (query.isLoading) return <div className="h-96 animate-pulse rounded-3xl bg-slate-100" />;
 
   if (query.data?.status === 'verified') {
-    return <StatusCard icon={<BadgeCheck className="size-9" />} title={t('verification.verified')} text={t('verification.verifiedBody', { cpf: query.data.cpfMasked })} tone="success" />;
+    const masked = query.data.identityMasked || query.data.cpfMasked || '';
+    return <StatusCard icon={<BadgeCheck className="size-9" />} title={t('verification.verified')} text={`${sellerMarket.identityLabel} ${masked} was verified successfully. Your full identity number remains private.`} tone="success" />;
   }
 
   if (query.data?.status === 'rejected' && step !== 1) {
     return (
       <div className="space-y-4">
-        <StatusCard icon={<TriangleAlert className="size-9" />} title={t('verification.rejected')} text={t('verification.rejectedBody')} tone="danger" />
+        <StatusCard icon={<TriangleAlert className="size-9" />} title={t('verification.rejected')} text="We could not confirm the identity information. Review your details and submit again." tone="danger" />
         <Button onClick={() => setStep(1)}>{t('common.tryAgain')}</Button>
       </div>
     );
   }
 
-  if (query.data && query.data.status === 'pending') {
+  if (query.data?.status === 'pending') {
     return <StatusCard icon={<Clock3 className="size-9" />} title={t('verification.pending')} text={t('verification.pendingBody')} tone="pending" />;
   }
 
@@ -57,10 +79,13 @@ export function VerificationClient() {
           <div>
             <ShieldCheck className="size-10 text-brand-600" />
             <h2 className="mt-4 text-2xl font-black">{t('verification.title')}</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">{t('verification.body')}</p>
-            <label className="mt-6 block max-w-md"><span className="mb-1.5 block text-sm font-bold">{t('verification.cpf')}</span><Input value={cpf} onChange={(event) => setCpf(event.target.value)} placeholder="000.000.000-00" inputMode="numeric" /></label>
-            <p className="mt-2 text-xs text-slate-400">{t('verification.cpfPrivate')}</p>
-            <Button className="mt-6" disabled={cpf.replace(/\D/g, '').length < 11} onClick={() => setStep(2)}>{t('common.continue')}</Button>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Verify your seller identity for {sellerMarket.countryName}. Your document number is never displayed publicly.</p>
+            <label className="mt-6 block max-w-md">
+              <span className="mb-1.5 block text-sm font-bold">{sellerMarket.identityLabel}</span>
+              <Input value={identityNumber} onChange={(event) => setIdentityNumber(event.target.value)} placeholder={ID_PLACEHOLDER[sellerMarket.code] || `Enter ${sellerMarket.identityLabel}`} autoComplete="off" />
+            </label>
+            <p className="mt-2 text-xs text-slate-400">Your {sellerMarket.identityLabel} is stored and handled privately.</p>
+            <Button className="mt-6" disabled={identityNumber.trim().length < 5} onClick={() => setStep(2)}>{t('common.continue')}</Button>
           </div>
         )}
 

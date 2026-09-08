@@ -4,12 +4,14 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { CheckCircle2, ShieldCheck, Store, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AccountSidebar } from "@/components/account/account-sidebar";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 type SellingBenefit = {
   icon: LucideIcon;
@@ -35,9 +37,19 @@ const benefits: SellingBenefit[] = [
   },
 ];
 
+function safeSellingReturnTo(value: string | null) {
+  if (!value || !value.startsWith("/selling") || value.startsWith("//")) {
+    return null;
+  }
+  return value;
+}
+
 export default function StartSellingPage() {
+  const router = useRouter();
+  const params = useSearchParams();
   const { canSell, activateSelling } = useAuth();
   const { t } = useLocale();
+  const { formatMoney } = useMarket();
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +59,8 @@ export default function StartSellingPage() {
 
     try {
       await activateSelling();
+      const returnTo = safeSellingReturnTo(params.get("returnTo"));
+      if (returnTo) router.replace(returnTo);
     } catch {
       setError(t("selling.start.error"));
     } finally {
@@ -161,7 +175,7 @@ export default function StartSellingPage() {
                     {t("selling.start.free")}
                   </p>
                   <p className="mt-2 text-3xl font-black text-brand-950">
-                    R$0
+                    {formatMoney(0)}
                   </p>
                   <p className="mt-1 text-sm text-brand-800">
                     {t("selling.start.freeBody")}

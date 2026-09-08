@@ -1,0 +1,6 @@
+{"probe": "support_detail_finance_role", "data": {"supportTicket": {"id": "96550a88-696b-4df1-b649-ff79cc85565c", "messages": [{"body": "Private customer question", "internal": false}, {"body": "Internal audit note", "internal": true}]}}, "errors": []}
+{"probe": "support_list_finance_role", "data": null, "errors": ["You do not have permission for this admin action.\n\nGraphQL request:1:9\n1 | query { supportTickets { id } }\n  |         ^"]}
+{"probe": "support_list_queries", "rows": 1, "queries": 2}
+{"probe": "support_list_queries", "rows": 10, "queries": 11}
+{"probe": "listing_mapper_queries", "rows": 1, "queries": 5, "seller_settings_queries": 1}
+{"probe": "listing_mapper_queries", "rows": 10, "queries": 14, "seller_settings_queries": 10}

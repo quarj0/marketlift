@@ -19,6 +19,7 @@ import {
 import { CategoryNav } from "@/components/layout/category-nav";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { MarketliftLogo } from "@/components/marketplace/logo";
+import { MarketSelector } from "@/components/marketplace/market-selector";
 import { LocationSelector } from "@/components/marketplace/location-selector";
 import { SearchBar } from "@/components/search/search-bar";
 import { Button } from "@/components/ui/button";
@@ -39,19 +40,15 @@ import {
 import { socialService } from "@/services/social.service";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarketplaceLocation } from "@/providers/marketplace-location-provider";
 import { useRealtime } from "@/providers/realtime-provider";
-import type { Location } from "@/types";
 
 export function MarketplaceHeader() {
   const pathname = usePathname();
   const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [location, setLocation] = useState<Location>({
-    state: "São Paulo",
-    stateCode: "SP",
-    city: "São Paulo",
-  });
+  const { location, setLocation } = useMarketplaceLocation();
 
   const { user, hydrated, isAuthenticated, canSell, logout } = useAuth();
   const { unreadMessageCount, unreadNotificationCount } = useRealtime();
@@ -105,7 +102,7 @@ export function MarketplaceHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-ink-950/95 text-white shadow-[0_8px_30px_rgba(2,18,47,0.12)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#02122f]/95 text-white shadow-[0_8px_30px_rgba(2,18,47,0.12)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-3 py-2.5 sm:px-6 lg:gap-4 lg:px-8">
         <MarketliftLogo size="compact" priority />
 
@@ -113,6 +110,7 @@ export function MarketplaceHeader() {
           <SearchBar compact location={location} showSubmitButton={false} />
         </div>
 
+        <MarketSelector inverse compact className="hidden lg:inline-flex" />
         <LanguageSwitcher inverse className="hidden lg:inline-flex" />
 
         <div className="hidden md:block">
@@ -128,6 +126,7 @@ export function MarketplaceHeader() {
           className="ml-auto flex items-center gap-1"
           aria-label={t("nav.account")}
         >
+          <MarketSelector compact inverse className="lg:hidden" />
           <LanguageSwitcher compact inverse className="lg:hidden" />
 
           {authReady && user && (
@@ -146,7 +145,7 @@ export function MarketplaceHeader() {
 
                   {savedCount > 0 && (
                     <span
-                      className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-ink-950"
+                      className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-[#02122f]"
                       aria-hidden="true"
                     >
                       {savedCount > 99 ? "99+" : savedCount}
@@ -161,16 +160,10 @@ export function MarketplaceHeader() {
                 className="relative hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
                 asChild
               >
-                <Link
-                  href="/messages"
-                  aria-label={`${t("nav.messages")}: ${unreadMessageCount}`}
-                >
+                <Link href="/messages" aria-label={`${t("nav.messages")}: ${unreadMessageCount}`}>
                   <MessageCircle className="size-5" aria-hidden="true" />
                   {unreadMessageCount > 0 && (
-                    <span
-                      className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-ink-950"
-                      aria-hidden="true"
-                    >
+                    <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-[#02122f]" aria-hidden="true">
                       {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                     </span>
                   )}
@@ -183,19 +176,11 @@ export function MarketplaceHeader() {
                 className="relative hidden text-white hover:bg-white/10 hover:text-white xl:inline-flex"
                 asChild
               >
-                <Link
-                  href="/notifications"
-                  aria-label={`${t("nav.notifications")}: ${unreadNotificationCount}`}
-                >
+                <Link href="/notifications" aria-label={`${t("nav.notifications")}: ${unreadNotificationCount}`}>
                   <Bell className="size-5" aria-hidden="true" />
                   {unreadNotificationCount > 0 && (
-                    <span
-                      className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-ink-950"
-                      aria-hidden="true"
-                    >
-                      {unreadNotificationCount > 99
-                        ? "99+"
-                        : unreadNotificationCount}
+                    <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-lift-500 px-1.5 text-[10px] font-black leading-5 text-ink-950 shadow-sm ring-2 ring-[#02122f]" aria-hidden="true">
+                      {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
                     </span>
                   )}
                 </Link>
@@ -324,7 +309,7 @@ export function MarketplaceHeader() {
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
         <DialogContent
           showCloseButton={false}
-          className="top-auto bottom-0 left-0 max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:hidden"
+          className="top-auto bottom-0 left-0 flex max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-y-auto rounded-b-none rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:hidden"
         >
           <div className="flex items-center justify-between gap-4">
             <MarketliftLogo size="compact" />
@@ -374,7 +359,7 @@ export function MarketplaceHeader() {
           </div>
 
           <nav
-            className="mt-5 grid grid-cols-2 gap-2"
+            className={`mt-5 grid gap-2 ${user ? "grid-cols-2" : "grid-cols-1"}`}
             aria-label={t("nav.openMenu")}
           >
             <Link
@@ -407,10 +392,7 @@ export function MarketplaceHeader() {
                 onClick={() => setMenuOpen(false)}
                 className="min-h-20 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
               >
-                {t("nav.messages")}
-                {unreadMessageCount > 0
-                  ? ` (${unreadMessageCount > 99 ? "99+" : unreadMessageCount})`
-                  : ""}
+                {t("nav.messages")}{unreadMessageCount > 0 ? ` (${unreadMessageCount > 99 ? "99+" : unreadMessageCount})` : ""}
               </Link>
             )}
 
@@ -420,10 +402,7 @@ export function MarketplaceHeader() {
                 onClick={() => setMenuOpen(false)}
                 className="min-h-20 rounded-2xl border p-4 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-400"
               >
-                {t("nav.notifications")}
-                {unreadNotificationCount > 0
-                  ? ` (${unreadNotificationCount > 99 ? "99+" : unreadNotificationCount})`
-                  : ""}
+                {t("nav.notifications")}{unreadNotificationCount > 0 ? ` (${unreadNotificationCount > 99 ? "99+" : unreadNotificationCount})` : ""}
               </Link>
             )}
 

@@ -2,9 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useAuth } from '@/providers/auth-provider';
 import { useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { SellingSidebar } from '@/components/selling/selling-sidebar';
+import { CategoryPicker } from '@/components/selling/category-picker';
 import {
   CategoryFields,
   toListingSpecifications,
@@ -27,24 +29,124 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LocationFields } from '@/components/location/location-fields';
-import { getBrazilState } from '@/data/brazil-locations';
 import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
+import { locationService } from '@/services/location.service';
 import type { ListingAttributes } from '@/types';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 
 type Form = {
   category: string;
   title: string;
   description: string;
   price: number;
-  condition: 'New' | 'Like new' | 'Used';
+  condition: string;
   negotiable: boolean;
   state: string;
+  stateName: string;
   city: string;
   district: string;
+  latitude?: number;
+  longitude?: number;
+  locationToken?: string;
 };
-type PhotoPreview = { name: string; url: string; file: File };
+type PhotoPreview = {
+  name: string;
+  url: string;
+  file: File;
+  hash: string;
+  perceptualHash: string;
+};
+
+const MIN_LISTING_PHOTOS = 5;
+const MAX_LISTING_PHOTOS = 12;
+const MIN_PHOTO_WIDTH = 400;
+const SCREENSHOT_NAME_RE =
+  /(screen[\s_-]*shot|screenshot|screencap|print[\s_-]*screen|captura[\s_-]*(de[\s_-]*)?(tela|pantalla))/i;
+const COMMON_SCREEN_SIZES = new Set([
+  '1280x720', '1366x768', '1440x900', '1536x864', '1600x900',
+  '1920x1080', '2560x1440', '3840x2160',
+  '720x1280', '768x1366', '900x1440', '864x1536', '900x1600',
+  '1080x1920', '1080x2340', '1080x2400', '1080x2460',
+  '1170x2532', '1179x2556', '1242x2688', '1284x2778',
+  '1290x2796', '1440x2960', '1440x3040', '1440x3088', '1440x3200',
+]);
+
+function bufferHex(buffer: ArrayBuffer) {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+const NIBBLE_POPCOUNT = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4];
+
+function hashDistance(left: string, right: string) {
+  if (left.length !== right.length) return 999;
+  let distance = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const a = Number.parseInt(left[index], 16);
+    const b = Number.parseInt(right[index], 16);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return 999;
+    distance += NIBBLE_POPCOUNT[a ^ b] ?? 0;
+  }
+  return distance;
+}
+
+async function inspectPhoto(file: File) {
+  const bytes = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const hash = bufferHex(digest);
+
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+  const canvas = document.createElement('canvas');
+  canvas.width = 9;
+  canvas.height = 8;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    bitmap.close();
+    throw new Error('Could not inspect this image.');
+  }
+
+  context.drawImage(bitmap, 0, 0, 9, 8);
+  const pixels = context.getImageData(0, 0, 9, 8).data;
+  const bits: number[] = [];
+  for (let y = 0; y < 8; y += 1) {
+    for (let x = 0; x < 8; x += 1) {
+      const leftIndex = (y * 9 + x) * 4;
+      const rightIndex = (y * 9 + x + 1) * 4;
+      const left =
+        pixels[leftIndex] * 0.299 +
+        pixels[leftIndex + 1] * 0.587 +
+        pixels[leftIndex + 2] * 0.114;
+      const right =
+        pixels[rightIndex] * 0.299 +
+        pixels[rightIndex + 1] * 0.587 +
+        pixels[rightIndex + 2] * 0.114;
+      bits.push(left > right ? 1 : 0);
+    }
+  }
+  bitmap.close();
+
+  let perceptualHash = '';
+  for (let index = 0; index < bits.length; index += 4) {
+    const nibble =
+      bits[index] * 8 +
+      bits[index + 1] * 4 +
+      bits[index + 2] * 2 +
+      bits[index + 3];
+    perceptualHash += nibble.toString(16);
+  }
+
+  return {
+    hash,
+    perceptualHash,
+    width,
+    height,
+  };
+}
+
 
 const defaultValues: Form = {
   category: '',
@@ -53,10 +155,19 @@ const defaultValues: Form = {
   price: 0,
   condition: 'Used',
   negotiable: false,
-  state: 'SP',
-  city: 'São Paulo',
+  state: '',
+  stateName: '',
+  city: '',
   district: '',
+  locationToken: '',
 };
+
+function publishErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
 
 function Field({
   label,
@@ -79,18 +190,24 @@ function Field({
 export default function NewListingPage() {
   'use no memo';
 
-  const { t, tr, categoryName: localizedCategoryName } = useLocale();
+  const { user } = useAuth();
+  const { t, tr, locale, categoryName: localizedCategoryName } = useLocale();
+  const { market, formatMoney } = useMarket();
   const steps = [t('selling.new.step.category'), t('selling.new.step.basic'), t('selling.new.step.photos'), t('selling.new.step.location'), t('selling.new.step.details'), t('selling.new.step.review')];
   const schema = useMemo(() => z.object({
     category: z.string().min(1, t('selling.new.validation.category')),
     title: z.string().min(8, t('selling.new.validation.title')).max(90),
     description: z.string().min(30, t('selling.new.validation.description')),
     price: z.coerce.number().min(0, t('selling.new.validation.price')),
-    condition: z.enum(['New', 'Like new', 'Used']),
+    condition: z.string().max(32),
     negotiable: z.boolean(),
     state: z.string().min(1),
+    stateName: z.string().optional(),
     city: z.string().min(1),
     district: z.string().min(2, t('selling.new.validation.district')),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    locationToken: z.string().optional(),
   }), [t]);
 
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: categoryService.getCategories, staleTime: 5 * 60_000 });
@@ -99,6 +216,7 @@ export default function NewListingPage() {
   const [step, setStep] = useState(0);
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [cover, setCover] = useState(0);
+  const [photoError, setPhotoError] = useState('');
   const [done, setDone] = useState(false);
   const [attributes, setAttributes] = useState<ListingAttributes>({});
   const [attributeErrors, setAttributeErrors] = useState<CategoryFieldErrors>({});
@@ -108,8 +226,51 @@ export default function NewListingPage() {
     defaultValues,
   });
 
+  const draftKey = `marketlift-listing-draft:v1:${user?.id}:${market.code}`;
+  const draftLoaded = useRef(false);
+  const draftSubmitted = useRef(false);
+  const [draftNotice, setDraftNotice] = useState('');
+  const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    if (!user || draftLoaded.current) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft.version === 1 && Date.now() - draft.savedAt < 7 * 86400000 && draft.values && typeof draft.values === 'object') {
+            // Expired location tokens and file handles must be selected again.
+            form.reset({ ...defaultValues, ...draft.values, locationToken: '' });
+            setAttributes(draft.attributes || {});
+            setDraftNotice(locale === 'pt-BR' ? 'Rascunho restaurado. Confira os dados, selecione as fotos e confirme a localização novamente.' : 'Draft restored. Review the details, select photos and confirm the location again.');
+          }
+        }
+      } catch { /* Malformed or unavailable storage does not prevent posting. */ }
+      draftLoaded.current = true;
+      setDraftReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftKey, form, locale, user]);
   const values = useWatch({ control: form.control });
-  const selectedState = getBrazilState(values.state);
+  useEffect(() => {
+    if (!draftReady || done) return;
+    const save = () => {
+      if (draftSubmitted.current) return;
+      try {
+        const current = form.getValues();
+        if (current.category || current.title || current.description) {
+          sessionStorage.setItem(draftKey, JSON.stringify({ version: 1, savedAt: Date.now(), values: { ...current, locationToken: '' }, attributes }));
+        }
+      } catch { /* The unload prompt still protects unsaved input. */ }
+    };
+    const timer = window.setTimeout(save, 400);
+    const warn = (event: BeforeUnloadEvent) => {
+      save();
+      if (form.getValues('title') || photos.length) { event.preventDefault(); event.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => { window.clearTimeout(timer); save(); window.removeEventListener('beforeunload', warn); };
+  }, [draftReady, draftKey, values, attributes, done, form, photos.length]);
   const selectedCategory = categories.find((category) => category.id === values.category);
   const categoryName = selectedCategory ? localizedCategoryName(selectedCategory.id, selectedCategory.name) : t('selling.new.step.details');
 
@@ -124,7 +285,7 @@ export default function NewListingPage() {
 
   const mutation = useMutation({
     mutationFn: sellingService.createListing,
-    onSuccess: () => setDone(true),
+    onSuccess: () => { draftSubmitted.current = true; setDone(true); try { sessionStorage.removeItem(draftKey); } catch { /* Storage may be disabled. */ } },
   });
 
   const chooseCategory = (categoryId: string) => {
@@ -156,8 +317,79 @@ export default function NewListingPage() {
     const valid = fields.length ? await form.trigger(fields) : true;
     if (!valid) return;
 
+    if (step === 3 && !form.getValues('locationToken')) {
+      try {
+        const resolvedLocation = await locationService.resolveSelection({
+          countryCode: market.code,
+          state: form.getValues('stateName') || form.getValues('state'),
+          stateCode: form.getValues('state'),
+          city: form.getValues('city'),
+          district: form.getValues('district'),
+        });
+
+        if (!resolvedLocation?.locationToken) {
+          form.setError('district', {
+            type: 'manual',
+            message: t('selling.new.validation.locationSuggestion'),
+          });
+          return;
+        }
+
+        form.setValue('state', resolvedLocation.stateCode || form.getValues('state'), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        form.setValue(
+          'stateName',
+          resolvedLocation.state || form.getValues('stateName'),
+          { shouldDirty: true },
+        );
+        form.setValue('city', resolvedLocation.city || form.getValues('city'), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        form.setValue(
+          'district',
+          resolvedLocation.district || form.getValues('district'),
+          { shouldDirty: true, shouldValidate: true },
+        );
+        form.setValue('latitude', resolvedLocation.latitude, { shouldDirty: true });
+        form.setValue('longitude', resolvedLocation.longitude, { shouldDirty: true });
+        form.setValue('locationToken', resolvedLocation.locationToken, {
+          shouldDirty: true,
+        });
+      } catch {
+        form.setError('district', {
+          type: 'manual',
+          message: t('selling.new.validation.locationSuggestion'),
+        });
+        return;
+      }
+    }
+
     if (step === 1 && categoryConfig?.pricing.mode === 'required' && Number(values.price ?? 0) <= 0) {
       form.setError('price', { type: 'manual', message: t('selling.new.validation.pricePositive') });
+      return;
+    }
+
+    if (step === 1 && categoryConfig?.condition.enabled) {
+      const allowed = categoryConfig.condition.options;
+      const selected = form.getValues('condition');
+      if (allowed.length && !allowed.includes(selected)) {
+        form.setValue('condition', allowed[0], {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+    }
+
+    if (step === 2 && photos.length < MIN_LISTING_PHOTOS) {
+      setPhotoError(
+        t('selling.new.validation.minimumPhotos', {
+          count: MIN_LISTING_PHOTOS,
+          current: photos.length,
+        }),
+      );
       return;
     }
 
@@ -171,13 +403,76 @@ export default function NewListingPage() {
     setStep((current) => Math.min(5, current + 1));
   };
 
-  const addPhotos = (files: FileList | null) => {
+  const addPhotos = async (files: FileList | null) => {
     if (!files) return;
-    const remaining = Math.max(0, 10 - photos.length);
-    const items = Array.from(files)
-      .slice(0, remaining)
-      .map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
-    setPhotos((current) => [...current, ...items]);
+
+    setPhotoError('');
+    const accepted = [...photos];
+    const messages: string[] = [];
+    const existingHashes = new Set(accepted.map((photo) => photo.hash));
+    const existingPerceptual = accepted.map((photo) => photo.perceptualHash);
+
+    for (const file of Array.from(files)) {
+      if (accepted.length >= MAX_LISTING_PHOTOS) {
+        messages.push(t('selling.new.photoMaximum', { count: MAX_LISTING_PHOTOS }));
+        break;
+      }
+
+      if (SCREENSHOT_NAME_RE.test(file.name)) {
+        messages.push(t('selling.new.photoScreenshot', { name: file.name }));
+        continue;
+      }
+
+      try {
+        const inspected = await inspectPhoto(file);
+
+        if (inspected.width < MIN_PHOTO_WIDTH) {
+          messages.push(
+            t('selling.new.photoMinimumWidth', {
+              name: file.name,
+              width: MIN_PHOTO_WIDTH,
+            }),
+          );
+          continue;
+        }
+
+        if (
+          file.type === 'image/png' &&
+          COMMON_SCREEN_SIZES.has(`${inspected.width}x${inspected.height}`)
+        ) {
+          messages.push(t('selling.new.photoScreenshot', { name: file.name }));
+          continue;
+        }
+
+        const duplicate =
+          existingHashes.has(inspected.hash) ||
+          existingPerceptual.some(
+            (previous) =>
+              hashDistance(inspected.perceptualHash, previous) <= 3,
+          );
+
+        if (duplicate) {
+          messages.push(t('selling.new.photoDuplicate', { name: file.name }));
+          continue;
+        }
+
+        const preview = URL.createObjectURL(file);
+        accepted.push({
+          name: file.name,
+          url: preview,
+          file,
+          hash: inspected.hash,
+          perceptualHash: inspected.perceptualHash,
+        });
+        existingHashes.add(inspected.hash);
+        existingPerceptual.push(inspected.perceptualHash);
+      } catch {
+        messages.push(t('selling.new.photoUnreadable', { name: file.name }));
+      }
+    }
+
+    setPhotos(accepted);
+    if (messages.length) setPhotoError(messages[0]);
   };
 
   const removePhoto = (index: number) => {
@@ -194,11 +489,14 @@ export default function NewListingPage() {
   };
 
   const resetWizard = () => {
+    draftSubmitted.current = false;
+    setDraftNotice('');
     photos.forEach((photo) => {
       if (photo.url.startsWith('blob:')) URL.revokeObjectURL(photo.url);
     });
     setPhotos([]);
     setCover(0);
+    setPhotoError('');
     setStep(0);
     setDone(false);
     setAttributes({});
@@ -207,6 +505,16 @@ export default function NewListingPage() {
   };
 
   const submit = form.handleSubmit((data) => {
+    if (photos.length < MIN_LISTING_PHOTOS) {
+      setPhotoError(
+        t('selling.new.validation.minimumPhotosPublish', {
+          count: MIN_LISTING_PHOTOS,
+        }),
+      );
+      setStep(2);
+      return;
+    }
+
     if (!categoryConfig) {
       setStep(4);
       return;
@@ -228,10 +536,14 @@ export default function NewListingPage() {
       negotiable: data.negotiable,
       images: photos.map((photo) => photo.file),
       location: {
-        state: selectedState?.name ?? data.state,
+        countryCode: market.code,
+        state: data.stateName || data.state,
         stateCode: data.state,
         city: data.city,
         district: data.district,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        locationToken: data.locationToken,
       },
       attributes,
       categorySchemaVersion: categoryConfig.schemaVersion,
@@ -243,6 +555,8 @@ export default function NewListingPage() {
     return (
       <MarketplaceShell>
         <main className="mx-auto max-w-2xl px-4 py-16 text-center">
+
+
           <div className="rounded-3xl border bg-white p-8 shadow-sm sm:p-10">
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-brand-50 text-brand-700">
               <Check className="size-7" />
@@ -264,6 +578,8 @@ export default function NewListingPage() {
   return (
     <MarketplaceShell>
       <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
+        {draftNotice && <div role="status" className="mb-5 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-950">{draftNotice}</div>}
+        {draftReady && <p className="mb-4 text-xs text-slate-600">{locale === 'pt-BR' ? 'O texto é salvo nesta aba por até 7 dias. Fotos precisam ser selecionadas novamente após recarregar.' : 'Text is saved in this tab for up to 7 days. Select photos again after reloading.'}</p>}
         <div className="mb-5 sm:mb-7">
           <p className="text-sm font-bold uppercase tracking-wider text-brand-700">{t('selling.new.title')}</p>
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{t('selling.new.heading')}</h1>
@@ -297,23 +613,12 @@ export default function NewListingPage() {
                 <section>
                   <h2 className="text-xl font-black">{t('selling.new.chooseCategory')}</h2>
                   <p className="mt-1 text-sm text-slate-500">{t('selling.new.chooseCategoryBody')}</p>
-                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {categories.map((category) => (
-                      <button
-                        type="button"
-                        key={category.id}
-                        aria-pressed={values.category === category.id}
-                        onClick={() => chooseCategory(category.id)}
-                        className={`min-h-24 rounded-2xl border p-4 text-left font-semibold transition ${
-                          values.category === category.id
-                            ? 'border-brand-500 bg-brand-50 text-brand-800'
-                            : 'hover:border-brand-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        {localizedCategoryName(category.id, category.name)}
-                      </button>
-                    ))}
-                  </div>
+                  <CategoryPicker
+                    categories={categories}
+                    selectedId={values.category}
+                    onSelect={chooseCategory}
+                    categoryName={localizedCategoryName}
+                  />
                   {form.formState.errors.category && (
                     <p className="mt-3 text-sm text-red-600">{form.formState.errors.category.message}</p>
                   )}
@@ -335,7 +640,7 @@ export default function NewListingPage() {
                       />
                     </Field>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label={categoryConfig ? tr(categoryConfig.pricing.label) : t('selling.new.priceLabel')} error={form.formState.errors.price?.message}>
+                      <Field label={`${(categoryConfig ? tr(categoryConfig.pricing.label) : t('selling.new.priceLabel')).replace(/\s*\(R\$\)/gi, '')} (${market.currencySymbol})`} error={form.formState.errors.price?.message}>
                         <Input
                           type="number"
                           min="0"
@@ -347,11 +652,31 @@ export default function NewListingPage() {
                         )}
                       </Field>
                       {categoryConfig?.condition.enabled && (
-                        <Field label={t('selling.new.condition')}>
-                          <select {...form.register('condition')} className="h-11 w-full rounded-xl border bg-white px-3 text-sm">
-                            <option value="Used">{t('search.condition.used')}</option>
-                            <option value="Like new">{t('search.condition.likeNew')}</option>
-                            <option value="New">{t('search.condition.new')}</option>
+                        <Field
+                          label={t('selling.new.condition')}
+                          error={form.formState.errors.condition?.message}
+                        >
+                          <select
+                            value={
+                              categoryConfig.condition.options.includes(
+                                values.condition ?? '',
+                              )
+                                ? values.condition
+                                : categoryConfig.condition.options[0] ?? ''
+                            }
+                            onChange={(event) =>
+                              form.setValue('condition', event.target.value, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              })
+                            }
+                            className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
+                          >
+                            {categoryConfig.condition.options.map((option) => (
+                              <option key={option} value={option}>
+                                {tr(option)}
+                              </option>
+                            ))}
                           </select>
                         </Field>
                       )}
@@ -371,8 +696,22 @@ export default function NewListingPage() {
                 <section>
                   <h2 className="text-xl font-black">{t('selling.new.step.photos')}</h2>
                   <p className="mt-1 text-sm text-slate-500">{t('selling.new.photosBody')}</p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    {t('selling.new.photoRequirements', {
+                      minimum: MIN_LISTING_PHOTOS,
+                      width: MIN_PHOTO_WIDTH,
+                    })}
+                  </p>
+                  {photoError && (
+                    <p
+                      role="alert"
+                      className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
+                    >
+                      {photoError}
+                    </p>
+                  )}
                   <label className="mt-5 grid min-h-44 cursor-pointer place-items-center rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-brand-400 hover:bg-brand-50/40">
-                    <input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => addPhotos(event.target.files)} />
+                    <input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => void addPhotos(event.target.files)} />
                     <div>
                       <ImagePlus className="mx-auto size-9 text-slate-400" />
                       <p className="mt-2 font-bold">{t('selling.new.choosePhotos')}</p>
@@ -380,7 +719,17 @@ export default function NewListingPage() {
                     </div>
                   </label>
                   {photos.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <>
+                      <p className="mt-4 text-sm font-semibold text-slate-600">
+                        {t('selling.new.photoCount', {
+                          current: photos.length,
+                          maximum: MAX_LISTING_PHOTOS,
+                        })}
+                        {photos.length < MIN_LISTING_PHOTOS
+                          ? ` · ${t('selling.new.photosMoreRequired', { count: MIN_LISTING_PHOTOS - photos.length })}`
+                          : ` · ${t('selling.new.photosMinimumReached')}`}
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {photos.map((photo, index) => (
                         <div key={photo.url} className={`relative aspect-square overflow-hidden rounded-xl border ${cover === index ? 'ring-2 ring-brand-500' : ''}`}>
                           <Image src={photo.url} alt={t('selling.new.photoPreview', { name: photo.name })} fill unoptimized className="object-cover" />
@@ -391,7 +740,8 @@ export default function NewListingPage() {
                           <GripVertical className="absolute left-2 top-2 size-4 text-white drop-shadow" />
                         </div>
                       ))}
-                    </div>
+                      </div>
+                    </>
                   )}
                 </section>
               )}
@@ -403,14 +753,23 @@ export default function NewListingPage() {
                   <div className="mt-5">
                     <LocationFields
                       value={{
-                        stateCode: values.state ?? 'SP',
+                        countryCode: market.code,
+                        state: values.stateName ?? '',
+                        stateCode: values.state ?? '',
                         city: values.city ?? '',
                         district: values.district ?? '',
+                        latitude: values.latitude,
+                        longitude: values.longitude,
+                        locationToken: values.locationToken,
                       }}
                       onChange={(location) => {
                         form.setValue('state', location.stateCode, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('stateName', location.state || location.stateCode, { shouldDirty: true });
                         form.setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
                         form.setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('latitude', location.latitude, { shouldDirty: true });
+                        form.setValue('longitude', location.longitude, { shouldDirty: true });
+                        form.setValue('locationToken', location.locationToken || '', { shouldDirty: true });
                       }}
                       labels={{
                         region: t('search.region'),
@@ -427,6 +786,7 @@ export default function NewListingPage() {
                         city: form.formState.errors.city?.message,
                         district: form.formState.errors.district?.message,
                       }}
+                      countryCode={market.code}
                       className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
                     />
                   </div>
@@ -475,7 +835,7 @@ export default function NewListingPage() {
                       <div className="p-6">
                         <span className="text-xs font-bold uppercase tracking-wide text-brand-700">{categoryName}</span>
                         <h3 className="mt-2 text-2xl font-black">{values.title || t('selling.new.untitled')}</h3>
-                        <p className="mt-2 text-2xl font-black text-brand-700">R$ {Number(values.price || 0).toLocaleString('pt-BR')}</p>
+                        <p className="mt-2 text-2xl font-black text-brand-700">{formatMoney(Number(values.price || 0))}</p>
                         <p className="mt-3 text-sm text-slate-500">
                           {values.city}, {values.state}
                           {categoryConfig?.condition.enabled ? ` · ${tr(String(values.condition))}` : ''}
@@ -505,7 +865,18 @@ export default function NewListingPage() {
                   </div>
 
                   {mutation.isError && (
-                    <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{t('selling.new.publishError')}</p>
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                    >
+                      <p className="font-bold">{t('selling.new.publishFailureTitle')}</p>
+                      <p className="mt-1 font-medium">
+                        {publishErrorMessage(
+                          mutation.error,
+                          t('selling.new.publishError'),
+                        )}
+                      </p>
+                    </div>
                   )}
 
                   <Button type="submit" className="mt-5 w-full" size="lg" loading={mutation.isPending} loadingText={t('selling.new.publishing')}>{t('selling.new.publish')}</Button>

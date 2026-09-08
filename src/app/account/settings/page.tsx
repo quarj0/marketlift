@@ -10,17 +10,18 @@ import {
   Bell,
   Eye,
   Languages,
-  LockKeyhole,
   Mail,
   MessageCircle,
   Shield,
   Smartphone,
 } from "lucide-react";
 
+import { AccountSecurityControls } from "@/components/account/account-security-controls";
 import { AccountSidebar } from "@/components/account/account-sidebar";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 import { accountService } from "@/services/account.service";
 import type { AccountSettings } from "@/types";
 
@@ -103,6 +104,7 @@ function SettingsForm({
 }) {
   const queryClient = useQueryClient();
   const { t, locale, setLocale } = useLocale();
+  const { market } = useMarket();
 
   const [form, setForm] =
     useState<AccountSettings>(initialSettings);
@@ -332,42 +334,19 @@ function SettingsForm({
             </span>
 
             <select
-              value={form.currency}
+              value={market.currency}
               disabled
               className="h-11 w-full rounded-xl border bg-slate-50 px-3.5 text-sm text-slate-600"
             >
-              <option value="BRL">
-                {t("settings.brl")}
-              </option>
+              <option value={market.currency}>{market.currency} ({market.currencySymbol})</option>
             </select>
           </label>
         </div>
       </section>
 
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="flex items-start gap-3">
-          <LockKeyhole className="mt-0.5 size-5 text-slate-500" />
+      <AccountSecurityControls />
 
-          <div>
-            <h2 className="font-bold">
-              {t("settings.security")}
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              {t("settings.securityBody")}
-            </p>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              disabled
-            >
-              {t("settings.changePassword")}
-            </Button>
-          </div>
-        </div>
-      </section>
+      {mutation.isError && <p role="alert" className="text-sm text-rose-700">{mutation.error.message}</p>}
 
       <div className="sticky bottom-20 flex items-center justify-between gap-3 rounded-2xl border bg-white/95 p-4 shadow-lg backdrop-blur md:bottom-4">
         <div>

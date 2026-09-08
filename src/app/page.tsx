@@ -1,17 +1,81 @@
 import type { Metadata } from "next";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { HomepageContent } from "@/components/marketplace/homepage-content";
+import { publicCategories, publicHomeFeed } from "@/lib/public-data";
 
 export const metadata: Metadata = {
-  title: "Marketlift | Buy and sell locally across Brazil",
+  title: "Marketlift Brasil — Compre e venda online",
   description:
-    "Discover cars, phones, homes, electronics and everyday items from sellers across Brazil.",
+    "Compre e venda carros, celulares, eletrônicos, imóveis, moda e muito mais perto de você no Marketlift Brasil.",
+  alternates: { canonical: "/" },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL || "https://marketlift.com.br"
+  ).replace(/\/+$/, "");
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "Marketlift",
+      alternateName: ["Marketlift Brasil", "Marketlift Brazil"],
+      url: siteUrl,
+      logo: {
+        "@type": "ImageObject",
+        "@id": `${siteUrl}/#logo`,
+        url: `${siteUrl}/brand/marketlift-mark.png`,
+        contentUrl: `${siteUrl}/brand/marketlift-mark.png`,
+        width: 512,
+        height: 512,
+        caption: "Marketlift",
+      },
+      image: { "@id": `${siteUrl}/#logo` },
+      description:
+        "Marketlift is a Brazilian online marketplace for local classified listings, connecting buyers and sellers of vehicles, property, electronics, fashion and everyday items.",
+      areaServed: {
+        "@type": "Country",
+        name: "Brazil",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      name: "Marketlift",
+      alternateName: [
+        "Marketlift Brasil",
+        "Marketlift Brazil",
+        "marketlift.com.br",
+      ],
+      url: siteUrl,
+      description:
+        "Brazilian marketplace for buying and selling through local classified listings.",
+      inLanguage: ["pt-BR", "en"],
+      publisher: { "@id": `${siteUrl}/#organization` },
+      about: { "@id": `${siteUrl}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${siteUrl}/search?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
+  const [categories, feed] = await Promise.all([publicCategories(), publicHomeFeed("BR")]);
+
   return (
-    <MarketplaceShell>
-      <HomepageContent />
-    </MarketplaceShell>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <MarketplaceShell>
+        <HomepageContent initialCategories={categories ?? []} initialFeed={feed ?? undefined} />
+      </MarketplaceShell>
+    </>
   );
 }

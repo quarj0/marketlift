@@ -27,14 +27,33 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
+import { useAuth } from "@/providers/auth-provider";
 
 function isActive(pathname: string, href: string) {
   if (href === "/selling") return pathname === "/selling";
   if (href === "/messages") return pathname.startsWith("/messages");
+  if (href === "/selling/listings/new") {
+    return pathname === "/selling/listings/new";
+  }
+  if (href === "/selling/listings") {
+    return (
+      pathname === "/selling/listings" ||
+      (pathname.startsWith("/selling/listings/") &&
+        !pathname.startsWith("/selling/listings/new"))
+    );
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function SellingSidebar() {
+  const { user } = useAuth();
+  const { paymentsEnabledForMarket, identityVerificationEnabledForMarket } =
+    useMarket();
+  const paymentsEnabled = paymentsEnabledForMarket(user?.countryCode);
+  const identityVerificationEnabled = identityVerificationEnabledForMarket(
+    user?.countryCode,
+  );
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const { t } = useLocale();
@@ -77,10 +96,15 @@ export function SellingSidebar() {
               <span className="block text-[11px] font-black uppercase tracking-[.14em] text-slate-400">
                 {t("selling.menu")}
               </span>
-              <span className="block truncate text-sm font-black">{current[1]}</span>
+              <span className="block truncate text-sm font-black">
+                {current[1]}
+              </span>
             </span>
           </span>
-          <ChevronDown className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
+          <ChevronDown
+            className="size-5 shrink-0 text-slate-400"
+            aria-hidden="true"
+          />
         </button>
       </div>
 
@@ -91,6 +115,11 @@ export function SellingSidebar() {
         <nav className="space-y-1">
           {items.map(([href, label, Icon]) => {
             const active = isActive(pathname, href);
+            const upcoming =
+              (!paymentsEnabled &&
+                ["/selling/plan", "/selling/payments"].includes(href)) ||
+              (!identityVerificationEnabled &&
+                href === "/selling/verification");
             return (
               <Link
                 key={href}
@@ -104,7 +133,12 @@ export function SellingSidebar() {
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden="true" />
-                {label}
+                <span className="flex-1">{label}</span>
+                {upcoming && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-800">
+                    {t("common.upcoming")}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -144,6 +178,11 @@ export function SellingSidebar() {
           >
             {items.map(([href, label, Icon]) => {
               const active = isActive(pathname, href);
+              const upcoming =
+                (!paymentsEnabled &&
+                  ["/selling/plan", "/selling/payments"].includes(href)) ||
+                (!identityVerificationEnabled &&
+                  href === "/selling/verification");
               return (
                 <Link
                   key={href}
@@ -159,6 +198,11 @@ export function SellingSidebar() {
                 >
                   <Icon className="size-5" aria-hidden="true" />
                   <span>{label}</span>
+                  {upcoming && (
+                    <span className="mt-1 text-[9px] font-black uppercase tracking-wide text-amber-700">
+                      {t("common.upcoming")}
+                    </span>
+                  )}
                 </Link>
               );
             })}

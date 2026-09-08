@@ -1,13 +1,18 @@
 import { graphqlRequest } from '@/lib/api-client';
 import { realtimeClient, RealtimeUnavailableError } from '@/lib/realtime-client';
-import { mapConversation, mapMessage } from '@/lib/api-mappers';
+import {
+  mapConversation,
+  mapMessage,
+  type ApiConversation,
+  type ApiMessage,
+} from '@/lib/api-mappers';
 import { uploadFile } from '@/services/upload.service';
 import type { SendMessagePayload } from '@/types';
 
 const CONVERSATION_FIELDS = `
   id
   participant { id name avatarUrl verifiedSeller isSeller }
-  listing { id slug title price primaryImage status deleted }
+  listing { id slug title price primaryImage status deleted countryCode state stateCode city district }
   lastMessage
   lastMessageAt
   unread
@@ -27,26 +32,32 @@ const MESSAGE_FIELDS = `
 `;
 
 export const messagingService = {
-  async getConversations() {
-    const data = await graphqlRequest<{ myConversations: any[] }>(`
-      query MyConversations {
-        myConversations { ${CONVERSATION_FIELDS} }
+  async getConversation(id: string) {
+    const data = await graphqlRequest<{ conversation: ApiConversation }>(`query Conversation($id: ID!) { conversation(id: $id) { ${CONVERSATION_FIELDS} } }`, { id });
+    return mapConversation(data.conversation);
+  },
+  unreadCounts: () => graphqlRequest<{ unreadMessageCount: number; unreadNotificationCount: number }>(`query UnreadCounts { unreadMessageCount unreadNotificationCount }`),
+
+  async getConversations(offset = 0) {
+    const data = await graphqlRequest<{ myConversations: ApiConversation[] }>(`
+      query MyConversations($offset: Int!) {
+        myConversations(limit: 50, offset: $offset) { ${CONVERSATION_FIELDS} }
       }
-    `);
+    `, { offset });
     return (data.myConversations || []).map(mapConversation);
   },
 
-  async getMessages(id: string) {
-    const data = await graphqlRequest<{ messages: any[] }>(`
-      query ConversationMessages($id: ID!) {
-        messages(conversationId: $id, limit: 100) { ${MESSAGE_FIELDS} }
+  async getMessages(id: string, before?: { createdAt: string; id: string }) {
+    const data = await graphqlRequest<{ messages: ApiMessage[] }>(`
+      query ConversationMessages($id: ID!, $before: DateTime, $beforeId: ID) {
+        messages(conversationId: $id, limit: 50, before: $before, beforeId: $beforeId) { ${MESSAGE_FIELDS} }
       }
-    `, { id });
+    `, { id, before: before?.createdAt ?? null, beforeId: before?.id ?? null });
     return (data.messages || []).map(mapMessage);
   },
 
   async startConversation(listingId: string) {
-    const data = await graphqlRequest<{ startConversation: any }>(`
+    const data = await graphqlRequest<{ startConversation: ApiConversation }>(`
       mutation StartConversation($listingId: ID!) {
         startConversation(listingId: $listingId) { ${CONVERSATION_FIELDS} }
       }
@@ -73,7 +84,7 @@ export const messagingService = {
       if (!(error instanceof RealtimeUnavailableError)) throw error;
     }
 
-    const data = await graphqlRequest<{ sendMessage: any }>(`
+    const data = await graphqlRequest<{ sendMessage: ApiMessage }>(`
       mutation SendMessage($input: SendMessageInput!) {
         sendMessage(input: $input) { ${MESSAGE_FIELDS} }
       }

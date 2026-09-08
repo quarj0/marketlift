@@ -4,18 +4,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Mail, MapPin, Phone, ShieldCheck, UserRound } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AccountSidebar } from '@/components/account/account-sidebar';
 import { LocalizedDate } from '@/components/i18n/t';
 import { LocationFields } from '@/components/location/location-fields';
+import { PhoneInput } from '@/components/forms/phone-input';
 import { MarketplaceShell } from '@/components/layout/marketplace-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
+import { useMarket } from '@/providers/market-provider';
 import { accountService } from '@/services/account.service';
-import { getBrazilState } from '@/data/brazil-locations';
 
 function ProfileSkeleton() {
   return (
@@ -29,6 +30,7 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const { t } = useLocale();
+  const { market } = useMarket();
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
 
@@ -37,7 +39,8 @@ export default function ProfilePage() {
       z.object({
         fullName: z.string().min(2, t('account.profile.validation.name')),
         email: z.string().email(t('account.profile.validation.email')),
-        phone: z.string().min(10, t('account.profile.validation.phone')),
+        phone: z.string().min(7, t('account.profile.validation.phone')),
+        state: z.string().optional(),
         stateCode: z.string().min(2, t('account.profile.validation.state')),
         city: z.string().min(2, t('account.profile.validation.city')),
         district: z.string().optional(),
@@ -58,9 +61,14 @@ export default function ProfilePage() {
     handleSubmit,
     reset,
     formState: { errors, isDirty },
-    watch,
+    control,
     setValue,
   } = useForm<ProfileForm>({ resolver: zodResolver(profileSchema) });
+
+  const [state = '', stateCode = '', city = '', district = ''] = useWatch({
+    control,
+    name: ['state', 'stateCode', 'city', 'district'],
+  });
 
   useEffect(() => {
     if (!profileQuery.data) return;
@@ -69,6 +77,7 @@ export default function ProfilePage() {
       fullName: profileQuery.data.fullName,
       email: profileQuery.data.email,
       phone: profileQuery.data.phone,
+      state: profileQuery.data.location.state || profileQuery.data.location.stateCode || '',
       stateCode: profileQuery.data.location.stateCode,
       city: profileQuery.data.location.city,
       district: profileQuery.data.location.district ?? '',
@@ -84,7 +93,8 @@ export default function ProfilePage() {
         phone: values.phone,
         bio: values.bio,
         location: {
-          state: getBrazilState(values.stateCode)?.name ?? profileQuery.data?.location.state ?? values.stateCode,
+          countryCode: profileQuery.data?.location.countryCode || market.code,
+          state: values.state || profileQuery.data?.location.state || values.stateCode,
           stateCode: values.stateCode,
           city: values.city,
           district: values.district,
@@ -98,6 +108,7 @@ export default function ProfilePage() {
         fullName: data.fullName,
         email: data.email,
         phone: data.phone,
+        state: data.location.state || data.location.stateCode || '',
         stateCode: data.location.stateCode,
         city: data.location.city,
         district: data.location.district ?? '',
@@ -181,7 +192,19 @@ export default function ProfilePage() {
 
                       <label>
                         <span className="mb-2 block text-sm font-semibold">{t('account.profile.phone')}</span>
-                        <Input {...register('phone')} aria-invalid={!!errors.phone} />
+                        <Controller
+                          control={control}
+                          name="phone"
+                          render={({ field }) => (
+                            <PhoneInput
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              countryCode={profileQuery.data?.location.countryCode || market.code}
+                              dialCode={market.dialCode}
+                              invalid={!!errors.phone}
+                            />
+                          )}
+                        />
                         {errors.phone && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.phone.message}</p>}
                       </label>
 
@@ -191,11 +214,14 @@ export default function ProfilePage() {
                         </div>
                         <LocationFields
                           value={{
-                            stateCode: watch('stateCode') || profileQuery.data.location.stateCode || 'SP',
-                            city: watch('city') || '',
-                            district: watch('district') || '',
+                            countryCode: profileQuery.data.location.countryCode || market.code,
+                            state: state || profileQuery.data.location.state,
+                            stateCode: stateCode || profileQuery.data.location.stateCode || '',
+                            city,
+                            district,
                           }}
                           onChange={(location) => {
+                            setValue('state', location.state || location.stateCode, { shouldDirty: true });
                             setValue('stateCode', location.stateCode, { shouldDirty: true, shouldValidate: true });
                             setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
                             setValue('district', location.district, { shouldDirty: true, shouldValidate: true });
@@ -210,6 +236,7 @@ export default function ProfilePage() {
                             city: t('account.profile.city'),
                             district: t('account.profile.districtPlaceholder'),
                           }}
+                          countryCode={profileQuery.data.location.countryCode || market.code}
                           errors={{
                             stateCode: errors.stateCode?.message,
                             city: errors.city?.message,

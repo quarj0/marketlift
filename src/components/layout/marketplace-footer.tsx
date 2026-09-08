@@ -4,37 +4,48 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
 import { MarketliftLogo } from "@/components/marketplace/logo";
+import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 export function MarketplaceFooter() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const { market } = useMarket();
+  const { hydrated, isAuthenticated } = useAuth();
+
+  const accountLinks = [
+    ...(hydrated && !isAuthenticated
+      ? [
+          [t("nav.login"), "/login"],
+          [t("footer.createAccount"), "/register"],
+        ]
+      : []),
+    [t("nav.saved"), "/account/saved"],
+    [t("nav.messages"), "/messages"],
+    [t("nav.selling"), "/selling/start"],
+  ];
 
   const groups = [
     {
       title: t("footer.marketplace"),
       links: [
         [t("footer.browseListings"), "/search"],
-        [t("category.vehicles"), "/search?category=vehicles"],
-        [t("category.properties"), "/search?category=properties"],
-        [t("category.phones"), "/search?category=phones"],
+        [t("category.vehicles"), "/category/vehicles"],
+        [t("category.properties"), "/category/property"],
+        [t("category.phones"), "/category/phones"],
         [t("footer.sellOnMarketlift"), "/selling/start"],
       ],
     },
     {
       title: t("footer.account"),
-      links: [
-        [t("nav.login"), "/login"],
-        [t("footer.createAccount"), "/register"],
-        [t("nav.saved"), "/account/saved"],
-        [t("nav.messages"), "/messages"],
-        [t("nav.selling"), "/selling/start"],
-      ],
+      links: accountLinks,
     },
     {
       title: t("footer.safetySupport"),
       links: [
         [t("footer.safetyTips"), "/safety"],
         [t("footer.helpCenter"), "/help"],
+        [t("footer.about"), "/about"],
         [t("footer.reportProblem"), "/help/report"],
         [t("footer.terms"), "/terms"],
         [t("footer.privacy"), "/privacy"],
@@ -49,7 +60,9 @@ export function MarketplaceFooter() {
           <MarketliftLogo />
 
           <p className="mt-5 max-w-sm text-sm leading-6 text-slate-300">
-            {t("footer.description")}
+            {locale === "pt-BR"
+              ? "Uma forma simples de descobrir produtos locais e encontrar vendedores no Brasil."
+              : `A simple way to discover local products and connect with sellers in ${market.countryName}.`}
           </p>
 
           <div className="mt-5 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/6 p-4 text-sm text-slate-200">
@@ -88,7 +101,7 @@ export function MarketplaceFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>{t("footer.rights")}</p>
-          <p>{t("footer.region")}</p>
+          <p>{`${market.countryName} · ${market.currencySymbol} ${market.currency}`}</p>
         </div>
       </div>
     </footer>

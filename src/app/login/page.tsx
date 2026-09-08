@@ -13,12 +13,18 @@ import { PasswordField } from '@/components/auth/password-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/providers/locale-provider';
-import { authService } from '@/services/auth.service';
+import { useAuth } from '@/providers/auth-provider';
+
+function safeReturnTo(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/account';
+  return value;
+}
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { t } = useLocale();
+  const { login } = useAuth();
   const [error, setError] = useState('');
 
   const schema = useMemo(
@@ -44,9 +50,8 @@ function LoginForm() {
   async function onSubmit(data: FormData) {
     try {
       setError('');
-      await authService.login(data);
-      router.push(params.get('returnTo') || '/account');
-      router.refresh();
+      await login(data);
+      router.replace(safeReturnTo(params.get('returnTo')));
     } catch {
       setError(t('auth.login.failed'));
     }

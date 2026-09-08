@@ -37,7 +37,7 @@ export function AccountSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const { canSell } = useAuth();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const items = useMemo(
     () =>
@@ -49,12 +49,17 @@ export function AccountSidebar() {
         ["/account/reviews", t("account.reviews"), Star],
         ["/account/settings", t("account.settings"), Settings],
         [
+          "/account/support",
+          locale === "pt-BR" ? "Meus chamados" : "Support tickets",
+          MessageCircle,
+        ],
+        [
           canSell ? "/selling" : "/selling/start",
           canSell ? t("nav.selling") : t("nav.startSelling"),
           Store,
         ],
       ] as const,
-    [canSell, t],
+    [canSell, t, locale],
   );
 
   const current = items.find(([href]) => isActive(pathname, href)) ?? items[0];
@@ -83,7 +88,10 @@ export function AccountSidebar() {
               </span>
             </span>
           </span>
-          <ChevronDown className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
+          <ChevronDown
+            className="size-5 shrink-0 text-slate-400"
+            aria-hidden="true"
+          />
         </button>
       </div>
 

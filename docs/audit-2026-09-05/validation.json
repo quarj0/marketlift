@@ -1,0 +1,92 @@
+{
+  "date": "2026-09-05",
+  "scope": "Marketplace, admin, backend; payments and identity provider implementation excluded",
+  "branch": "audit/project-readiness-2026-09-05",
+  "frontend": {
+    "marketplace": {
+      "commit": "fc6ce773235d0236d8802d9ca808fad0912095ea",
+      "lint": "pass",
+      "typecheck": "pass",
+      "webpackProductionBuild": "pass"
+    },
+    "admin": {
+      "commit": "13214ecf0f2f45627b13c63f755bcbc34ef4f2bd",
+      "lint": "pass",
+      "typecheck": "pass",
+      "webpackProductionBuild": "pass"
+    }
+  },
+  "backend": {
+    "commit": "d8169bab4a652084bc7289df4bb75306e0b81b74",
+    "tests": 213,
+    "seconds": 332.278,
+    "result": "pass",
+    "labels": [
+      "accounts",
+      "sellers",
+      "listings",
+      "categories",
+      "uploads",
+      "messaging",
+      "moderation",
+      "reports",
+      "notifications",
+      "audit",
+      "reviews",
+      "saved_searches",
+      "support",
+      "platform_settings",
+      "marketplace_analytics",
+      "marketlift"
+    ],
+    "localMigrationDrift": "none",
+    "ci": "https://github.com/quarj0/marketlift-backend/actions/runs/33949520199"
+  },
+  "production": {
+    "healthStatus": 200,
+    "readinessStatuses": [
+      503,
+      503,
+      503
+    ],
+    "readinessChecks": {
+      "database": "ok",
+      "search": "ok",
+      "redis": "ok",
+      "realtime": "unavailable"
+    },
+    "readinessSeconds": [
+      5.989,
+      6.419,
+      6.346
+    ],
+    "emptyQueryListingCount": 0,
+    "iphoneQueryListingCount": 0,
+    "sitemapUrls": 137,
+    "sitemapCategories": 130,
+    "sitemapListings": 0,
+    "migrationInspection": "Read-only using explicit checkout .env.production connected to Neon, not evidence of Railway environment parity",
+    "pendingMigrations": [
+      "categories.0004_category_image_upload",
+      "categories.0005_dependent_catalog_fields",
+      "categories.0006_category_form_metadata",
+      "listings.0010_listing_condition_labels",
+      "listings.0011_listing_condition_catalog",
+      "platform_settings.0004_min_listing_images",
+      "reports.0003_expand_report_reasons",
+      "uploads.0003_alter_uploadasset_purpose"
+    ]
+  },
+  "browser": {
+    "engine": "Chromium",
+    "pageViewportCombinations": 19,
+    "combinationsWithoutSelectedWCAGViolations": 18,
+    "notice": "320px mobile layout viewport expands to 325px for home/search and 386px for registration. The initial scrollWidth > innerWidth check alone misses this; configured viewport must be compared too.",
+    "fieldCoreWebVitals": "not measured"
+  },
+  "cleanup": {
+    "devServersStarted": false,
+    "temporaryContainersStoppedAndRemoved": true
+  },
+  "changes": "Documentation and evidence only; no production mutations, commits, pushes, or deploys"
+}

@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { CheckCircle2, MapPin, Star } from "lucide-react";
 
 import { LocalizedDate, T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { ListingCard } from "@/components/listings/listing-card";
+import { SellerAvatar } from "@/components/seller/seller-avatar";
 import { SellerProfileActions } from "@/components/seller/seller-profile-actions";
 import { SellerReviewForm } from "@/components/seller/seller-review-form";
 import { socialService } from "@/services/social.service";
@@ -31,7 +31,9 @@ function SellerProfileFallback() {
           <div className="h-96 rounded-2xl border bg-white" />
         </div>
       </div>
-      <span className="sr-only"><T id="common.loading" /></span>
+      <span className="sr-only">
+        <T id="common.loading" />
+      </span>
     </main>
   );
 }
@@ -45,18 +47,17 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
   }
 
   const { seller, listings, reviews } = data;
-  const sellerLocation = [seller.location.city, seller.location.stateCode].filter(Boolean).join(", ");
+  const sellerLocation = [seller.location.city, seller.location.stateCode]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
       <section className="rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-center">
-          <Image
+          <SellerAvatar
             src={seller.avatar}
-            alt=""
-            width={96}
-            height={96}
-            unoptimized
+            alt={seller.name}
             className="size-24 rounded-3xl object-cover"
           />
 

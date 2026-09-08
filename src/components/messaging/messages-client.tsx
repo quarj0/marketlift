@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
   CheckCheck,
@@ -33,8 +33,13 @@ import {
 } from "@/components/feedback/async-states";
 import { ReportDialog } from "@/components/feedback/report-dialog";
 import { messagingService } from "@/services/messaging.service";
-import { formatBRL, formatConversationTimestamp, formatMessageTimestamp } from "@/lib/utils";
+import { SafeMeetupSuggestions } from "@/components/messaging/safe-meetup-suggestions";
+import {
+  formatConversationTimestamp,
+  formatMessageTimestamp,
+} from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarket } from "@/providers/market-provider";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -55,6 +60,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
   const queryClient = useQueryClient();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { t, tr, locale } = useLocale();
+  const { formatMoney } = useMarket();
 
   const [selectedId, setSelectedId] = useState(initialId ?? "");
   const [text, setText] = useState("");
@@ -65,28 +71,35 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
 
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
-  const conversations = useQuery({
-    queryKey: ["conversations"],
-    queryFn: messagingService.getConversations,
+  const conversationPages = useInfiniteQuery({
+    queryKey: ["conversations", "pages"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => messagingService.getConversations(pageParam),
+    getNextPageParam: (page, pages) => page.length === 50 ? pages.length * 50 : undefined,
   });
-
+  const conversations = { ...conversationPages, data: [...new Map(conversationPages.data?.pages.flat().map((item) => [item.id, item])).values()] };
   const activeId = selectedId || conversations.data?.[0]?.id || "";
-
-  const current = conversations.data?.find(
-    (conversation) => conversation.id === activeId,
-  );
-
-  const messages = useQuery({
-    queryKey: ["messages", activeId],
-    queryFn: () => messagingService.getMessages(activeId),
+  const selectedConversation = useQuery({
+    queryKey: ["conversation", activeId],
+    queryFn: () => messagingService.getConversation(activeId),
+    enabled: Boolean(activeId) && !conversations.data.some((item) => item.id === activeId),
+  });
+  const current = conversations.data.find((conversation) => conversation.id === activeId) ?? selectedConversation.data;
+  const messagePages = useInfiniteQuery({
+    queryKey: ["messages", activeId, "pages"],
+    initialPageParam: undefined as { createdAt: string; id: string } | undefined,
+    queryFn: ({ pageParam }) => messagingService.getMessages(activeId, pageParam),
+    getNextPageParam: (page) => page.length === 50 ? { createdAt: page[0].createdAt, id: page[0].id } : undefined,
     enabled: Boolean(activeId),
   });
+  const messages = { ...messagePages, data: [...new Map(messagePages.data?.pages.slice().reverse().flat().map((item) => [item.id, item])).values()] };
 
+  const latestMessageId = messages.data.at(-1)?.id;
   useEffect(() => {
     if (activeId) {
-      void messagingService.markRead(activeId);
+      void messagingService.markRead(activeId).catch(() => { /* Reconcile on the next refresh. */ });
     }
-  }, [activeId]);
+  }, [activeId, latestMessageId]);
 
   useEffect(() => {
     return () => {
@@ -215,9 +228,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
         <div className="border-b p-4">
           <h2 className="text-lg font-black">{t("messages.title")}</h2>
 
-          <p className="text-xs text-slate-500">
-            {t("messages.subtitle")}
-          </p>
+          <p className="text-xs text-slate-500">{t("messages.subtitle")}</p>
         </div>
 
         <div className="divide-y">
@@ -240,7 +251,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                   height={44}
                   unoptimized
                   className="size-11 shrink-0 rounded-full object-cover"
-                  alt={t("messages.avatar", { name: conversation.participant.name })}
+                  alt={t("messages.avatar", {
+                    name: conversation.participant.name,
+                  })}
                 />
 
                 <div className="min-w-0 flex-1">
@@ -250,12 +263,17 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <span className="shrink-0 text-[11px] text-slate-400">
-                      {formatConversationTimestamp(conversation.lastMessageAt, locale)}
+                      {formatConversationTimestamp(
+                        conversation.lastMessageAt,
+                        locale,
+                      )}
                     </span>
                   </div>
 
                   <p className="mt-1 truncate text-xs text-slate-500">
-                    {conversation.lastMessage === "📷 Photo" ? tr(conversation.lastMessage) : conversation.lastMessage}
+                    {conversation.lastMessage === "📷 Photo"
+                      ? tr(conversation.lastMessage)
+                      : conversation.lastMessage}
                   </p>
 
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -263,7 +281,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                       <span className="min-w-0 truncate text-[11px] font-semibold text-slate-400">
                         {conversation.listing.title}
                       </span>
-                    ) : <span />}
+                    ) : (
+                      <span />
+                    )}
 
                     {conversation.unread > 0 && (
                       <span className="grid size-5 shrink-0 place-items-center rounded-full bg-blue-700 text-[10px] font-black text-white">
@@ -276,6 +296,8 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
             </button>
           ))}
         </div>
+        {conversationPages.hasNextPage && <Button className="m-3" variant="outline" disabled={conversationPages.isFetchingNextPage} onClick={() => void conversationPages.fetchNextPage()}>{locale === "pt-BR" ? "Mais conversas" : "More conversations"}</Button>}
+        {conversationPages.isFetchNextPageError && <p role="alert" className="p-3 text-sm text-rose-700">{t("messages.loadError")}</p>}
       </aside>
 
       {/* Active conversation */}
@@ -391,12 +413,19 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
               {t("messages.safety")}
             </div>
 
+            {current.listing && (
+              <SafeMeetupSuggestions location={current.listing.location} />
+            )}
+
             {/* Messages */}
             <div
               className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3 sm:p-4"
               aria-live="polite"
             >
-              {messages.isLoading && <PageLoading label={t("messages.loadingThread")} />}
+              {messagePages.hasNextPage && <Button variant="outline" disabled={messagePages.isFetchingNextPage} onClick={() => void messagePages.fetchNextPage()}>{locale === "pt-BR" ? "Mensagens anteriores" : "Earlier messages"}</Button>}
+              {messages.isLoading && (
+                <PageLoading label={t("messages.loadingThread")} />
+              )}
 
               {messages.isError && (
                 <InlineError
@@ -423,7 +452,9 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                       <div className="p-1.5 pb-0">
                         <Image
                           src={message.attachment.url}
-                          alt={message.attachment.name || t("messages.sharedImage")}
+                          alt={
+                            message.attachment.name || t("messages.sharedImage")
+                          }
                           width={420}
                           height={320}
                           unoptimized
@@ -451,7 +482,11 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                         {message.sender === "me" && (
                           <CheckCheck
                             className="size-3"
-                            aria-label={message.read ? t("messages.read") : t("messages.sent")}
+                            aria-label={
+                              message.read
+                                ? t("messages.read")
+                                : t("messages.sent")
+                            }
                           />
                         )}
                       </div>
@@ -492,7 +527,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <p className="text-xs font-black text-blue-700">
-                      {formatBRL(current.listing.price)}
+                      {formatMoney(current.listing.price)}
                     </p>
                   </div>
                 </Link>
@@ -517,7 +552,11 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                     </p>
 
                     <p className="mt-1 text-[11px] text-slate-500">
-                      {new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(attachment.file.size / 1024 / 1024)} MB
+                      {new Intl.NumberFormat(
+                        locale === "pt-BR" ? "pt-BR" : "en-US",
+                        { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+                      ).format(attachment.file.size / 1024 / 1024)}{" "}
+                      MB
                     </p>
 
                     <p className="mt-1 text-[11px] font-medium text-emerald-700">

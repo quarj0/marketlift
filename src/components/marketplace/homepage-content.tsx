@@ -1,57 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   BadgeCheck,
-  BriefcaseBusiness,
-  Building2,
-  Car,
   ChevronRight,
   Flag,
-  Grid3X3,
-  Laptop,
-  Map as MapIcon,
   MapPin,
   ShieldCheck,
-  Shirt,
   ShoppingBag,
-  Smartphone,
-  Sofa,
-  Store,
-  Tractor,
-  Tv,
   UserCheck,
   Users,
-  Wrench,
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
+import { CategoryArtwork } from "@/components/categories/category-visual";
 import { ListingCard } from "@/components/listings/listing-card";
 import { SearchBar } from "@/components/search/search-bar";
 import { SellerCard } from "@/components/seller/seller-card";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/providers/locale-provider";
+import { useMarketplaceLocation } from "@/providers/marketplace-location-provider";
+import { useMarket } from "@/providers/market-provider";
 import { listingService } from "@/services/listing.service";
 import { marketplaceService } from "@/services/marketplace.service";
-import { sellerService } from "@/services/seller.service";
-import type { Category, Listing, Seller } from "@/types";
-
-const icons = {
-  Smartphone,
-  Tv,
-  Laptop,
-  Car,
-  Building2,
-  Map: MapIcon,
-  Sofa,
-  Shirt,
-  Wrench,
-  BriefcaseBusiness,
-  Tractor,
-  Store,
-  Grid3X3,
-};
+import type { Category, Listing } from "@/types";
 
 function SectionHeading({
   eyebrow,
@@ -127,12 +101,10 @@ function SellerSkeleton() {
 
 function ListingSection({
   listings,
-  sellers,
   loading,
   emptyMessage,
 }: {
   listings?: Listing[];
-  sellers?: Seller[];
   loading: boolean;
   emptyMessage: string;
 }) {
@@ -154,18 +126,10 @@ function ListingSection({
     );
   }
 
-  const sellerMap = new Map(
-    (sellers ?? []).map((seller) => [seller.id, seller]),
-  );
-
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       {listings.map((listing) => (
-        <ListingCard
-          key={listing.id}
-          listing={listing}
-          seller={sellerMap.get(listing.sellerId)}
-        />
+        <ListingCard key={listing.id} listing={listing} />
       ))}
     </div>
   );
@@ -199,15 +163,16 @@ function CategoryGrid({
   categories?: Category[];
   loading: boolean;
 }) {
-  const { categoryName } = useLocale();
+  const { categoryName, locale } = useLocale();
+  const [expanded, setExpanded] = useState(false);
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-        {Array.from({ length: 13 }).map((_, index) => (
+      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+        {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="min-h-28 animate-pulse rounded-2xl border bg-white"
+            className="min-h-40 animate-pulse rounded-2xl border bg-white"
           />
         ))}
       </div>
@@ -215,79 +180,93 @@ function CategoryGrid({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-      {categories?.map((category) => {
-        const Icon = icons[category.icon as keyof typeof icons] ?? Grid3X3;
-
+    <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+      {categories?.map((category, index) => {
         return (
           <Link
             key={category.id}
-            href={`/search?category=${category.id}`}
-            className="group flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border bg-white p-3 text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            href={`/category/${category.id}`}
+            className={`group min-w-0 overflow-hidden rounded-2xl border bg-white text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${!expanded && index >= 6 ? "hidden sm:block" : ""}`}
           >
-            <span className="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-700 transition group-hover:bg-brand-100">
-              <Icon className="size-5" />
-            </span>
+            <div className="h-24 overflow-hidden transition duration-300 group-hover:scale-105 sm:h-28">
+              <CategoryArtwork category={category} iconClassName="size-11 sm:size-12" />
+            </div>
 
-            <span className="text-xs font-bold text-slate-800 sm:text-sm">
-              {categoryName(category.id, category.name)}
-            </span>
+            <div className="p-3">
+              <span className="line-clamp-2 text-sm font-bold leading-5 text-slate-800">
+                {categoryName(category.id, category.name)}
+              </span>
+              {category.subcategories?.length ? (
+                <span className="mt-1 hidden text-[10px] leading-4 text-slate-500 2xl:line-clamp-1">
+                  {category.subcategories
+                    .slice(0, 3)
+                    .map((sub) => categoryName(sub.id, sub.name))
+                    .join(" · ")}
+                </span>
+              ) : null}
+            </div>
           </Link>
         );
       })}
+      {(categories?.length ?? 0) > 6 && <Button className="col-span-2 sm:hidden" variant="outline" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? (locale === "pt-BR" ? "Mostrar menos" : "Show fewer") : (locale === "pt-BR" ? "Todas as categorias" : "All categories")}</Button>}
     </div>
   );
 }
 
-export function HomepageContent() {
-  const { t } = useLocale();
+export function HomepageContent({
+  initialCategories = [],
+  initialFeed,
+}: {
+  initialCategories?: Category[];
+  initialFeed?: Awaited<ReturnType<typeof marketplaceService.getHomeFeed>>;
+}) {
+  const { t, locale } = useLocale();
+  const { market } = useMarket();
+  const { location } = useMarketplaceLocation();
 
   const categoriesQuery = useQuery({
-    queryKey: ["marketplace", "categories"],
+    // Same key as CategoryNav so React Query shares/deduplicates this request.
+    queryKey: ["categories"],
     queryFn: marketplaceService.getCategories,
+    initialData: initialCategories.length ? initialCategories : undefined,
+    staleTime: 5 * 60_000,
   });
 
-  const sellersQuery = useQuery({
-    queryKey: ["sellers"],
-    queryFn: () => sellerService.getVerified(),
-  });
-
-  const allSellersQuery = useQuery({
-    queryKey: ["sellers", "all"],
-    queryFn: sellerService.getSellers,
+  const homeFeedQuery = useQuery({
+    queryKey: ["marketplace", "home-feed", market.code],
+    queryFn: () => marketplaceService.getHomeFeed(market.code),
+    staleTime: 60_000,
+    initialData: market.code === "BR" ? initialFeed : undefined,
   });
 
   const nearbyQuery = useQuery({
-    queryKey: ["listings", "nearby", "SP"],
-    queryFn: () => listingService.getNearby("SP", 4),
-  });
-
-  const featuredQuery = useQuery({
-    queryKey: ["listings", "featured"],
-    queryFn: () => listingService.getFeatured(),
-  });
-
-  const recentQuery = useQuery({
-    queryKey: ["listings", "recent"],
-    queryFn: () => listingService.getRecent(4),
+    queryKey: [
+      "listings",
+      "nearby",
+      market.code,
+      location.stateCode,
+      location.city,
+      location.district ?? "",
+      location.latitude ?? null,
+      location.longitude ?? null,
+    ],
+    queryFn: () => listingService.getNearby(location, 4),
   });
 
   const sectionError =
     nearbyQuery.isError ||
-    featuredQuery.isError ||
-    recentQuery.isError ||
-    sellersQuery.isError ||
+    homeFeedQuery.isError ||
     categoriesQuery.isError;
 
   return (
-    <main className="overflow-hidden">
+    <main className="flex flex-col overflow-hidden">
       <section className="relative isolate overflow-hidden bg-ink-950 text-white">
         <div className="absolute inset-0 -z-10 opacity-25" aria-hidden="true">
           <div className="absolute -right-24 top-8 size-80 rounded-full bg-cyan-400 blur-3xl" />
           <div className="absolute -left-20 bottom-0 size-72 rounded-full bg-lift-400 blur-3xl" />
         </div>
 
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
           <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_.85fr]">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold backdrop-blur">
@@ -295,7 +274,7 @@ export function HomepageContent() {
                 {t("home.localBadge")}
               </span>
 
-              <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 max-w-4xl text-3xl font-black leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
                 {t("home.heroTitle")}
               </h1>
 
@@ -322,7 +301,7 @@ export function HomepageContent() {
 
                 <Link
                   className="hover:text-white"
-                  href="/search?category=properties"
+                  href="/category/property"
                 >
                   {t("category.properties")}
                 </Link>
@@ -343,16 +322,18 @@ export function HomepageContent() {
 
                     <div className="mt-4 grid grid-cols-3 gap-4">
                       <div>
-                        <p className="text-2xl font-black">13</p>
+                        <p className="text-2xl font-black">
+                          {categoriesQuery.data?.length ?? 0}
+                        </p>
                         <p className="text-xs text-slate-500">
                           {t("home.categoriesCount")}
                         </p>
                       </div>
 
                       <div>
-                        <p className="text-2xl font-black">9</p>
+                        <p className="text-2xl font-black">{market.code === "BR" ? 27 : "—"}</p>
                         <p className="text-xs text-slate-500">
-                          {t("home.regionsCount")}
+                          {locale === "pt-BR" ? "Estados e DF" : "States and DF"}
                         </p>
                       </div>
 
@@ -416,7 +397,7 @@ export function HomepageContent() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <section className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-14">
         <SectionHeading
           eyebrow={t("home.explore")}
           title={t("home.browseCategories")}
@@ -435,12 +416,25 @@ export function HomepageContent() {
         )}
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      {(nearbyQuery.isLoading || nearbyQuery.isError || Boolean(nearbyQuery.data?.length)) && <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <SectionHeading
-          eyebrow="São Paulo, SP"
+          eyebrow={`${location.city}, ${location.stateCode}`}
           title={t("home.nearbyTitle")}
           description={t("home.nearbyBody")}
-          href="/search?state=SP"
+          href={`/search?${new URLSearchParams({
+            state: location.stateCode,
+            city: location.city,
+            ...(location.district ? { district: location.district } : {}),
+            ...(Number.isFinite(location.latitude) &&
+            Number.isFinite(location.longitude)
+              ? {
+                  latitude: String(location.latitude),
+                  longitude: String(location.longitude),
+                  radiusKm: "25",
+                  sort: "distance",
+                }
+              : {}),
+          }).toString()}`}
           action={t("common.viewAll")}
         />
 
@@ -449,37 +443,35 @@ export function HomepageContent() {
         ) : (
           <ListingSection
             listings={nearbyQuery.data}
-            sellers={allSellersQuery.data}
-            loading={nearbyQuery.isLoading || allSellersQuery.isLoading}
+            loading={nearbyQuery.isLoading}
             emptyMessage={t("home.noNearby")}
           />
         )}
-      </section>
+      </section>}
 
-      <section className="bg-white py-12 lg:py-16">
+      {Boolean(homeFeedQuery.data?.featuredListings.length) && <section className="bg-white py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow={t("home.premium")}
             title={t("home.featured")}
             description={t("home.featuredBody")}
-            href="/search?featured=true"
+            href="/search"
             action={t("home.seeFeatured")}
           />
 
-          {featuredQuery.isError ? (
-            <ErrorCard onRetry={() => featuredQuery.refetch()} />
+          {homeFeedQuery.isError ? (
+            <ErrorCard onRetry={() => homeFeedQuery.refetch()} />
           ) : (
             <ListingSection
-              listings={featuredQuery.data}
-              sellers={allSellersQuery.data}
-              loading={featuredQuery.isLoading || allSellersQuery.isLoading}
+              listings={homeFeedQuery.data?.featuredListings}
+              loading={homeFeedQuery.isLoading}
               emptyMessage={t("home.noFeatured")}
             />
           )}
         </div>
-      </section>
+      </section>}
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <SectionHeading
           eyebrow={t("home.justIn")}
           title={t("home.recent")}
@@ -488,49 +480,54 @@ export function HomepageContent() {
           action={t("home.browseNewest")}
         />
 
-        {recentQuery.isError ? (
-          <ErrorCard onRetry={() => recentQuery.refetch()} />
+        {homeFeedQuery.isError ? (
+          <ErrorCard onRetry={() => homeFeedQuery.refetch()} />
         ) : (
           <ListingSection
-            listings={recentQuery.data}
-            sellers={allSellersQuery.data}
-            loading={recentQuery.isLoading || allSellersQuery.isLoading}
-            emptyMessage={t("home.noRecent")}
+            listings={homeFeedQuery.data?.recentListings}
+            loading={homeFeedQuery.isLoading}
+            emptyMessage={locale === "pt-BR" ? "Ainda não há anúncios aqui. Publique o primeiro ou salve uma busca para receber novidades." : "No listings here yet. Post the first or save a search to hear about new arrivals."}
           />
         )}
+        {homeFeedQuery.isSuccess && !homeFeedQuery.data.recentListings.length && <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Button asChild><Link href="/selling/listings/new">{locale === "pt-BR" ? "Publicar anúncio" : "Post a listing"}</Link></Button>
+          <Button asChild variant="outline"><Link href="/search">{locale === "pt-BR" ? "Criar uma busca" : "Create a search"}</Link></Button>
+        </div>}
       </section>
 
-      <section className="border-y bg-slate-100/70 py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            eyebrow={t("home.trusted")}
-            title={t("home.verifiedSellers")}
-            description={t("home.verifiedSellersBody")}
-            href="/search?verifiedOnly=true"
-            action={t("home.viewListings")}
-          />
+      {(homeFeedQuery.data?.verifiedSellers.length ?? 0) > 0 && (
+        <section className="border-y bg-slate-100/70 py-12 lg:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <SectionHeading
+              eyebrow={t("home.trusted")}
+              title={t("home.verifiedSellers")}
+              description={t("home.verifiedSellersBody")}
+              href="/search?verifiedOnly=true"
+              action={t("home.viewListings")}
+            />
 
-          {sellersQuery.isError ? (
-            <ErrorCard onRetry={() => sellersQuery.refetch()} />
-          ) : sellersQuery.isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <SellerSkeleton key={index} />
-              ))}
-            </div>
-          ) : sellersQuery.data?.length ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sellersQuery.data.map((seller) => (
-                <SellerCard key={seller.id} seller={seller} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed bg-white p-10 text-center text-sm text-slate-500">
-              {t("home.noVerified")}
-            </div>
-          )}
-        </div>
-      </section>
+            {homeFeedQuery.isError ? (
+              <ErrorCard onRetry={() => homeFeedQuery.refetch()} />
+            ) : homeFeedQuery.isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <SellerSkeleton key={index} />
+                ))}
+              </div>
+            ) : homeFeedQuery.data?.verifiedSellers.length ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {homeFeedQuery.data.verifiedSellers.map((seller) => (
+                  <SellerCard key={seller.id} seller={seller} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed bg-white p-10 text-center text-sm text-slate-500">
+                {t("home.noVerified")}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="bg-ink-950 py-14 text-white lg:py-20">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:px-8">

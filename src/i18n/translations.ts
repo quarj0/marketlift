@@ -1,5 +1,6 @@
 import type { Locale } from "./config";
 import { catalogPtBR, extraEn, extraPtBR } from "./extra-translations";
+import { categoryPtBR } from "./category-translations";
 
 type Dictionary = Record<string, string>;
 
@@ -30,6 +31,8 @@ const en: Dictionary = {
 
   "categories.title": "Categories",
   "categories.more": "More",
+  "categories.all": "All {category}",
+  "categories.navigation": "Marketplace categories",
   "category.phones": "Mobile Phones",
   "category.electronics": "Electronics",
   "category.computers": "Computers",
@@ -52,7 +55,12 @@ const en: Dictionary = {
   "location.dialogTitle": "Choose your location",
   "location.dialogDescription": "See listings closer to you.",
   "location.close": "Close location selector",
-  "location.useMine": "Use my location",
+  "location.useMine": "Use my current location",
+  "location.locating": "Finding your location…",
+  "location.denied": "Location access was denied. You can choose a location manually instead.",
+  "location.failed": "We couldn’t determine your location. Please try again or choose it manually.",
+  "location.unavailable": "Location services are not available in this browser.",
+  "location.notInBrazil": "We couldn’t match your current location to a place in Brazil. Choose a location manually.",
   "location.search": "Search state or city",
   "location.recent": "Recent locations",
   "location.suggestions": "Suggestions",
@@ -129,11 +137,25 @@ const en: Dictionary = {
   "footer.createAccount": "Create account",
   "footer.safetyTips": "Safety tips",
   "footer.helpCenter": "Help center",
+  "footer.about": "About Marketlift",
   "footer.reportProblem": "Report a problem",
   "footer.terms": "Terms of use",
   "footer.privacy": "Privacy",
   "footer.rights": "© 2026 Marketlift · K&C. All rights reserved.",
   "footer.region": "Brazil · R$ BRL",
+
+  "about.title": "About Marketlift Brazil",
+  "about.introduction":
+    "Marketlift is a Brazilian online marketplace where people and businesses publish and discover local classified listings.",
+  "about.marketplaceTitle": "A marketplace built for Brazil",
+  "about.marketplaceBody":
+    "Marketlift helps buyers find vehicles, property, phones, electronics, fashion and everyday items from sellers across Brazil. Search and location tools make relevant local listings easier to discover.",
+  "about.howTitle": "How Marketlift works",
+  "about.howBody":
+    "Sellers publish listings and interested buyers contact them through the marketplace. Buyers and sellers arrange product payment and delivery directly; Marketlift does not hold product payments or provide escrow.",
+  "about.identityTitle": "What the Marketlift name represents",
+  "about.identityBody":
+    "Marketlift Brazil is a local classified-listings marketplace at marketlift.com.br. It is not an advertising analytics or campaign-measurement service.",
 
   "account.menu": "Account menu",
   "account.overview": "Overview",
@@ -212,6 +234,8 @@ const ptBR: Dictionary = {
 
   "categories.title": "Categorias",
   "categories.more": "Mais",
+  "categories.all": "Todos em {category}",
+  "categories.navigation": "Categorias do marketplace",
   "category.phones": "Celulares",
   "category.electronics": "Eletrônicos",
   "category.computers": "Computadores",
@@ -234,7 +258,12 @@ const ptBR: Dictionary = {
   "location.dialogTitle": "Escolha sua localização",
   "location.dialogDescription": "Veja anúncios mais perto de você.",
   "location.close": "Fechar seletor de localização",
-  "location.useMine": "Usar minha localização",
+  "location.useMine": "Usar minha localização atual",
+  "location.locating": "Localizando você…",
+  "location.denied": "O acesso à localização foi negado. Você pode escolher uma localização manualmente.",
+  "location.failed": "Não foi possível determinar sua localização. Tente novamente ou escolha manualmente.",
+  "location.unavailable": "Os serviços de localização não estão disponíveis neste navegador.",
+  "location.notInBrazil": "Não foi possível associar sua localização atual a um local no Brasil. Escolha manualmente.",
   "location.search": "Buscar estado ou cidade",
   "location.recent": "Localizações recentes",
   "location.suggestions": "Sugestões",
@@ -311,11 +340,25 @@ const ptBR: Dictionary = {
   "footer.createAccount": "Criar conta",
   "footer.safetyTips": "Dicas de segurança",
   "footer.helpCenter": "Central de ajuda",
+  "footer.about": "Sobre o Marketlift",
   "footer.reportProblem": "Denunciar um problema",
   "footer.terms": "Termos de uso",
   "footer.privacy": "Privacidade",
   "footer.rights": "© 2026 Marketlift · K&C. Todos os direitos reservados.",
   "footer.region": "Brasil · R$ BRL",
+
+  "about.title": "Sobre o Marketlift Brasil",
+  "about.introduction":
+    "O Marketlift é um marketplace online brasileiro onde pessoas e empresas publicam e descobrem anúncios classificados locais.",
+  "about.marketplaceTitle": "Um marketplace feito para o Brasil",
+  "about.marketplaceBody":
+    "O Marketlift ajuda compradores a encontrar veículos, imóveis, celulares, eletrônicos, moda e itens do dia a dia anunciados por vendedores em todo o Brasil. As ferramentas de busca e localização facilitam a descoberta de anúncios relevantes por perto.",
+  "about.howTitle": "Como o Marketlift funciona",
+  "about.howBody":
+    "Os vendedores publicam anúncios e os compradores interessados entram em contato pelo marketplace. Compradores e vendedores combinam diretamente o pagamento e a entrega dos produtos; o Marketlift não recebe pagamentos de produtos nem oferece custódia (escrow).",
+  "about.identityTitle": "O que o nome Marketlift representa",
+  "about.identityBody":
+    "O Marketlift Brasil é um marketplace de anúncios classificados locais disponível em marketlift.com.br. Não é um serviço de análise de publicidade nem de mensuração de campanhas.",
 
   "account.menu": "Menu da conta",
   "account.overview": "Visão geral",
@@ -365,6 +408,7 @@ const ptBR: Dictionary = {
   "settings.save": "Salvar configurações",
 
   ...extraPtBR,
+  ...categoryPtBR,
 };
 
 

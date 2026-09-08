@@ -22,7 +22,7 @@ export function ListingAvailabilityReport({ listingId }: { listingId: string }) 
         targetType: "listing",
         targetId: listingId,
         reporter: user?.id ?? "current-user",
-        reason: "incorrect_info",
+        reason: "unavailable",
         description:
           "Buyer reported that the seller said this item is no longer available.",
       }),

@@ -3,8 +3,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { messagingService } from '@/services/messaging.service';
 import { resolveApiUrl } from '@/lib/api-client';
-import { mapNotification } from '@/lib/api-mappers';
+import { mapNotification, type ApiNotification } from '@/lib/api-mappers';
 import { realtimeClient, type RealtimeEvent } from '@/lib/realtime-client';
 import { useAuth } from '@/providers/auth-provider';
 import type { Conversation, Message, NotificationItem } from '@/types';
@@ -21,7 +22,21 @@ const RealtimeContext = createContext<RealtimeContextValue>({
   unreadNotificationCount: 0,
 });
 
-function mapRealtimeMessage(raw: any, userId: string): Message {
+type RealtimeMessagePayload = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text?: string | null;
+  createdAt: string;
+  attachment?: {
+    url: string;
+    name?: string | null;
+    mimeType?: string | null;
+    size?: number | null;
+  } | null;
+};
+
+function mapRealtimeMessage(raw: RealtimeMessagePayload, userId: string): Message {
   return {
     id: String(raw.id),
     conversationId: String(raw.conversationId),
@@ -41,6 +56,27 @@ function mapRealtimeMessage(raw: any, userId: string): Message {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRealtimeMessage(value: unknown): value is RealtimeMessagePayload {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.conversationId === 'string'
+    && typeof value.senderId === 'string'
+    && typeof value.createdAt === 'string';
+}
+
+function isNotification(value: unknown): value is ApiNotification {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.type === 'string'
+    && typeof value.title === 'string'
+    && typeof value.body === 'string'
+    && typeof value.createdAt === 'string';
+}
+
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { user, hydrated } = useAuth();
   const queryClient = useQueryClient();
@@ -51,23 +87,31 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated || !user) {
       realtimeClient.disconnect();
-      setConnected(false);
-      setUnreadMessageCount(0);
-      setUnreadNotificationCount(0);
-      return;
+      const frame = window.requestAnimationFrame(() => {
+        setConnected(false);
+        setUnreadMessageCount(0);
+        setUnreadNotificationCount(0);
+      });
+      return () => window.cancelAnimationFrame(frame);
     }
 
     const handleEvent = (event: RealtimeEvent) => {
       const data = event.data || {};
 
+      if (['realtime.ready', 'message.created', 'conversation.read'].includes(event.type)) {
+        void queryClient.invalidateQueries({ queryKey: ['messages'] });
+        void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        void queryClient.invalidateQueries({ queryKey: ['conversation'] });
+      }
       if (event.type === 'realtime.ready') {
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
         setConnected(true);
         setUnreadMessageCount(Number(data.unreadMessageCount || 0));
         setUnreadNotificationCount(Number(data.unreadNotificationCount || 0));
         return;
       }
 
-      if (event.type === 'message.created' && data.message) {
+      if (event.type === 'message.created' && isRealtimeMessage(data.message)) {
         const next = mapRealtimeMessage(data.message, user.id);
         queryClient.setQueryData<Message[]>(['messages', next.conversationId], (current) => {
           if (!current) return current;
@@ -99,7 +143,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (event.type === 'notification.created' && data.notification) {
+      if (event.type === 'notification.created' && isNotification(data.notification)) {
         const notification = mapNotification(data.notification);
         queryClient.setQueryData<NotificationItem[]>(['notifications'], (current) => {
           if (!current) return current;
@@ -138,9 +182,29 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = realtimeClient.subscribe(handleEvent);
     realtimeClient.connect();
+    let disposed = false;
+    const reconcile = async () => {
+      if (realtimeClient.connected || document.visibilityState === 'hidden') return;
+      try {
+        const counts = await messagingService.unreadCounts();
+        if (disposed) return;
+        setUnreadMessageCount(counts.unreadMessageCount);
+        setUnreadNotificationCount(counts.unreadNotificationCount);
+        for (const key of ['messages', 'conversations', 'conversation', 'notifications']) {
+          void queryClient.invalidateQueries({ queryKey: [key] });
+        }
+      } catch { /* Visible queries retain their retry state during outages. */ }
+    };
+    void reconcile();
+    const fallbackPoll = window.setInterval(() => void reconcile(), 30_000);
+    document.addEventListener('visibilitychange', reconcile);
     const connectionPoll = window.setInterval(() => setConnected(realtimeClient.connected), 1500);
 
     return () => {
+      disposed = true;
+      realtimeClient.disconnect();
+      window.clearInterval(fallbackPoll);
+      document.removeEventListener('visibilitychange', reconcile);
       unsubscribe();
       window.clearInterval(connectionPoll);
     };
