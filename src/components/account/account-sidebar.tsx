@@ -8,6 +8,7 @@ import {
   Heart,
   Home,
   MessageCircle,
+  PackageCheck,
   Settings,
   Star,
   Store,
@@ -44,6 +45,11 @@ export function AccountSidebar() {
       [
         ["/account", t("account.overview"), Home],
         ["/account/profile", t("account.profile"), User],
+        [
+          "/account/orders",
+          locale === "pt-BR" ? "Meus pedidos" : "My orders",
+          PackageCheck,
+        ],
         ["/account/saved", t("account.saved"), Heart],
         ["/messages", t("nav.messages"), MessageCircle],
         ["/account/reviews", t("account.reviews"), Star],

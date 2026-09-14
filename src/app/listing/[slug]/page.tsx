@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { ListingDetailsClient } from "@/components/listings/listing-details-client";
+import { ListingCommerceActions } from "@/components/commerce/listing-commerce-actions";
 import { publicListing } from "@/lib/public-data";
 import { marketService, type MarketProfile } from "@/services/market.service";
 
@@ -212,6 +213,9 @@ async function ListingContent({ params }: ListingPageProps) {
         />
       )}
       <ListingDetailsClient slug={slug} initialListing={listing} />
+      {listing && (
+        <ListingCommerceActions listingId={listing.id} price={listing.price} />
+      )}
     </>
   );
 }

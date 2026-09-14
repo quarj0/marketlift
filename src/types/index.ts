@@ -23,6 +23,7 @@ export interface Location {
  */
 export interface UserSellerProfile {
   sellerId: string;
+  sellerType?: SellerType;
   sellerVerified?: boolean;
   activatedAt: string;
   verified: boolean;
