@@ -25,10 +25,10 @@ function Configurator({ listing, policy, commerce }: { listing: SellerListing; p
   const [shipping, setShipping] = useState(commerce.fulfillmentMethods.includes("shipping"));
   const [localDelivery, setLocalDelivery] = useState(commerce.fulfillmentMethods.includes("local_delivery"));
   const [pickup, setPickup] = useState(commerce.fulfillmentMethods.includes("pickup"));
-  const [weight, setWeight] = useState("");
-  const [length, setLength] = useState("");
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState(String(commerce.packageWeightGrams ?? ""));
+  const [length, setLength] = useState(String(commerce.packageLengthCm ?? ""));
+  const [width, setWidth] = useState(String(commerce.packageWidthCm ?? ""));
+  const [height, setHeight] = useState(String(commerce.packageHeightCm ?? ""));
 
   const save = useMutation({
     mutationFn: () => commerceService.configureListing({
@@ -92,7 +92,18 @@ function ListingCommerceCard({ listing }: { listing: SellerListing }) {
   const commerceQuery = useQuery({ queryKey: ["seller-commerce", listing.id], queryFn: () => commerceService.getListingCommerce(listing.id) });
   if (policyQuery.isLoading || commerceQuery.isLoading) return <div className="h-48 animate-pulse rounded-3xl border bg-white" />;
   if (!policyQuery.data || !commerceQuery.data) return <div className="rounded-3xl border bg-white p-5 text-sm text-slate-500">{locale === "pt-BR" ? "Não foi possível carregar a política deste anúncio." : "The policy for this listing could not be loaded."}</div>;
-  return <Configurator key={`${listing.id}:${commerceQuery.data.stockQuantity}:${commerceQuery.data.fulfillmentMethods.join(",")}:${commerceQuery.data.checkoutEnabled}`} listing={listing} policy={policyQuery.data} commerce={commerceQuery.data} />;
+  const commerce = commerceQuery.data;
+  const configKey = [
+    listing.id,
+    commerce.stockQuantity,
+    commerce.fulfillmentMethods.join(","),
+    commerce.checkoutEnabled,
+    commerce.packageWeightGrams ?? "",
+    commerce.packageLengthCm ?? "",
+    commerce.packageWidthCm ?? "",
+    commerce.packageHeightCm ?? "",
+  ].join(":");
+  return <Configurator key={configKey} listing={listing} policy={policyQuery.data} commerce={commerce} />;
 }
 
 export default function OnlineSalesPage() {
