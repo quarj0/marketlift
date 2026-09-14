@@ -13,6 +13,10 @@ export type ListingCommerce = {
   reasons: string[];
   requiresVerifiedSeller: boolean;
   maxCheckoutValueCents?: number | null;
+  packageWeightGrams?: number | null;
+  packageLengthCm?: number | null;
+  packageWidthCm?: number | null;
+  packageHeightCm?: number | null;
 };
 
 export type CheckoutQuote = {
@@ -117,6 +121,7 @@ export const commerceService = {
         listingCommerce(listingId: $listingId) {
           mode checkoutEnabled inspectionAllowed stockQuantity fulfillmentMethods reasons
           requiresVerifiedSeller maxCheckoutValueCents
+          packageWeightGrams packageLengthCm packageWidthCm packageHeightCm
         }
       }
     `, { listingId });
