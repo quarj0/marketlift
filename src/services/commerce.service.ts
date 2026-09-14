@@ -15,6 +15,16 @@ export type ListingCommerce = {
   maxCheckoutValueCents?: number | null;
 };
 
+export type CheckoutQuote = {
+  listingId: string;
+  fulfillmentMethod: FulfillmentMethod;
+  quantity: number;
+  subtotalCents: number;
+  shippingAmountCents: number;
+  totalCents: number;
+  currency: string;
+};
+
 export type CategoryCommercePolicy = {
   categoryId: string;
   mode: CommerceMode;
@@ -113,6 +123,17 @@ export const commerceService = {
     return data.listingCommerce;
   },
 
+  async getCheckoutQuote(listingId: string, fulfillmentMethod: FulfillmentMethod, quantity = 1) {
+    const data = await graphqlRequest<{ commerceCheckoutQuote: CheckoutQuote }>(`
+      query CommerceCheckoutQuote($listingId:String!,$fulfillmentMethod:String!,$quantity:Int!){
+        commerceCheckoutQuote(listingId:$listingId,fulfillmentMethod:$fulfillmentMethod,quantity:$quantity){
+          listingId fulfillmentMethod quantity subtotalCents shippingAmountCents totalCents currency
+        }
+      }
+    `, { listingId, fulfillmentMethod, quantity });
+    return data.commerceCheckoutQuote;
+  },
+
   async getCategoryPolicy(categoryId: string) {
     const data = await graphqlRequest<{ categoryCommercePolicy: CategoryCommercePolicy }>(`
       query CategoryCommercePolicy($categoryId: String!) {
@@ -131,6 +152,7 @@ export const commerceService = {
     paymentMethod: CommercePaymentMethod;
     customerDocument: string;
     customerPhone: string;
+    idempotencyKey: string;
     quantity?: number;
     shippingAddress?: Record<string, unknown>;
     cardId?: string;
@@ -159,7 +181,7 @@ export const commerceService = {
           cardId: $cardId
         ) { order { ${ORDER_FIELDS} } }
       }
-    `, { ...input, quantity: input.quantity ?? 1, idempotencyKey: crypto.randomUUID() });
+    `, { ...input, quantity: input.quantity ?? 1 });
     return data.createCommerceCheckout.order;
   },
 
@@ -200,10 +222,10 @@ export const commerceService = {
     return body.id;
   },
 
-  async getMyOrders() {
+  async getMyOrders(offset = 0, limit = 100) {
     const data = await graphqlRequest<{ myOrders: CommerceOrder[] }>(`
-      query MyOrders { myOrders(limit: 100) { ${ORDER_FIELDS} } }
-    `);
+      query MyOrders($offset:Int!,$limit:Int!) { myOrders(offset:$offset,limit:$limit) { ${ORDER_FIELDS} } }
+    `, { offset, limit });
     return data.myOrders || [];
   },
 
@@ -240,10 +262,10 @@ export const commerceService = {
     return data.mySellerWallet;
   },
 
-  async getSellerOrders() {
+  async getSellerOrders(offset = 0, limit = 50) {
     const data = await graphqlRequest<{ mySellerOrders: CommerceOrder[] }>(`
-      query SellerOrders { mySellerOrders(limit: 100) { ${ORDER_FIELDS} } }
-    `);
+      query SellerOrders($offset:Int!,$limit:Int!) { mySellerOrders(offset:$offset,limit:$limit) { ${ORDER_FIELDS} } }
+    `, { offset, limit });
     return data.mySellerOrders || [];
   },
 
