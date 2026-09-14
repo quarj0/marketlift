@@ -11,7 +11,8 @@ function requiresAuthentication(pathname: string) {
     pathname.startsWith("/account") ||
     pathname.startsWith("/messages") ||
     pathname.startsWith("/notifications") ||
-    pathname.startsWith("/selling")
+    pathname.startsWith("/selling") ||
+    pathname.startsWith("/checkout")
   );
 }
 
@@ -68,20 +69,11 @@ export function AccessController({ children }: { children: React.ReactNode }) {
     if (requiresSellingCapability(pathname) && !canSell) {
       router.replace(`/selling/start?returnTo=${encodeURIComponent(pathname)}`);
     }
-  }, [
-    authReady,
-    authRequired,
-    canSell,
-    isAuthenticated,
-    pathname,
-    router,
-  ]);
+  }, [authReady, authRequired, canSell, isAuthenticated, pathname, router]);
 
   if (!authRequired) return <>{children}</>;
   if (!authReady) return <AccessLoading />;
 
-  // Never show an intermediary auth/signup card. While the client router
-  // performs the redirect, retain only the neutral loading state.
   if (!isAuthenticated) return <AccessLoading />;
 
   if (requiresSellingCapability(pathname) && !canSell) {
