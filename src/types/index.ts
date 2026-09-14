@@ -23,6 +23,7 @@ export interface Location {
  */
 export interface UserSellerProfile {
   sellerId: string;
+  sellerType?: SellerType;
   sellerVerified?: boolean;
   activatedAt: string;
   verified: boolean;
@@ -158,220 +159,26 @@ export interface SearchFilters {
   sort?: "relevant" | "newest" | "price_asc" | "price_desc" | "distance";
 }
 
-/**
- * Listings normally publish immediately after automated validation.
- * `under_review` is exceptional and should only be used when risk signals,
- * reports, or category rules require additional moderation.
- */
-export type ListingStatus =
-  | "draft"
-  | "published"
-  | "paused"
-  | "sold"
-  | "expired"
-  | "under_review"
-  | "rejected"
-  | "removed";
+export type SearchSort = NonNullable<SearchFilters["sort"]>;
+
+export interface SearchResult {
+  id: string;
+  slug: string;
+  title: string;
+  price: number;
+  currency?: string;
+  image: string;
+  condition?: ListingCondition;
+  location: Location;
+  sellerVerified?: boolean;
+  createdAt: string;
+  featured?: boolean;
+  urgent?: boolean;
+  distanceKm?: number;
+}
 
 export interface SellerListing extends Listing {
-  status: ListingStatus;
-  inquiries: number;
-  favorites: number;
-}
-
-export interface AccountProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  avatar?: string;
-  bio?: string;
-  location: Location;
-  memberSince: string;
-  emailVerified: boolean;
-  phoneVerified: boolean;
-}
-
-export interface AccountSettings {
-  language: "en" | "pt-BR";
-  currency: string;
-  emailMessages: boolean;
-  emailListingUpdates: boolean;
-  emailRecommendations: boolean;
-  pushMessages: boolean;
-  pushListingUpdates: boolean;
-  marketingEmails: boolean;
-  showPhoneToSellers: boolean;
-  showOnlineStatus: boolean;
-}
-
-export interface AccountReview extends Review {
-  sellerName: string;
-  sellerAvatar?: string;
-  listingTitle?: string;
-}
-
-export interface AccountOverview {
-  savedCount: number;
-  unreadMessages: number;
-  reviewsCount: number;
-  recentlyViewed: Listing[];
-  savedListings: Listing[];
-}
-
-export interface SellingDashboardData {
-  active: number;
-  drafts: number;
-  underReview: number;
-  views: number;
-  messages: number;
-  plan: { name: string; used: number; limit: number };
-  recentListings: SellerListing[];
-}
-
-export type BillingCycle = "monthly" | "yearly";
-export type PaymentMethod =
-  | "pix"
-  | "card"
-  | "boleto"
-  | "mobile_money"
-  | "bank_transfer"
-  | "ussd"
-  | "eft";
-export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
-
-export interface SellerPlan {
-  id: string;
-  name: string;
-  countryCode?: string;
-  currency?: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
-  listingLimit: number;
-  promotionCredits: number;
-  features: string[];
-  visibilityWeight: number;
-  recommended?: boolean;
-}
-
-export interface Payment {
-  id: string;
-  currency?: string;
-  provider?: string;
-  purpose: "subscription" | "promotion";
-  amount: number;
-  method: PaymentMethod;
-  status: PaymentStatus;
-  createdAt: string;
-  reference: string;
-  checkoutData?: Record<string, string>;
-  planId?: string;
-  billingCycle?: BillingCycle;
-  listingId?: string;
-  promotionId?: string;
-}
-
-export type PromotionType = "featured" | "top_search" | "urgent" | "homepage";
-
-export interface PromotionOption {
-  id: PromotionType;
-  name: string;
-  description: string;
-  countryCode?: string;
-  currency?: string;
-  durationDays: number;
-  price: number;
-}
-
-export interface Conversation {
-  id: string;
-  participant: Seller;
-  listing?: Listing;
-  lastMessage: string;
-  lastMessageAt: string;
-  unread: number;
-}
-
-export interface MessageAttachment {
-  type: "image";
-  url: string;
-  name: string;
-  mimeType: string;
-  size: number;
-}
-
-export interface Message {
-  id: string;
-  conversationId: string;
-  sender: "me" | "seller";
-  text: string;
-  createdAt: string;
-  read: boolean;
-  attachment?: MessageAttachment;
-}
-
-export interface SendMessagePayload {
-  text?: string;
-  image?: File;
-}
-
-export interface VerificationSubmission {
-  id: string;
-  countryCode?: string;
-  identityType?: string;
-  identityMasked: string;
-  cpfMasked?: string;
-  fullName: string;
-  birthDate: string;
-  status: VerificationStatus;
-  submittedAt: string;
-  providerResult?: string;
-  riskFlags: string[];
-}
-
-export interface Review {
-  id: string;
-  sellerId: string;
-  reviewerName: string;
-  rating: number;
-  comment: string;
-  date: string;
-  sellerReply?: string;
-}
-
-export interface NotificationItem {
-  id: string;
-  type:
-    | "message"
-    | "listing"
-    | "subscription"
-    | "payment"
-    | "review"
-    | "verification";
-  title: string;
-  body: string;
-  createdAt: string;
-  read: boolean;
-  href?: string;
-}
-
-export type ReportReason =
-  | "fraud"
-  | "fake_listing"
-  | "incorrect_info"
-  | "prohibited"
-  | "offensive"
-  | "duplicate"
-  | "unavailable"
-  | "other";
-
-export interface MarketplaceReport {
-  id: string;
-  targetType: "listing" | "seller" | "message";
-  targetId: string;
-  reporter: string;
-  reason: ReportReason;
-  description: string;
-  createdAt: string;
-  status: "open" | "dismissed" | "actioned";
+  status: "draft" | "published" | "paused" | "sold" | "expired" | "under_review" | "rejected" | "removed";
+  favorites?: number;
+  inquiries?: number;
 }
