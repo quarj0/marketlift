@@ -11,11 +11,23 @@ export type PendingRegistration = {
 };
 
 type SessionResponse = { authenticated: boolean; user: ApiUser | null };
+type SessionSellerProfile = NonNullable<ApiUser['sellerProfile']> & {
+  sellerType?: 'individual' | 'business' | string;
+};
+
+function mapAuthUser(raw: ApiUser): User {
+  const user = mapUser(raw);
+  const rawSeller = raw.sellerProfile as SessionSellerProfile | null | undefined;
+  if (user.sellerProfile && rawSeller?.sellerType) {
+    user.sellerProfile.sellerType = rawSeller.sellerType === 'business' ? 'business' : 'individual';
+  }
+  return user;
+}
 
 export const authService = {
   async getSession(): Promise<User | null> {
     const response = await apiRequest<SessionResponse>('/api/v1/auth/session/');
-    return response.authenticated && response.user ? mapUser(response.user) : null;
+    return response.authenticated && response.user ? mapAuthUser(response.user) : null;
   },
 
   async login(input: { emailOrPhone: string; password: string }) {
@@ -24,7 +36,7 @@ export const authService = {
       json: input,
       csrf: true,
     });
-    return mapUser(response.user);
+    return mapAuthUser(response.user);
   },
 
   async register(input: {
@@ -56,7 +68,7 @@ export const authService = {
       json: { userId: pending.id, code },
       csrf: true,
     });
-    return { success: response.success, user: response.user ? mapUser(response.user) : null };
+    return { success: response.success, user: response.user ? mapAuthUser(response.user) : null };
   },
 
   async activateSelling() {
