@@ -32,7 +32,7 @@ export function ListingCommerceActions({
     : `/login?returnTo=${encodeURIComponent(`/checkout/${listingId}`)}`;
 
   return (
-    <aside className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-2xl border border-brand-200 bg-white/95 p-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-96 sm:p-4">
+    <aside className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-2xl border border-brand-200 bg-white/95 p-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-96 sm:p-4">
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
           <ShoppingBag className="size-5" aria-hidden="true" />
