@@ -53,12 +53,13 @@ export function SellingSidebar() {
   const { paymentsEnabledForMarket, identityVerificationEnabledForMarket } =
     useMarket();
   const paymentsEnabled = paymentsEnabledForMarket(user?.countryCode);
+  const commerceEnabled = user?.countryCode === "BR" && paymentsEnabled;
   const identityVerificationEnabled = identityVerificationEnabledForMarket(
     user?.countryCode,
   );
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const items = useMemo(
     () =>
@@ -66,8 +67,16 @@ export function SellingSidebar() {
         ["/selling", t("selling.menu.overview"), BarChart3],
         ["/selling/listings", t("selling.menu.listings"), FileText],
         ["/selling/listings/new", t("selling.menu.add"), PlusCircle],
-        ["/selling/online-sales", "Vendas online", ShoppingBag],
-        ["/selling/orders", "Pedidos online", PackageCheck],
+        [
+          "/selling/online-sales",
+          locale === "pt-BR" ? "Vendas online" : "Online sales",
+          ShoppingBag,
+        ],
+        [
+          "/selling/orders",
+          locale === "pt-BR" ? "Pedidos online" : "Online orders",
+          PackageCheck,
+        ],
         ["/messages", t("selling.menu.messages"), MessageCircle],
         ["/selling/plan", t("selling.menu.plan"), Store],
         ["/selling/verification", t("selling.menu.verification"), BadgeCheck],
@@ -76,11 +85,15 @@ export function SellingSidebar() {
         ["/selling/profile", t("selling.menu.profile"), UserRound],
         ["/selling/settings", t("selling.menu.settings"), Settings],
       ] as const,
-    [t],
+    [locale, t],
   );
 
   const current = items.find(([href]) => isActive(pathname, href)) ?? items[0];
   const CurrentIcon = current[2];
+  const isUpcoming = (href: string) =>
+    (!paymentsEnabled && ["/selling/plan", "/selling/payments"].includes(href)) ||
+    (!commerceEnabled && ["/selling/online-sales", "/selling/orders"].includes(href)) ||
+    (!identityVerificationEnabled && href === "/selling/verification");
 
   return (
     <>
@@ -119,11 +132,7 @@ export function SellingSidebar() {
         <nav className="space-y-1">
           {items.map(([href, label, Icon]) => {
             const active = isActive(pathname, href);
-            const upcoming =
-              (!paymentsEnabled &&
-                ["/selling/plan", "/selling/payments"].includes(href)) ||
-              (!identityVerificationEnabled &&
-                href === "/selling/verification");
+            const upcoming = isUpcoming(href);
             return (
               <Link
                 key={href}
@@ -182,11 +191,7 @@ export function SellingSidebar() {
           >
             {items.map(([href, label, Icon]) => {
               const active = isActive(pathname, href);
-              const upcoming =
-                (!paymentsEnabled &&
-                  ["/selling/plan", "/selling/payments"].includes(href)) ||
-                (!identityVerificationEnabled &&
-                  href === "/selling/verification");
+              const upcoming = isUpcoming(href);
               return (
                 <Link
                   key={href}
