@@ -29,7 +29,7 @@ export function ListingCommerceActions({
 
   const checkoutHref = isAuthenticated
     ? `/checkout/${listingId}`
-    : `/login?next=${encodeURIComponent(`/checkout/${listingId}`)}`;
+    : `/login?returnTo=${encodeURIComponent(`/checkout/${listingId}`)}`;
 
   return (
     <aside className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-2xl border border-brand-200 bg-white/95 p-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-96 sm:p-4">
