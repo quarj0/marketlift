@@ -21,10 +21,10 @@ function Configurator({ listing, policy, commerce }: { listing: SellerListing; p
   const { formatMoney } = useMarket();
   const { locale } = useLocale();
   const [enabled, setEnabled] = useState(commerce.checkoutEnabled || commerce.reasons.includes("seller_payments_not_active"));
-  const [stock, setStock] = useState(Math.max(1, commerce.stockQuantity || 1));
+  const [stock, setStock] = useState(commerce.stockQuantity);
   const [shipping, setShipping] = useState(commerce.fulfillmentMethods.includes("shipping"));
   const [localDelivery, setLocalDelivery] = useState(commerce.fulfillmentMethods.includes("local_delivery"));
-  const [pickup, setPickup] = useState(commerce.fulfillmentMethods.includes("pickup") || policy.pickupAllowed);
+  const [pickup, setPickup] = useState(commerce.fulfillmentMethods.includes("pickup"));
   const [weight, setWeight] = useState("");
   const [length, setLength] = useState("");
   const [width, setWidth] = useState("");
@@ -43,7 +43,12 @@ function Configurator({ listing, policy, commerce }: { listing: SellerListing; p
       packageWidthCm: shipping && width ? Number(width) : undefined,
       packageHeightCm: shipping && height ? Number(height) : undefined,
     }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["seller-commerce", listing.id] }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["seller-commerce", listing.id] }),
+        queryClient.invalidateQueries({ queryKey: ["listing-commerce", listing.id] }),
+      ]);
+    },
   });
 
   if (policy.mode === "disabled") {
@@ -93,10 +98,7 @@ function ListingCommerceCard({ listing }: { listing: SellerListing }) {
 export default function OnlineSalesPage() {
   const { locale } = useLocale();
   const listingsQuery = useQuery({ queryKey: ["seller-listings-online-sales"], queryFn: sellingService.getListings });
-  const publishedListings = useMemo(
-    () => (listingsQuery.data || []).filter((listing) => listing.status === "published"),
-    [listingsQuery.data],
-  );
+  const publishedListings = useMemo(() => (listingsQuery.data || []).filter((listing) => listing.status === "published"), [listingsQuery.data]);
   return (
     <MarketplaceShell>
       <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-10">
