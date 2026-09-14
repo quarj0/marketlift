@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Copy, Package, QrCode, Truck } from "lucide-react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, CheckCircle2, Copy, QrCode, Truck } from "lucide-react";
 
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { EmptyState, InlineError, PageLoading } from "@/components/feedback/asyn
 import { commerceService, type CommerceOrder } from "@/services/commerce.service";
 import { useMarket } from "@/providers/market-provider";
 import { useLocale } from "@/providers/locale-provider";
+
+const PAGE_SIZE = 50;
 
 function OrderCard({ order }: { order: CommerceOrder }) {
   const queryClient = useQueryClient();
@@ -126,7 +128,14 @@ function OrderCard({ order }: { order: CommerceOrder }) {
 
 export default function OrdersPage() {
   const { locale } = useLocale();
-  const query = useQuery({ queryKey: ["my-commerce-orders"], queryFn: () => commerceService.getMyOrders(0, 100) });
+  const query = useInfiniteQuery({
+    queryKey: ["my-commerce-orders"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => commerceService.getMyOrders(pageParam, PAGE_SIZE),
+    getNextPageParam: (lastPage, pages) => lastPage.length === PAGE_SIZE ? pages.length * PAGE_SIZE : undefined,
+  });
+  const orders = query.data?.pages.flat() || [];
+
   return (
     <MarketplaceShell>
       <main className="mx-auto max-w-5xl px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-12">
@@ -137,8 +146,13 @@ export default function OrdersPage() {
         </div>
         {query.isLoading && <PageLoading label={locale === "pt-BR" ? "Carregando pedidos..." : "Loading orders..."} />}
         {query.isError && <InlineError title={locale === "pt-BR" ? "Não foi possível carregar seus pedidos" : "Your orders could not be loaded"} description={locale === "pt-BR" ? "Tente novamente." : "Please try again."} onRetry={() => query.refetch()} />}
-        {!query.isLoading && !query.isError && query.data?.length === 0 && <EmptyState title={locale === "pt-BR" ? "Nenhum pedido ainda" : "No orders yet"} description={locale === "pt-BR" ? "Quando você comprar um item pelo checkout do Marketlift, ele aparecerá aqui." : "Items purchased through Marketlift checkout will appear here."} href="/search" action={locale === "pt-BR" ? "Ver anúncios" : "Browse listings"} />}
-        {!!query.data?.length && <div className="space-y-4">{query.data.map((order) => <OrderCard key={order.id} order={order} />)}</div>}
+        {!query.isLoading && !query.isError && orders.length === 0 && <EmptyState title={locale === "pt-BR" ? "Nenhum pedido ainda" : "No orders yet"} description={locale === "pt-BR" ? "Quando você comprar um item pelo checkout do Marketlift, ele aparecerá aqui." : "Items purchased through Marketlift checkout will appear here."} href="/search" action={locale === "pt-BR" ? "Ver anúncios" : "Browse listings"} />}
+        {orders.length > 0 && (
+          <div className="space-y-4">
+            {orders.map((order) => <OrderCard key={order.id} order={order} />)}
+            {query.hasNextPage && <Button variant="outline" className="w-full" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>{query.isFetchingNextPage ? (locale === "pt-BR" ? "Carregando..." : "Loading...") : (locale === "pt-BR" ? "Carregar mais pedidos" : "Load more orders")}</Button>}
+          </div>
+        )}
       </main>
     </MarketplaceShell>
   );
