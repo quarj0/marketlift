@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { commerceService } from "@/services/commerce.service";
 import { useAuth } from "@/providers/auth-provider";
 import { useMarket } from "@/providers/market-provider";
+import { useLocale } from "@/providers/locale-provider";
 
 export function ListingCommerceActions({
   listingId,
@@ -18,6 +19,7 @@ export function ListingCommerceActions({
 }) {
   const { isAuthenticated } = useAuth();
   const { formatMoney } = useMarket();
+  const { locale } = useLocale();
   const query = useQuery({
     queryKey: ["listing-commerce", listingId],
     queryFn: () => commerceService.getListingCommerce(listingId),
@@ -39,23 +41,27 @@ export function ListingCommerceActions({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-sm font-black text-slate-950">
-            Comprar online
+            {locale === "pt-BR" ? "Comprar online" : "Buy online"}
             <ShieldCheck className="size-4 text-emerald-600" aria-hidden="true" />
           </div>
           <p className="mt-0.5 text-xs leading-5 text-slate-500">
-            Pague pelo Marketlift e acompanhe a entrega. O valor do vendedor só é liberado após a proteção de entrega.
+            {locale === "pt-BR"
+              ? "Pague pelo Marketlift e acompanhe a entrega. O valor do vendedor só é liberado após a proteção de entrega."
+              : "Pay through Marketlift and track delivery. Seller proceeds are released only after the delivery-protection flow."}
           </p>
         </div>
       </div>
       <Button asChild className="mt-3 w-full">
         <Link href={checkoutHref}>
           <PackageCheck className="size-4" aria-hidden="true" />
-          Comprar agora · {formatMoney(price)}
+          {locale === "pt-BR" ? "Comprar agora" : "Buy now"} · {formatMoney(price)}
         </Link>
       </Button>
       {commerce.mode === "optional" && (
         <p className="mt-2 text-center text-[11px] font-medium text-slate-500">
-          Prefere ver o item primeiro? Você ainda pode conversar com o vendedor e combinar uma inspeção.
+          {locale === "pt-BR"
+            ? "Prefere ver o item primeiro? Você ainda pode conversar com o vendedor e combinar uma inspeção."
+            : "Prefer to inspect first? You can still chat with the seller and arrange an inspection."}
         </p>
       )}
     </aside>
