@@ -21,7 +21,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
   const commerceQuery = useQuery({ queryKey: ["listing-commerce", listingId], queryFn: () => commerceService.getListingCommerce(listingId) });
   const [fulfillment, setFulfillment] = useState<FulfillmentMethod | "">("");
   const [method, setMethod] = useState<CommercePaymentMethod>("pix");
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [document, setDocument] = useState("");
   const [phone, setPhone] = useState("");
   const [street, setStreet] = useState("");
@@ -62,7 +62,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
         });
         cardId = await commerceService.vaultCard(cardToken, document, phone);
       }
-      return commerceService.createCheckout({
+      const order = await commerceService.createCheckout({
         listingId: listing.id,
         fulfillmentMethod: selectedFulfillment as FulfillmentMethod,
         paymentMethod: method,
@@ -74,6 +74,21 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
           ? { street, number, district, city, state, zipCode: zipCode.replace(/\D/g, ""), country: "BR" }
           : {},
       });
+
+      const paymentStatus = String(order.payment?.status || "").toLowerCase();
+      if (order.status === "cancelled" || ["failed", "cancelled"].includes(paymentStatus)) {
+        // The backend has returned a definitive terminal result, so a corrected
+        // retry must be a new checkout attempt. Network/provider ambiguity above
+        // still keeps the original key, preventing duplicate charges on retry.
+        setIdempotencyKey(crypto.randomUUID());
+        const providerStatus = order.payment?.providerStatus?.trim();
+        throw new Error(
+          locale === "pt-BR"
+            ? `Pagamento recusado ou cancelado${providerStatus ? ` (${providerStatus})` : ""}. Verifique os dados e tente novamente.`
+            : `Payment was declined or cancelled${providerStatus ? ` (${providerStatus})` : ""}. Check the details and try again.`,
+        );
+      }
+      return order;
     },
   });
 
@@ -127,6 +142,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
 
   const quote = quoteQuery.data;
   const finalTotal = quote ? formatMoney(quote.totalCents / 100, quote.currency) : "—";
+  const cardIncomplete = method === "card" && (!holderName.trim() || !cardNumber.trim() || !expMonth.trim() || !expYear.trim() || !cvv.trim());
 
   return (
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -197,7 +213,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
           <div className="flex justify-between"><span className="text-slate-500">{locale === "pt-BR" ? "Entrega" : "Delivery"}</span><strong>{quote ? formatMoney(quote.shippingAmountCents / 100, quote.currency) : "—"}</strong></div>
           <div className="flex justify-between border-t pt-2 text-base"><span className="font-black">Total</span><strong>{finalTotal}</strong></div>
         </div>
-        <Button className="mt-5 w-full" disabled={mutation.isPending || quoteQuery.isLoading || !quote || !selectedFulfillment || !document || !phone || (needsAddress && (!street || !number || !district || !city || !state || !zipCode))} onClick={() => mutation.mutate()}>
+        <Button className="mt-5 w-full" disabled={mutation.isPending || quoteQuery.isLoading || !quote || !selectedFulfillment || !document || !phone || cardIncomplete || (needsAddress && (!street || !number || !district || !city || !state || !zipCode))} onClick={() => mutation.mutate()}>
           {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
           {mutation.isPending ? (locale === "pt-BR" ? "Processando..." : "Processing...") : `${locale === "pt-BR" ? "Pagar" : "Pay"} ${finalTotal}`}
         </Button>
