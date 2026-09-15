@@ -91,8 +91,8 @@ export function AccessController({ children }: { children: React.ReactNode }) {
   const authRequired = requiresAuthentication(pathname);
   const authReady = mounted && hydrated;
 
-  const checkMaintenance = useCallback(async () => {
-    setCheckingMaintenance(true);
+  const checkMaintenance = useCallback(async (interactive = false) => {
+    if (interactive) setCheckingMaintenance(true);
     try {
       const response = await fetch(resolveApiUrl("/api/v1/health/maintenance/"), {
         method: "GET",
@@ -103,27 +103,22 @@ export function AccessController({ children }: { children: React.ReactNode }) {
       });
       if (!response.ok) throw new Error("Maintenance status unavailable");
       const payload = (await response.json()) as { maintenance?: boolean };
-      const next = Boolean(payload.maintenance);
-      setMaintenance(next);
-      if (!next && maintenance === true) {
-        window.location.reload();
-      }
+      setMaintenance(Boolean(payload.maintenance));
     } catch {
       // A status-check failure must not itself lock the marketplace. Other
       // readiness/error handling will surface a real backend outage.
       setMaintenance(false);
     } finally {
-      setCheckingMaintenance(false);
+      if (interactive) setCheckingMaintenance(false);
     }
-  }, [maintenance]);
+  }, []);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setMounted(true);
-    });
-    void checkMaintenance();
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    const timeout = window.setTimeout(() => void checkMaintenance(), 0);
     return () => {
       window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
     };
   }, [checkMaintenance]);
 
@@ -147,7 +142,7 @@ export function AccessController({ children }: { children: React.ReactNode }) {
 
   if (maintenance === null) return <AccessLoading />;
   if (maintenance) {
-    return <MaintenanceScreen onRetry={() => void checkMaintenance()} checking={checkingMaintenance} />;
+    return <MaintenanceScreen onRetry={() => void checkMaintenance(true)} checking={checkingMaintenance} />;
   }
 
   if (!authRequired) return <>{children}</>;
