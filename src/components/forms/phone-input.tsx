@@ -11,6 +11,7 @@ const FALLBACK_DIAL_CODES: Record<string, string> = {
   ZA: "+27",
   CI: "+225",
 };
+const MAX_E164_DIGITS = 15;
 
 function normalizeDialCode(countryCode?: string, dialCode?: string) {
   const configured = dialCode?.trim();
@@ -63,7 +64,9 @@ export function PhoneInput({
   name?: string;
 }) {
   const prefix = normalizeDialCode(countryCode, dialCode);
-  const local = localDigits(value || "", prefix);
+  const dialDigits = prefix.replace(/\D/g, "");
+  const maxLocalDigits = Math.max(1, MAX_E164_DIGITS - dialDigits.length);
+  const local = localDigits(value || "", prefix).slice(0, maxLocalDigits);
 
   return (
     <div
@@ -86,10 +89,13 @@ export function PhoneInput({
         autoComplete="tel-national"
         disabled={disabled}
         aria-invalid={invalid}
+        maxLength={maxLocalDigits}
         className="h-full rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
         placeholder={placeholder}
         onChange={(event) => {
-          const nextLocal = event.target.value.replace(/\D/g, "");
+          const nextLocal = event.target.value
+            .replace(/\D/g, "")
+            .slice(0, maxLocalDigits);
           onChange(nextLocal ? `${prefix}${nextLocal}` : "");
         }}
       />
