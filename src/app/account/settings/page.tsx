@@ -118,7 +118,7 @@ function SettingsForm({
 
     onMutate: (next) => {
       const previous = form;
-      setForm(next);
+      setForm({ ...form, ...next });
       setSaved(false);
       return { previous };
     },
