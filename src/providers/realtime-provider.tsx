@@ -9,6 +9,7 @@ import { resolveApiUrl } from '@/lib/api-client';
 import { mapNotification, type ApiNotification } from '@/lib/api-mappers';
 import { realtimeClient, type RealtimeEvent } from '@/lib/realtime-client';
 import { useAuth } from '@/providers/auth-provider';
+import { webPushService } from '@/services/web-push.service';
 import type { AccountSettings, Conversation, Message, NotificationItem } from '@/types';
 
 type RealtimeContextValue = {
@@ -88,6 +89,11 @@ async function showBrowserNotification(notification: NotificationItem) {
     return;
   }
 
+  // Suppress the realtime fallback only after this runtime has successfully
+  // persisted the browser endpoint with the Marketlift API. A local browser
+  // PushSubscription alone does not prove the backend can deliver to it.
+  if (webPushService.hasPersistedSubscription()) return;
+
   const href = notification.href || '/notifications';
   const options: NotificationOptions = {
     body: notification.body,
@@ -152,11 +158,18 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return () => window.cancelAnimationFrame(frame);
     }
 
-    // Keep notification/privacy preferences in the shared query cache so
-    // realtime delivery can honor them without a separate source of truth.
+    let disposed = false;
     void queryClient.ensureQueryData({
       queryKey: ['account', 'settings'],
       queryFn: accountService.getSettings,
+    }).then(async (settings) => {
+      if (disposed) return;
+      try {
+        await webPushService.reconcile(Boolean(settings.pushMessages || settings.pushListingUpdates));
+      } catch {
+        // Realtime browser notifications remain the fallback until a later
+        // reconciliation confirms a persisted Web Push endpoint.
+      }
     }).catch(() => undefined);
 
     const handleEvent = (event: RealtimeEvent) => {
@@ -245,16 +258,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         setUnreadNotificationCount(Number(data.unreadNotificationCount || 0));
         return;
       }
-
-      if (event.type === 'error') {
-        // Command-specific errors are surfaced to the caller by realtimeClient.
-        return;
-      }
     };
 
     const unsubscribe = realtimeClient.subscribe(handleEvent);
     realtimeClient.connect();
-    let disposed = false;
     const reconcile = async () => {
       if (realtimeClient.connected || document.visibilityState === 'hidden') return;
       try {
@@ -274,6 +281,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       disposed = true;
+      webPushService.cancelPendingReconciliation();
       realtimeClient.disconnect();
       window.clearInterval(fallbackPoll);
       document.removeEventListener('visibilitychange', reconcile);

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { QueryProvider } from "@/providers/query-provider";
 import { authService } from "@/services/auth.service";
+import { webPushService } from "@/services/web-push.service";
 import type { User } from "@/types";
 
 type AuthContextValue = {
@@ -65,6 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     const version = ++sessionVersion.current;
+    // Invalidate any in-flight reconciliation synchronously so it cannot
+    // recreate the old account's endpoint while logout is happening.
+    webPushService.cancelPendingReconciliation();
+    // Browser/server endpoint cleanup is best effort and must never make logout
+    // wait on a slow GraphQL request or push-service operation.
+    void webPushService.removeSubscription().catch(() => undefined);
     try {
       await authService.logout();
     } finally {
