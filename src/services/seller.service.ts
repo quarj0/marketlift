@@ -18,6 +18,15 @@ const REVIEW_FIELDS = `
   sellerReply
 `;
 
+const SELLER_SETTINGS_FIELDS = `
+  newInquiry
+  listingStatus
+  performance
+  autoRenew
+  showPhone
+  vacation
+`;
+
 export type SellerReputation = {
   average: number;
   total: number;
@@ -27,6 +36,15 @@ export type SellerReputation = {
   threeStar: number;
   fourStar: number;
   fiveStar: number;
+};
+
+export type SellerSettings = {
+  newInquiry: boolean;
+  listingStatus: boolean;
+  performance: boolean;
+  autoRenew: boolean;
+  showPhone: boolean;
+  vacation: boolean;
 };
 
 export const sellerService = {
@@ -61,6 +79,24 @@ export const sellerService = {
       { input },
     );
     return mapSeller(data.updateMySellerProfile);
+  },
+
+  async getMySettings(): Promise<SellerSettings> {
+    const data = await graphqlRequest<{ mySellerSettings: SellerSettings }>(`
+      query MySellerSettings {
+        mySellerSettings { ${SELLER_SETTINGS_FIELDS} }
+      }
+    `);
+    return data.mySellerSettings;
+  },
+
+  async updateMySettings(input: Partial<SellerSettings>): Promise<SellerSettings> {
+    const data = await graphqlRequest<{ updateMySellerSettings: SellerSettings }>(`
+      mutation UpdateMySellerSettings($input: SellerSettingsInput!) {
+        updateMySellerSettings(input: $input) { ${SELLER_SETTINGS_FIELDS} }
+      }
+    `, { input });
+    return data.updateMySellerSettings;
   },
 
   async getMyReviews(): Promise<Review[]> {
