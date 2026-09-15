@@ -34,3 +34,18 @@ self.addEventListener("fetch", (event) => {
     ),
   );
 });
+self.addEventListener("notificationclick", (event) => {
+  const href = event.notification?.data?.href || "/notifications";
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const target = new URL(href, self.location.origin).href;
+      for (const client of clients) {
+        if (client.url === target && "focus" in client) {
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+    }),
+  );
+});
