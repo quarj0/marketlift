@@ -110,9 +110,9 @@ function SettingsForm({
   const { t, locale, setLocale } = useLocale();
   const { market } = useMarket();
 
-  const [form, setForm] =
-    useState<AccountSettings>(initialSettings);
+  const [form, setForm] = useState<AccountSettings>(initialSettings);
   const [saved, setSaved] = useState(false);
+  const [pushPending, setPushPending] = useState(false);
   const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -149,11 +149,13 @@ function SettingsForm({
     },
   });
 
+  const settingPending = mutation.isPending || pushPending;
+
   function persist<K extends keyof AccountSettings>(
     key: K,
     value: AccountSettings[K],
   ) {
-    if (mutation.isPending) return;
+    if (settingPending) return;
     mutation.mutate({
       ...form,
       [key]: value,
@@ -165,8 +167,9 @@ function SettingsForm({
     key: "pushMessages" | "pushListingUpdates",
     value: boolean,
   ) {
-    if (mutation.isPending) return;
+    if (settingPending) return;
     setNotificationNotice(null);
+    setPushPending(true);
     const next = {
       ...form,
       [key]: value,
@@ -195,21 +198,21 @@ function SettingsForm({
             ? "Allow notifications in your browser settings to enable this alert."
             : "Web Push could not be configured on this device. Please try again.",
       );
+    } finally {
+      setPushPending(false);
     }
   }
 
   function updateLanguage(
     language: AccountSettings["language"],
   ) {
-    if (mutation.isPending) return;
+    if (settingPending) return;
     setLocale(language);
     mutation.mutate({
       ...form,
       language,
     });
   }
-
-  const settingPending = mutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -234,79 +237,55 @@ function SettingsForm({
           <SettingRow
             icon={MessageCircle}
             title={t("settings.emailMessages")}
-            description={t(
-              "settings.emailMessagesBody",
-            )}
+            description={t("settings.emailMessagesBody")}
             checked={form.emailMessages}
             disabled={settingPending}
-            onChange={(value) =>
-              persist("emailMessages", value)
-            }
+            onChange={(value) => persist("emailMessages", value)}
           />
 
           <SettingRow
             icon={Mail}
             title={t("settings.emailListing")}
-            description={t(
-              "settings.emailListingBody",
-            )}
+            description={t("settings.emailListingBody")}
             checked={form.emailListingUpdates}
             disabled={settingPending}
-            onChange={(value) =>
-              persist("emailListingUpdates", value)
-            }
+            onChange={(value) => persist("emailListingUpdates", value)}
           />
 
           <SettingRow
             icon={Smartphone}
             title={t("settings.pushMessages")}
-            description={t(
-              "settings.pushMessagesBody",
-            )}
+            description={t("settings.pushMessagesBody")}
             checked={form.pushMessages}
             disabled={settingPending}
-            onChange={(value) =>
-              void persistBrowserNotification("pushMessages", value)
-            }
+            onChange={(value) => void persistBrowserNotification("pushMessages", value)}
           />
 
           <SettingRow
             icon={Bell}
             title={t("settings.pushListing")}
-            description={t(
-              "settings.pushListingBody",
-            )}
+            description={t("settings.pushListingBody")}
             checked={form.pushListingUpdates}
             disabled={settingPending}
-            onChange={(value) =>
-              void persistBrowserNotification("pushListingUpdates", value)
-            }
+            onChange={(value) => void persistBrowserNotification("pushListingUpdates", value)}
           />
 
           <SettingRow
             icon={Mail}
             title={t("settings.recommendations")}
-            description={t(
-              "settings.recommendationsBody",
-            )}
+            description={t("settings.recommendationsBody")}
             checked={form.emailRecommendations}
             disabled={settingPending}
-            onChange={(value) =>
-              persist("emailRecommendations", value)
-            }
+            onChange={(value) => persist("emailRecommendations", value)}
           />
 
           <SettingRow
             icon={Mail}
             title={t("settings.marketing")}
-            description={t(
-              "settings.marketingBody",
-            )}
+            description={t("settings.marketingBody")}
             checked={form.marketingEmails}
             disabled={settingPending}
-            onChange={(value) =>
-              persist("marketingEmails", value)
-            }
+            onChange={(value) => persist("marketingEmails", value)}
           />
         </div>
 
@@ -341,9 +320,7 @@ function SettingsForm({
             description={t("settings.onlineBody")}
             checked={form.showOnlineStatus}
             disabled={settingPending}
-            onChange={(value) =>
-              persist("showOnlineStatus", value)
-            }
+            onChange={(value) => persist("showOnlineStatus", value)}
           />
 
           <SettingRow
@@ -352,9 +329,7 @@ function SettingsForm({
             description={t("settings.phoneBody")}
             checked={form.showPhoneToSellers}
             disabled={settingPending}
-            onChange={(value) =>
-              persist("showPhoneToSellers", value)
-            }
+            onChange={(value) => persist("showPhoneToSellers", value)}
           />
         </div>
       </section>
@@ -386,20 +361,12 @@ function SettingsForm({
               value={locale}
               disabled={settingPending}
               onChange={(event) =>
-                updateLanguage(
-                  event.target
-                    .value as AccountSettings["language"],
-                )
+                updateLanguage(event.target.value as AccountSettings["language"])
               }
               className="h-11 w-full rounded-xl border bg-white px-3.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <option value="en">
-                {t("settings.english")}
-              </option>
-
-              <option value="pt-BR">
-                {t("settings.portuguese")}
-              </option>
+              <option value="en">{t("settings.english")}</option>
+              <option value="pt-BR">{t("settings.portuguese")}</option>
             </select>
           </label>
 
@@ -421,13 +388,13 @@ function SettingsForm({
 
       <AccountSecurityControls />
 
-      {mutation.isPending && (
+      {settingPending && (
         <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800" role="status">
           {t("common.saving")}
         </div>
       )}
 
-      {saved && !mutation.isPending && (
+      {saved && !settingPending && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
           {t("settings.saved")}
         </div>
@@ -469,14 +436,12 @@ export default function SettingsPage() {
           <div>
             {settingsQuery.isLoading && (
               <div className="space-y-4 rounded-2xl border bg-white p-6">
-                {Array.from({ length: 6 }).map(
-                  (_, index) => (
-                    <div
-                      key={index}
-                      className="h-16 animate-pulse rounded-xl bg-slate-100"
-                    />
-                  ),
-                )}
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-16 animate-pulse rounded-xl bg-slate-100"
+                  />
+                ))}
               </div>
             )}
 
@@ -490,9 +455,7 @@ export default function SettingsPage() {
                   type="button"
                   variant="outline"
                   className="mt-4"
-                  onClick={() =>
-                    settingsQuery.refetch()
-                  }
+                  onClick={() => settingsQuery.refetch()}
                 >
                   {t("common.tryAgain")}
                 </Button>
