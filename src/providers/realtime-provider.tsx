@@ -5,11 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { messagingService } from '@/services/messaging.service';
 import { accountService } from '@/services/account.service';
+import { webPushService } from '@/services/web-push.service';
 import { resolveApiUrl } from '@/lib/api-client';
 import { mapNotification, type ApiNotification } from '@/lib/api-mappers';
 import { realtimeClient, type RealtimeEvent } from '@/lib/realtime-client';
 import { useAuth } from '@/providers/auth-provider';
-import type { AccountSettings, Conversation, Message, NotificationItem } from '@/types';
+import type { Conversation, Message, NotificationItem } from '@/types';
 
 type RealtimeContextValue = {
   connected: boolean;
@@ -78,62 +79,6 @@ function isNotification(value: unknown): value is ApiNotification {
     && typeof value.createdAt === 'string';
 }
 
-async function showBrowserNotification(notification: NotificationItem) {
-  if (
-    typeof window === 'undefined'
-    || !('Notification' in window)
-    || Notification.permission !== 'granted'
-    || document.visibilityState === 'visible'
-  ) {
-    return;
-  }
-
-  const href = notification.href || '/notifications';
-  const options: NotificationOptions = {
-    body: notification.body,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    data: { href },
-  };
-
-  if ('serviceWorker' in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(notification.title, options);
-      return;
-    } catch {
-      // Fall back to the page Notification API below.
-    }
-  }
-
-  try {
-    const item = new Notification(notification.title, {
-      body: notification.body,
-      icon: '/icons/icon-192.png',
-    });
-    item.onclick = () => {
-      window.focus();
-      window.location.assign(href);
-      item.close();
-    };
-  } catch {
-    // Browser notification support is best effort; in-app notifications remain.
-  }
-}
-
-function browserNotificationAllowed(
-  notification: NotificationItem,
-  settings: AccountSettings | undefined,
-) {
-  if (!settings) return false;
-  const type = String(notification.type);
-  if (type === 'message') return settings.pushMessages;
-  if (['listing', 'moderation', 'seller'].includes(type)) {
-    return settings.pushListingUpdates;
-  }
-  return false;
-}
-
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { user, hydrated } = useAuth();
   const queryClient = useQueryClient();
@@ -152,12 +97,17 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return () => window.cancelAnimationFrame(frame);
     }
 
-    // Keep notification/privacy preferences in the shared query cache so
-    // realtime delivery can honor them without a separate source of truth.
+    // Refresh or recreate the browser Push API subscription silently when
+    // permission was already granted. Permission prompts remain user-initiated
+    // from account settings.
     void queryClient.ensureQueryData({
       queryKey: ['account', 'settings'],
       queryFn: accountService.getSettings,
-    }).catch(() => undefined);
+    }).then((settings) =>
+      webPushService.reconcile(
+        Boolean(settings.pushMessages || settings.pushListingUpdates),
+      ),
+    ).catch(() => undefined);
 
     const handleEvent = (event: RealtimeEvent) => {
       const data = event.data || {};
@@ -216,14 +166,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             : [notification, ...current];
         });
         setUnreadNotificationCount(Number(data.unreadNotificationCount || 0));
-
-        const accountSettings = queryClient.getQueryData<AccountSettings>([
-          'account',
-          'settings',
-        ]);
-        if (browserNotificationAllowed(notification, accountSettings)) {
-          void showBrowserNotification(notification);
-        }
+        // System/browser notifications are delivered exclusively by the Push
+        // API service worker. That avoids duplicate notifications when realtime
+        // and Web Push arrive for the same domain event.
         return;
       }
 
