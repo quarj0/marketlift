@@ -26,7 +26,18 @@ function sameKey(left: ArrayBuffer | null, right: Uint8Array) {
   if (!left) return false;
   const current = new Uint8Array(left);
   if (current.length !== right.length) return false;
-  return current.every((value, index) => value === right[index]);
+  for (let index = 0; index < current.length; index += 1) {
+    if (current[index] !== right[index]) return false;
+  }
+  return true;
+}
+
+async function serviceWorkerRegistration() {
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (!existing) {
+    await navigator.serviceWorker.register("/sw.js");
+  }
+  return navigator.serviceWorker.ready;
 }
 
 async function publicKey() {
@@ -63,7 +74,7 @@ async function ensureSubscription() {
     throw new Error("Notification permission has not been granted.");
   }
 
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await serviceWorkerRegistration();
   const applicationServerKey = decodeApplicationServerKey(await publicKey());
   let subscription = await registration.pushManager.getSubscription();
 
@@ -95,7 +106,8 @@ async function ensureSubscription() {
 
 async function removeSubscription() {
   if (!supported()) return;
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  if (!registration) return;
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;
 
