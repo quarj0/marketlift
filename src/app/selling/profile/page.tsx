@@ -19,8 +19,11 @@ import { accountService } from "@/services/account.service";
 import { sellerService } from "@/services/seller.service";
 import type { SellerType } from "@/types";
 
+const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
 export default function SellingProfilePage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { market } = useMarket();
   const { user, hydrated, refreshSession } = useAuth();
   const queryClient = useQueryClient();
@@ -101,7 +104,23 @@ export default function SellingProfilePage() {
   });
 
   const avatarMutation = useMutation({
-    mutationFn: accountService.updateAvatar,
+    mutationFn: async (file: File) => {
+      if (!AVATAR_TYPES.has(file.type)) {
+        throw new Error(
+          locale === "pt-BR"
+            ? "Use uma imagem JPEG, PNG ou WebP."
+            : "Use a JPEG, PNG, or WebP image.",
+        );
+      }
+      if (file.size <= 0 || file.size > MAX_AVATAR_BYTES) {
+        throw new Error(
+          locale === "pt-BR"
+            ? "A foto de perfil deve ter no máximo 5 MB."
+            : "Profile photos must be 5 MB or smaller.",
+        );
+      }
+      return accountService.updateAvatar(file);
+    },
     onSuccess: (profile) => {
       queryClient.setQueryData(["account", "profile"], profile);
       void queryClient.invalidateQueries({ queryKey: ["seller", sellerId] });
@@ -165,7 +184,11 @@ export default function SellingProfilePage() {
                         <span className="sr-only">
                           {t("selling.profile.photo")}
                         </span>
-                        <Camera className="size-4" />
+                        {avatarMutation.isPending ? (
+                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Camera className="size-4" aria-hidden="true" />
+                        )}
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/webp"
@@ -208,8 +231,13 @@ export default function SellingProfilePage() {
                     </div>
                   </div>
                   {avatarMutation.isError && (
-                    <p className="mt-4 text-sm font-semibold text-rose-600">
-                      {t("common.error")}
+                    <p
+                      className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
+                      role="alert"
+                    >
+                      {avatarMutation.error instanceof Error
+                        ? avatarMutation.error.message
+                        : t("common.error")}
                     </p>
                   )}
                 </section>
@@ -344,7 +372,9 @@ export default function SellingProfilePage() {
                   )}
                   {saveMutation.isError && (
                     <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
-                      {t("common.error")}
+                      {saveMutation.error instanceof Error
+                        ? saveMutation.error.message
+                        : t("common.error")}
                     </p>
                   )}
                   <Button
