@@ -5,12 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { messagingService } from '@/services/messaging.service';
 import { accountService } from '@/services/account.service';
-import { webPushService } from '@/services/web-push.service';
 import { resolveApiUrl } from '@/lib/api-client';
 import { mapNotification, type ApiNotification } from '@/lib/api-mappers';
 import { realtimeClient, type RealtimeEvent } from '@/lib/realtime-client';
 import { useAuth } from '@/providers/auth-provider';
-import type { Conversation, Message, NotificationItem } from '@/types';
+import { webPushService } from '@/services/web-push.service';
+import type { AccountSettings, Conversation, Message, NotificationItem } from '@/types';
 
 type RealtimeContextValue = {
   connected: boolean;
@@ -79,6 +79,74 @@ function isNotification(value: unknown): value is ApiNotification {
     && typeof value.createdAt === 'string';
 }
 
+async function showBrowserNotification(notification: NotificationItem) {
+  if (
+    typeof window === 'undefined'
+    || !('Notification' in window)
+    || Notification.permission !== 'granted'
+    || document.visibilityState === 'visible'
+  ) {
+    return;
+  }
+
+  // A real Web Push subscription receives the same durable Notification from
+  // the push service, including when the PWA is closed. Do not also synthesize
+  // a page-side notification from the realtime socket or users would see two.
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (await registration.pushManager.getSubscription()) return;
+    } catch {
+      // Fall through to the realtime-only fallback.
+    }
+  }
+
+  const href = notification.href || '/notifications';
+  const options: NotificationOptions = {
+    body: notification.body,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { href },
+  };
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(notification.title, options);
+      return;
+    } catch {
+      // Fall back to the page Notification API below.
+    }
+  }
+
+  try {
+    const item = new Notification(notification.title, {
+      body: notification.body,
+      icon: '/icons/icon-192.png',
+    });
+    item.onclick = () => {
+      window.focus();
+      window.location.assign(href);
+      item.close();
+    };
+  } catch {
+    // Browser notification support is best effort; in-app notifications remain.
+  }
+}
+
+function browserNotificationAllowed(
+  notification: NotificationItem,
+  settings: AccountSettings | undefined,
+) {
+  if (!settings) return false;
+  const type = String(notification.type);
+  if (type === 'message') return settings.pushMessages;
+  if (['listing', 'moderation', 'seller'].includes(type)) {
+    return settings.pushListingUpdates;
+  }
+  return false;
+}
+
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { user, hydrated } = useAuth();
   const queryClient = useQueryClient();
@@ -97,17 +165,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return () => window.cancelAnimationFrame(frame);
     }
 
-    // Refresh or recreate the browser Push API subscription silently when
-    // permission was already granted. Permission prompts remain user-initiated
-    // from account settings.
     void queryClient.ensureQueryData({
       queryKey: ['account', 'settings'],
       queryFn: accountService.getSettings,
-    }).then((settings) =>
-      webPushService.reconcile(
-        Boolean(settings.pushMessages || settings.pushListingUpdates),
-      ),
-    ).catch(() => undefined);
+    }).then((settings) => {
+      void webPushService.reconcile(Boolean(settings.pushMessages || settings.pushListingUpdates)).catch(() => undefined);
+    }).catch(() => undefined);
 
     const handleEvent = (event: RealtimeEvent) => {
       const data = event.data || {};
@@ -166,9 +229,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             : [notification, ...current];
         });
         setUnreadNotificationCount(Number(data.unreadNotificationCount || 0));
-        // System/browser notifications are delivered exclusively by the Push
-        // API service worker. That avoids duplicate notifications when realtime
-        // and Web Push arrive for the same domain event.
+
+        const accountSettings = queryClient.getQueryData<AccountSettings>([
+          'account',
+          'settings',
+        ]);
+        if (browserNotificationAllowed(notification, accountSettings)) {
+          void showBrowserNotification(notification);
+        }
         return;
       }
 
@@ -188,11 +256,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           current?.map((item) => ({ ...item, read: true })),
         );
         setUnreadNotificationCount(Number(data.unreadNotificationCount || 0));
-        return;
-      }
-
-      if (event.type === 'error') {
-        // Command-specific errors are surfaced to the caller by realtimeClient.
         return;
       }
     };
