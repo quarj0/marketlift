@@ -71,7 +71,7 @@ export const sellerService = {
     return countryCode ? sellers.filter((seller) => seller.countryCode === countryCode) : sellers;
   },
 
-  async updateMyProfile(input: { displayName: string; sellerType: SellerType }): Promise<Seller> {
+  async updateMyProfile(input: { displayName?: string; sellerType?: SellerType }): Promise<Seller> {
     const data = await graphqlRequest<{ updateMySellerProfile: ApiSeller }>(
       `mutation UpdateMySellerProfile($input: SellerProfileInput!) {
         updateMySellerProfile(input: $input) { ${SELLER_FIELDS} }

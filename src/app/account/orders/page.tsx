@@ -24,7 +24,7 @@ function OrderCard({ order }: { order: CommerceOrder }) {
   const [description, setDescription] = useState("");
   const title = String(order.listingSnapshot.title || (locale === "pt-BR" ? "Pedido Marketlift" : "Marketlift order"));
   const image = String((order.listingSnapshot.images as string[] | undefined)?.[0] || "/images/listing-placeholder.svg");
-  const deliveryPin = String(order.listingSnapshot.delivery_pin || "");
+  const deliveryPin = String(order.shipment?.deliveryPin || "");
   const pixCode = useMemo(() => String(order.payment?.checkoutData?.qr_code || ""), [order.payment?.checkoutData]);
   const pixQrUrl = useMemo(() => String(order.payment?.checkoutData?.qr_code_url || ""), [order.payment?.checkoutData]);
 
@@ -40,8 +40,11 @@ function OrderCard({ order }: { order: CommerceOrder }) {
     },
   });
 
-  const canConfirm = ["shipped", "out_for_delivery"].includes(order.status);
+  const canConfirm =
+    order.fulfillmentMethod !== "local_delivery" &&
+    ["shipped", "out_for_delivery"].includes(order.status);
   const canDispute = ["awaiting_seller", "processing", "shipped", "out_for_delivery", "delivered"].includes(order.status);
+  const riderName = order.shipment?.rider?.name;
 
   return (
     <article className="rounded-3xl border bg-white p-5 shadow-sm">
@@ -63,7 +66,7 @@ function OrderCard({ order }: { order: CommerceOrder }) {
 
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-3">
         <div><span className="block text-xs font-bold text-slate-400">{locale === "pt-BR" ? "Pagamento" : "Payment"}</span><strong>{order.payment?.status || "pending"}</strong></div>
-        <div><span className="block text-xs font-bold text-slate-400">{locale === "pt-BR" ? "Entrega" : "Delivery"}</span><strong>{order.shipment?.status || order.fulfillmentMethod}</strong></div>
+        <div><span className="block text-xs font-bold text-slate-400">{locale === "pt-BR" ? "Entrega" : "Delivery"}</span><strong>{order.shipment?.status || order.fulfillmentMethod}</strong>{riderName && <p className="mt-1 text-xs text-slate-500">{locale === "pt-BR" ? "Entregador" : "Rider"}: {riderName}</p>}</div>
         <div><span className="block text-xs font-bold text-slate-400">{locale === "pt-BR" ? "Proteção" : "Protection"}</span><strong>{order.settlement?.status || "pending"}</strong></div>
       </div>
 
@@ -78,9 +81,16 @@ function OrderCard({ order }: { order: CommerceOrder }) {
 
       {deliveryPin && order.fulfillmentMethod === "local_delivery" && !["delivered", "completed"].includes(order.status) && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-amber-800">{locale === "pt-BR" ? "Código de entrega" : "Delivery code"}</p>
+          <p className="text-xs font-black uppercase tracking-wide text-amber-800">{locale === "pt-BR" ? "PIN de entrega" : "Delivery PIN"}</p>
           <p className="mt-1 text-2xl font-black tracking-[.22em] text-amber-950">{deliveryPin}</p>
-          <p className="mt-1 text-xs text-amber-800">{locale === "pt-BR" ? "Só entregue este código ao entregador depois de receber o pacote." : "Only give this code to the courier after receiving the package."}</p>
+          <p className="mt-1 text-xs leading-5 text-amber-800">{locale === "pt-BR" ? "Mostre este PIN somente ao entregador designado e apenas depois de receber o produto. O vendedor e o painel administrativo não conseguem ver este código." : "Give this PIN only to the assigned rider and only after you receive the item. The seller and admin dashboard cannot see this code."}</p>
+        </div>
+      )}
+
+      {order.fulfillmentMethod === "local_delivery" && order.status === "out_for_delivery" && (
+        <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+          <strong>{locale === "pt-BR" ? "Como confirmar a entrega" : "How delivery is confirmed"}</strong>
+          <p className="mt-1 text-xs leading-5">{locale === "pt-BR" ? "Depois de receber o item, informe o PIN acima ao entregador. Ele registra o PIN no Marketlift e seu pedido muda automaticamente para entregue." : "After receiving the item, tell the rider the PIN above. The rider enters it in Marketlift and your order automatically changes to delivered."}</p>
         </div>
       )}
 

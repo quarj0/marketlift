@@ -17,6 +17,10 @@ import type {
   AccountSettings,
 } from '@/types';
 
+type AccountProfilePatch = Omit<Partial<AccountProfile>, 'location'> & {
+  location?: Partial<AccountProfile['location']>;
+};
+
 const ACCOUNT_PROFILE_FIELDS = `
   id
   name
@@ -105,21 +109,24 @@ export const accountService = {
     return mapAccountProfile(data.me);
   },
 
-  async updateProfile(input: Partial<AccountProfile>): Promise<AccountProfile> {
+  async updateProfile(input: AccountProfilePatch): Promise<AccountProfile> {
+    const location = input.location;
     const variables = {
       input: {
         ...(input.fullName !== undefined ? { fullName: input.fullName } : {}),
         ...(input.email !== undefined ? { email: input.email } : {}),
         ...(input.phone !== undefined ? { phone: input.phone } : {}),
         ...(input.bio !== undefined ? { bio: input.bio } : {}),
-        ...(input.location
-          ? {
-              countryCode: input.location.countryCode,
-              state: input.location.state,
-              stateCode: input.location.stateCode,
-              city: input.location.city,
-              district: input.location.district || null,
-            }
+        ...(location?.countryCode !== undefined
+          ? { countryCode: location.countryCode }
+          : {}),
+        ...(location?.state !== undefined ? { state: location.state } : {}),
+        ...(location?.stateCode !== undefined
+          ? { stateCode: location.stateCode }
+          : {}),
+        ...(location?.city !== undefined ? { city: location.city } : {}),
+        ...(location?.district !== undefined
+          ? { district: location.district }
           : {}),
       },
     };
