@@ -66,11 +66,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     const version = ++sessionVersion.current;
+    // Invalidate any in-flight reconciliation synchronously so it cannot
+    // recreate the old account's endpoint while logout is happening.
+    webPushService.cancelPendingReconciliation();
+    // Browser/server endpoint cleanup is best effort and must never make logout
+    // wait on a slow GraphQL request or push-service operation.
+    void webPushService.removeSubscription().catch(() => undefined);
     try {
-      // Remove this browser endpoint while the authenticated session still
-      // exists. If the API is unreachable, browser unsubscribe still prevents
-      // delivery and the stale server record is retired on a later 404/410.
-      await webPushService.removeSubscription().catch(() => undefined);
       await authService.logout();
     } finally {
       if (version === sessionVersion.current) setUser(null);
