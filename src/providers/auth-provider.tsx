@@ -11,6 +11,7 @@ import {
 } from "react";
 import { QueryProvider } from "@/providers/query-provider";
 import { authService } from "@/services/auth.service";
+import { webPushService } from "@/services/web-push.service";
 import type { User } from "@/types";
 
 type AuthContextValue = {
@@ -66,6 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     const version = ++sessionVersion.current;
     try {
+      // Remove this browser endpoint while the authenticated session still
+      // exists. If the API is unreachable, browser unsubscribe still prevents
+      // delivery and the stale server record is retired on a later 404/410.
+      await webPushService.removeSubscription().catch(() => undefined);
       await authService.logout();
     } finally {
       if (version === sessionVersion.current) setUser(null);
