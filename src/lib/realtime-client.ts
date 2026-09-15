@@ -32,6 +32,7 @@ class MarketliftRealtimeClient {
   private listeners = new Set<(event: RealtimeEvent) => void>();
   private pending = new Map<string, PendingCommand>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimer: number | null = null;
   private reconnectAttempt = 0;
   private reconnectEnabled = false;
 
@@ -55,6 +56,7 @@ class MarketliftRealtimeClient {
 
     socket.addEventListener('open', () => {
       this.reconnectAttempt = 0;
+      this.startHeartbeat(socket);
     });
 
     socket.addEventListener('message', (message) => {
@@ -87,6 +89,7 @@ class MarketliftRealtimeClient {
 
     socket.addEventListener('close', (event) => {
       if (this.socket === socket) this.socket = null;
+      this.clearHeartbeat();
       this.rejectPending(new RealtimeUnavailableError('Realtime connection closed.'));
 
       if (event.code === 4401) {
@@ -104,6 +107,7 @@ class MarketliftRealtimeClient {
   disconnect() {
     this.reconnectEnabled = false;
     this.clearReconnectTimer();
+    this.clearHeartbeat();
     this.rejectPending(new RealtimeUnavailableError('Realtime connection closed.'));
     const socket = this.socket;
     this.socket = null;
@@ -135,6 +139,30 @@ class MarketliftRealtimeClient {
         reject(error instanceof Error ? error : new Error('Realtime action failed.'));
       }
     });
+  }
+
+  private startHeartbeat(socket: WebSocket) {
+    this.clearHeartbeat();
+    const heartbeat = () => {
+      if (this.socket === socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          // `ping` is deliberately not sent through command(): the server
+          // responds with `pong`, not command.ack. It refreshes the short-lived
+          // presence TTL without creating a pending request.
+          socket.send(JSON.stringify({ type: 'ping' }));
+        } catch {
+          // The socket close event will own recovery.
+        }
+      }
+    };
+    heartbeat();
+    this.heartbeatTimer = window.setInterval(heartbeat, 30_000);
+  }
+
+  private clearHeartbeat() {
+    if (this.heartbeatTimer === null) return;
+    window.clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
   }
 
   private scheduleReconnect() {

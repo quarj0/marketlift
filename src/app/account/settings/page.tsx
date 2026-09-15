@@ -46,7 +46,7 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-12 shrink-0 rounded-full transition ${
         checked ? "bg-brand-600" : "bg-slate-200"
-      } disabled:opacity-50`}
+      } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <span
         className={`absolute top-1 size-5 rounded-full bg-white shadow-sm transition ${
@@ -63,12 +63,14 @@ function SettingRow({
   description,
   checked,
   onChange,
+  disabled = false,
 }: {
   icon: typeof Bell;
   title: string;
   description: string;
   checked: boolean;
   onChange: (value: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 py-4">
@@ -92,6 +94,7 @@ function SettingRow({
         label={title}
         checked={checked}
         onChange={onChange}
+        disabled={disabled}
       />
     </div>
   );
@@ -108,11 +111,18 @@ function SettingsForm({
 
   const [form, setForm] =
     useState<AccountSettings>(initialSettings);
-
   const [saved, setSaved] = useState(false);
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: accountService.updateSettings,
+
+    onMutate: (next) => {
+      const previous = form;
+      setForm({ ...form, ...next });
+      setSaved(false);
+      return { previous };
+    },
 
     onSuccess: (data) => {
       setForm(data);
@@ -129,27 +139,74 @@ function SettingsForm({
         2200,
       );
     },
+
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        setForm(context.previous);
+        setLocale(context.previous.language);
+      }
+    },
   });
 
-  function update<K extends keyof AccountSettings>(
+  function persist<K extends keyof AccountSettings>(
     key: K,
     value: AccountSettings[K],
   ) {
-    setForm((current) => ({
-      ...current,
+    if (mutation.isPending) return;
+    mutation.mutate({
+      ...form,
       [key]: value,
-    }));
+      language: locale,
+    });
+  }
+
+  async function persistBrowserNotification(
+    key: "pushMessages" | "pushListingUpdates",
+    value: boolean,
+  ) {
+    setNotificationNotice(null);
+    if (!value) {
+      persist(key, false);
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      setNotificationNotice(
+        locale === "pt-BR"
+          ? "Este navegador não oferece suporte a notificações do sistema."
+          : "This browser does not support system notifications.",
+      );
+      return;
+    }
+
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") {
+      setNotificationNotice(
+        locale === "pt-BR"
+          ? "Permita notificações nas configurações do navegador para ativar este alerta."
+          : "Allow notifications in your browser settings to enable this alert.",
+      );
+      return;
+    }
+
+    persist(key, true);
   }
 
   function updateLanguage(
     language: AccountSettings["language"],
   ) {
-    update("language", language);
-
-    // Language is a UI preference, so show the result immediately.
-    // Saving below also persists it through the account service.
+    if (mutation.isPending) return;
     setLocale(language);
+    mutation.mutate({
+      ...form,
+      language,
+    });
   }
+
+  const settingPending = mutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -178,8 +235,9 @@ function SettingsForm({
               "settings.emailMessagesBody",
             )}
             checked={form.emailMessages}
+            disabled={settingPending}
             onChange={(value) =>
-              update("emailMessages", value)
+              persist("emailMessages", value)
             }
           />
 
@@ -190,8 +248,9 @@ function SettingsForm({
               "settings.emailListingBody",
             )}
             checked={form.emailListingUpdates}
+            disabled={settingPending}
             onChange={(value) =>
-              update("emailListingUpdates", value)
+              persist("emailListingUpdates", value)
             }
           />
 
@@ -202,8 +261,9 @@ function SettingsForm({
               "settings.pushMessagesBody",
             )}
             checked={form.pushMessages}
+            disabled={settingPending}
             onChange={(value) =>
-              update("pushMessages", value)
+              void persistBrowserNotification("pushMessages", value)
             }
           />
 
@@ -214,8 +274,9 @@ function SettingsForm({
               "settings.pushListingBody",
             )}
             checked={form.pushListingUpdates}
+            disabled={settingPending}
             onChange={(value) =>
-              update("pushListingUpdates", value)
+              void persistBrowserNotification("pushListingUpdates", value)
             }
           />
 
@@ -226,8 +287,9 @@ function SettingsForm({
               "settings.recommendationsBody",
             )}
             checked={form.emailRecommendations}
+            disabled={settingPending}
             onChange={(value) =>
-              update("emailRecommendations", value)
+              persist("emailRecommendations", value)
             }
           />
 
@@ -238,11 +300,18 @@ function SettingsForm({
               "settings.marketingBody",
             )}
             checked={form.marketingEmails}
+            disabled={settingPending}
             onChange={(value) =>
-              update("marketingEmails", value)
+              persist("marketingEmails", value)
             }
           />
         </div>
+
+        {notificationNotice && (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900" role="status">
+            {notificationNotice}
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -268,8 +337,9 @@ function SettingsForm({
             title={t("settings.online")}
             description={t("settings.onlineBody")}
             checked={form.showOnlineStatus}
+            disabled={settingPending}
             onChange={(value) =>
-              update("showOnlineStatus", value)
+              persist("showOnlineStatus", value)
             }
           />
 
@@ -278,8 +348,9 @@ function SettingsForm({
             title={t("settings.phone")}
             description={t("settings.phoneBody")}
             checked={form.showPhoneToSellers}
+            disabled={settingPending}
             onChange={(value) =>
-              update("showPhoneToSellers", value)
+              persist("showPhoneToSellers", value)
             }
           />
         </div>
@@ -310,13 +381,14 @@ function SettingsForm({
 
             <select
               value={locale}
+              disabled={settingPending}
               onChange={(event) =>
                 updateLanguage(
                   event.target
                     .value as AccountSettings["language"],
                 )
               }
-              className="h-11 w-full rounded-xl border bg-white px-3.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="h-11 w-full rounded-xl border bg-white px-3.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="en">
                 {t("settings.english")}
@@ -346,36 +418,23 @@ function SettingsForm({
 
       <AccountSecurityControls />
 
-      {mutation.isError && <p role="alert" className="text-sm text-rose-700">{mutation.error.message}</p>}
-
-      <div className="sticky bottom-20 flex items-center justify-between gap-3 rounded-2xl border bg-white/95 p-4 shadow-lg backdrop-blur md:bottom-4">
-        <div>
-          <p className="text-sm font-bold">
-            {t("settings.preferences")}
-          </p>
-
-          <p className="text-xs text-slate-500">
-            {saved
-              ? t("settings.saved")
-              : t("settings.unsaved")}
-          </p>
+      {mutation.isPending && (
+        <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800" role="status">
+          {t("common.saving")}
         </div>
+      )}
 
-        <Button
-          type="button"
-          disabled={mutation.isPending}
-          onClick={() =>
-            mutation.mutate({
-              ...form,
-              language: locale,
-            })
-          }
-        >
-          {mutation.isPending
-            ? t("common.saving")
-            : t("settings.save")}
-        </Button>
-      </div>
+      {saved && !mutation.isPending && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
+          {t("settings.saved")}
+        </div>
+      )}
+
+      {mutation.isError && (
+        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {mutation.error.message}
+        </p>
+      )}
     </div>
   );
 }
