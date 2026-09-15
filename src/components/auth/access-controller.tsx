@@ -105,9 +105,10 @@ export function AccessController({ children }: { children: React.ReactNode }) {
       const payload = (await response.json()) as { maintenance?: boolean };
       setMaintenance(Boolean(payload.maintenance));
     } catch {
-      // A status-check failure must not itself lock the marketplace. Other
-      // readiness/error handling will surface a real backend outage.
-      setMaintenance(false);
+      // Fail open only before we have any confirmed state. Once maintenance is
+      // known to be active, a transient probe failure must not expose broken
+      // marketplace screens until a later successful probe confirms recovery.
+      setMaintenance((current) => (current === null ? false : current));
     } finally {
       if (interactive) setCheckingMaintenance(false);
     }
@@ -123,7 +124,10 @@ export function AccessController({ children }: { children: React.ReactNode }) {
   }, [checkMaintenance]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => void checkMaintenance(), maintenance ? 15_000 : 60_000);
+    const interval = window.setInterval(
+      () => void checkMaintenance(),
+      maintenance ? 15_000 : 60_000,
+    );
     return () => window.clearInterval(interval);
   }, [checkMaintenance, maintenance]);
 
@@ -140,12 +144,16 @@ export function AccessController({ children }: { children: React.ReactNode }) {
     }
   }, [authReady, authRequired, canSell, isAuthenticated, maintenance, pathname, router]);
 
-  if (maintenance === null) return <AccessLoading />;
   if (maintenance) {
     return <MaintenanceScreen onRetry={() => void checkMaintenance(true)} checking={checkingMaintenance} />;
   }
 
+  // Public pages keep their server-rendered content while the maintenance
+  // status is still being probed. This preserves SEO/no-JS behavior and avoids
+  // replacing the entire public marketplace with a client-only loading shell.
   if (!authRequired) return <>{children}</>;
+
+  if (maintenance === null) return <AccessLoading />;
   if (!authReady) return <AccessLoading />;
   if (!isAuthenticated) return <AccessLoading />;
   if (requiresSellingCapability(pathname) && !canSell) return <AccessLoading />;
