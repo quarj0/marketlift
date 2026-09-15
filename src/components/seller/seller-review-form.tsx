@@ -13,12 +13,13 @@ import { socialService } from '@/services/social.service';
 
 export function SellerReviewForm({ sellerId }: { sellerId: string }) {
   const { isAuthenticated, user } = useAuth();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [authOpen, setAuthOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [done, setDone] = useState(false);
   const queryClient = useQueryClient();
+  const isOwnProfile = Boolean(user?.sellerProfile?.sellerId === sellerId);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -32,7 +33,7 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
       setDone(true);
       setRating(0);
       setComment('');
-      queryClient.invalidateQueries({ queryKey: ['seller-reviews', sellerId] });
+      void queryClient.invalidateQueries({ queryKey: ['seller-reviews', sellerId] });
     },
   });
 
@@ -47,6 +48,19 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
     );
   }
 
+  if (isOwnProfile) {
+    return (
+      <div className="mt-5 border-t pt-5">
+        <h3 className="font-black">{t('seller.review.leave')}</h3>
+        <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600" role="status">
+          {locale === 'pt-BR'
+            ? 'Você não pode avaliar o seu próprio perfil de vendedor.'
+            : 'You cannot review your own seller profile.'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-5 border-t pt-5">
       <h3 className="font-black">{t('seller.review.leave')}</h3>
@@ -55,6 +69,16 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
       {done && (
         <div className="mt-4">
           <SuccessNotice title={t('seller.review.submitted')} description={t('seller.review.thanks')} />
+        </div>
+      )}
+
+      {mutation.isError && (
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+          {mutation.error instanceof Error
+            ? mutation.error.message
+            : locale === 'pt-BR'
+              ? 'Não foi possível enviar sua avaliação.'
+              : 'Unable to submit your review.'}
         </div>
       )}
 
@@ -68,6 +92,7 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
             aria-label={t(value === 1 ? 'seller.review.star' : 'seller.review.stars', { value })}
             onClick={() => {
               setDone(false);
+              mutation.reset();
               setRating(value);
             }}
             className="grid size-11 place-items-center rounded-xl hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500"
@@ -83,6 +108,7 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
           value={comment}
           onChange={(event) => {
             setDone(false);
+            mutation.reset();
             setComment(event.target.value);
           }}
           maxLength={700}
