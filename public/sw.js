@@ -60,14 +60,6 @@ self.addEventListener("push", (event) => {
         };
       }
 
-      const windows = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      if (windows.some((client) => client.visibilityState === "visible")) {
-        return;
-      }
-
       const href = safeHref(payload.href);
       const notificationId = String(payload.id || "update");
       await self.registration.showNotification(payload.title || "Marketlift", {
