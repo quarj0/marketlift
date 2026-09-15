@@ -112,6 +112,7 @@ function SettingsForm({
   const [form, setForm] =
     useState<AccountSettings>(initialSettings);
   const [saved, setSaved] = useState(false);
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: accountService.updateSettings,
@@ -157,6 +158,41 @@ function SettingsForm({
       [key]: value,
       language: locale,
     });
+  }
+
+  async function persistBrowserNotification(
+    key: "pushMessages" | "pushListingUpdates",
+    value: boolean,
+  ) {
+    setNotificationNotice(null);
+    if (!value) {
+      persist(key, false);
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      setNotificationNotice(
+        locale === "pt-BR"
+          ? "Este navegador não oferece suporte a notificações do sistema."
+          : "This browser does not support system notifications.",
+      );
+      return;
+    }
+
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") {
+      setNotificationNotice(
+        locale === "pt-BR"
+          ? "Permita notificações nas configurações do navegador para ativar este alerta."
+          : "Allow notifications in your browser settings to enable this alert.",
+      );
+      return;
+    }
+
+    persist(key, true);
   }
 
   function updateLanguage(
@@ -227,7 +263,7 @@ function SettingsForm({
             checked={form.pushMessages}
             disabled={settingPending}
             onChange={(value) =>
-              persist("pushMessages", value)
+              void persistBrowserNotification("pushMessages", value)
             }
           />
 
@@ -240,7 +276,7 @@ function SettingsForm({
             checked={form.pushListingUpdates}
             disabled={settingPending}
             onChange={(value) =>
-              persist("pushListingUpdates", value)
+              void persistBrowserNotification("pushListingUpdates", value)
             }
           />
 
@@ -270,6 +306,12 @@ function SettingsForm({
             }
           />
         </div>
+
+        {notificationNotice && (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900" role="status">
+            {notificationNotice}
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
