@@ -9,9 +9,16 @@ import {
 import { uploadFile } from '@/services/upload.service';
 import type { SendMessagePayload } from '@/types';
 
+type MessagingApiConversation = ApiConversation & {
+  participant: ApiConversation['participant'] & {
+    phone?: string | null;
+    online?: boolean;
+  };
+};
+
 const CONVERSATION_FIELDS = `
   id
-  participant { id name avatarUrl verifiedSeller isSeller }
+  participant { id name avatarUrl verifiedSeller isSeller phone online }
   listing { id slug title price primaryImage status deleted countryCode state stateCode city district }
   lastMessage
   lastMessageAt
@@ -31,20 +38,32 @@ const MESSAGE_FIELDS = `
   attachment { type url name mimeType size }
 `;
 
+function mapMessagingConversation(raw: MessagingApiConversation) {
+  const mapped = mapConversation(raw);
+  return {
+    ...mapped,
+    participant: {
+      ...mapped.participant,
+      phone: raw.participant.phone?.trim() || undefined,
+      online: Boolean(raw.participant.online),
+    },
+  };
+}
+
 export const messagingService = {
   async getConversation(id: string) {
-    const data = await graphqlRequest<{ conversation: ApiConversation }>(`query Conversation($id: ID!) { conversation(id: $id) { ${CONVERSATION_FIELDS} } }`, { id });
-    return mapConversation(data.conversation);
+    const data = await graphqlRequest<{ conversation: MessagingApiConversation }>(`query Conversation($id: ID!) { conversation(id: $id) { ${CONVERSATION_FIELDS} } }`, { id });
+    return mapMessagingConversation(data.conversation);
   },
   unreadCounts: () => graphqlRequest<{ unreadMessageCount: number; unreadNotificationCount: number }>(`query UnreadCounts { unreadMessageCount unreadNotificationCount }`),
 
   async getConversations(offset = 0) {
-    const data = await graphqlRequest<{ myConversations: ApiConversation[] }>(`
+    const data = await graphqlRequest<{ myConversations: MessagingApiConversation[] }>(`
       query MyConversations($offset: Int!) {
         myConversations(limit: 50, offset: $offset) { ${CONVERSATION_FIELDS} }
       }
     `, { offset });
-    return (data.myConversations || []).map(mapConversation);
+    return (data.myConversations || []).map(mapMessagingConversation);
   },
 
   async getMessages(id: string, before?: { createdAt: string; id: string }) {
@@ -57,12 +76,12 @@ export const messagingService = {
   },
 
   async startConversation(listingId: string) {
-    const data = await graphqlRequest<{ startConversation: ApiConversation }>(`
+    const data = await graphqlRequest<{ startConversation: MessagingApiConversation }>(`
       mutation StartConversation($listingId: ID!) {
         startConversation(listingId: $listingId) { ${CONVERSATION_FIELDS} }
       }
     `, { listingId });
-    return mapConversation(data.startConversation);
+    return mapMessagingConversation(data.startConversation);
   },
 
   async sendMessage(id: string, payload: SendMessagePayload) {
