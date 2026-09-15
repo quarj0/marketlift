@@ -32,7 +32,7 @@ class MarketliftRealtimeClient {
   private listeners = new Set<(event: RealtimeEvent) => void>();
   private pending = new Map<string, PendingCommand>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatTimer: number | null = null;
   private reconnectAttempt = 0;
   private reconnectEnabled = false;
 
@@ -160,8 +160,8 @@ class MarketliftRealtimeClient {
   }
 
   private clearHeartbeat() {
-    if (!this.heartbeatTimer) return;
-    clearInterval(this.heartbeatTimer);
+    if (this.heartbeatTimer === null) return;
+    window.clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = null;
   }
 
