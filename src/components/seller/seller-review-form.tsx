@@ -37,6 +37,13 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
     },
   });
 
+  const clearSettledFeedback = () => {
+    setDone(false);
+    if (!mutation.isPending && (mutation.isError || mutation.isSuccess)) {
+      mutation.reset();
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <>
@@ -90,12 +97,12 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
             role="radio"
             aria-checked={rating === value}
             aria-label={t(value === 1 ? 'seller.review.star' : 'seller.review.stars', { value })}
+            disabled={mutation.isPending}
             onClick={() => {
-              setDone(false);
-              mutation.reset();
+              clearSettledFeedback();
               setRating(value);
             }}
-            className="grid size-11 place-items-center rounded-xl hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="grid size-11 place-items-center rounded-xl hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Star className={`size-6 ${value <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} aria-hidden="true" />
           </button>
@@ -106,14 +113,14 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
         {t('seller.review.feedback')}
         <textarea
           value={comment}
+          disabled={mutation.isPending}
           onChange={(event) => {
-            setDone(false);
-            mutation.reset();
+            clearSettledFeedback();
             setComment(event.target.value);
           }}
           maxLength={700}
           placeholder={t('seller.review.placeholder')}
-          className="mt-2 min-h-28 w-full rounded-xl border p-3 text-base outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 sm:text-sm"
+          className="mt-2 min-h-28 w-full rounded-xl border p-3 text-base outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70 sm:text-sm"
         />
       </label>
 
@@ -121,7 +128,7 @@ export function SellerReviewForm({ sellerId }: { sellerId: string }) {
         <span className="text-xs text-slate-400">{comment.length}/700</span>
         <Button
           size="sm"
-          disabled={rating === 0 || comment.trim().length < 10}
+          disabled={mutation.isPending || rating === 0 || comment.trim().length < 10}
           loading={mutation.isPending}
           loadingText={t('seller.review.submitting')}
           onClick={() => mutation.mutate()}
