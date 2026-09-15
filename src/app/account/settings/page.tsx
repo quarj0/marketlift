@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
 import { accountService } from "@/services/account.service";
+import { webPushService } from "@/services/web-push.service";
 import type { AccountSettings } from "@/types";
 
 function Toggle({
@@ -164,35 +165,37 @@ function SettingsForm({
     key: "pushMessages" | "pushListingUpdates",
     value: boolean,
   ) {
+    if (mutation.isPending) return;
     setNotificationNotice(null);
-    if (!value) {
-      persist(key, false);
-      return;
-    }
+    const next = {
+      ...form,
+      [key]: value,
+      language: locale,
+    };
 
-    if (!("Notification" in window)) {
+    try {
+      if (value) {
+        await webPushService.enable();
+        await mutation.mutateAsync(next);
+        return;
+      }
+
+      const updated = await mutation.mutateAsync(next);
+      if (!updated.pushMessages && !updated.pushListingUpdates) {
+        await webPushService.removeSubscription();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
       setNotificationNotice(
         locale === "pt-BR"
-          ? "Este navegador não oferece suporte a notificações do sistema."
-          : "This browser does not support system notifications.",
+          ? message.includes("permission")
+            ? "Permita notificações nas configurações do navegador para ativar este alerta."
+            : "Não foi possível configurar as notificações push neste dispositivo. Tente novamente."
+          : message.includes("permission")
+            ? "Allow notifications in your browser settings to enable this alert."
+            : "Web Push could not be configured on this device. Please try again.",
       );
-      return;
     }
-
-    let permission = Notification.permission;
-    if (permission === "default") {
-      permission = await Notification.requestPermission();
-    }
-    if (permission !== "granted") {
-      setNotificationNotice(
-        locale === "pt-BR"
-          ? "Permita notificações nas configurações do navegador para ativar este alerta."
-          : "Allow notifications in your browser settings to enable this alert.",
-      );
-      return;
-    }
-
-    persist(key, true);
   }
 
   function updateLanguage(
