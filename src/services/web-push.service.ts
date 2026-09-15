@@ -4,6 +4,9 @@ const PUBLIC_KEY_QUERY = `query WebPushPublicKey { webPushPublicKey }`;
 const REGISTER_MUTATION = `mutation RegisterWebPushSubscription($endpoint:String!,$p256dh:String!,$auth:String!){registerWebPushSubscription(endpoint:$endpoint,p256dh:$p256dh,auth:$auth)}`;
 const UNREGISTER_MUTATION = `mutation UnregisterWebPushSubscription($endpoint:String!){unregisterWebPushSubscription(endpoint:$endpoint)}`;
 
+let lifecycleVersion = 0;
+let persistedEndpoint: string | null = null;
+
 function supported() {
   return typeof window !== "undefined"
     && "serviceWorker" in navigator
@@ -30,6 +33,21 @@ function sameKey(left: ArrayBuffer | null, right: Uint8Array) {
     if (current[index] !== right[index]) return false;
   }
   return true;
+}
+
+function assertLifecycle(version: number) {
+  if (version !== lifecycleVersion) {
+    throw new Error("Web Push reconciliation was cancelled.");
+  }
+}
+
+function cancelPendingReconciliation() {
+  lifecycleVersion += 1;
+  persistedEndpoint = null;
+}
+
+function hasPersistedSubscription() {
+  return Boolean(persistedEndpoint);
 }
 
 async function serviceWorkerRegistration() {
@@ -68,28 +86,38 @@ async function unregisterEndpoint(endpoint: string) {
   );
 }
 
-async function ensureSubscription() {
+async function retireLocalSubscription(subscription: PushSubscription) {
+  const endpoint = subscription.endpoint;
+  if (persistedEndpoint === endpoint) persistedEndpoint = null;
+  try {
+    await subscription.unsubscribe();
+  } finally {
+    // Server cleanup is deliberately best effort. Browser unsubscribe is the
+    // privacy boundary and must not serialize logout behind a network request.
+    void unregisterEndpoint(endpoint).catch(() => undefined);
+  }
+}
+
+async function ensureSubscription(version = lifecycleVersion) {
   if (!supported()) throw new Error("This browser does not support Web Push.");
   if (Notification.permission !== "granted") {
     throw new Error("Notification permission has not been granted.");
   }
 
+  assertLifecycle(version);
   const registration = await serviceWorkerRegistration();
+  assertLifecycle(version);
   const applicationServerKey = decodeApplicationServerKey(await publicKey());
+  assertLifecycle(version);
   let subscription = await registration.pushManager.getSubscription();
+  assertLifecycle(version);
 
   if (
     subscription
     && !sameKey(subscription.options.applicationServerKey, applicationServerKey)
   ) {
-    const oldEndpoint = subscription.endpoint;
-    try {
-      await unregisterEndpoint(oldEndpoint);
-    } catch {
-      // The browser unsubscribe is the privacy boundary. A stale API record will
-      // be disabled when the push service later returns 404/410.
-    }
-    await subscription.unsubscribe();
+    await retireLocalSubscription(subscription);
+    assertLifecycle(version);
     subscription = null;
   }
 
@@ -98,28 +126,44 @@ async function ensureSubscription() {
       userVisibleOnly: true,
       applicationServerKey,
     });
+    if (version !== lifecycleVersion) {
+      await retireLocalSubscription(subscription);
+      assertLifecycle(version);
+    }
   }
 
-  await persistSubscription(subscription);
+  try {
+    await persistSubscription(subscription);
+  } catch (error) {
+    // A local PushSubscription alone is not proof that Marketlift can deliver
+    // to it. Leave realtime browser notifications enabled until registration
+    // has been confirmed by the API.
+    if (persistedEndpoint === subscription.endpoint) persistedEndpoint = null;
+    throw error;
+  }
+
+  if (version !== lifecycleVersion) {
+    await retireLocalSubscription(subscription);
+    assertLifecycle(version);
+  }
+
+  persistedEndpoint = subscription.endpoint;
   return subscription;
 }
 
 async function removeSubscription() {
+  cancelPendingReconciliation();
   if (!supported()) return;
   const registration = await navigator.serviceWorker.getRegistration("/");
   if (!registration) return;
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;
-
-  try {
-    await unregisterEndpoint(subscription.endpoint);
-  } finally {
-    await subscription.unsubscribe();
-  }
+  await retireLocalSubscription(subscription);
 }
 
 async function enable() {
   if (!supported()) throw new Error("This browser does not support Web Push.");
+  const version = lifecycleVersion;
   let permission = Notification.permission;
   if (permission === "default") {
     permission = await Notification.requestPermission();
@@ -127,7 +171,8 @@ async function enable() {
   if (permission !== "granted") {
     throw new Error("Notification permission was not granted.");
   }
-  return ensureSubscription();
+  assertLifecycle(version);
+  return ensureSubscription(version);
 }
 
 async function reconcile(enabled: boolean) {
@@ -136,9 +181,10 @@ async function reconcile(enabled: boolean) {
     await removeSubscription();
     return;
   }
+  const version = lifecycleVersion;
   // Reconciliation must never trigger a permission prompt during login/page load.
   if (Notification.permission === "granted") {
-    await ensureSubscription();
+    await ensureSubscription(version);
   }
 }
 
@@ -148,4 +194,6 @@ export const webPushService = {
   ensureSubscription,
   removeSubscription,
   reconcile,
+  cancelPendingReconciliation,
+  hasPersistedSubscription,
 };
