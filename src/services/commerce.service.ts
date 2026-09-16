@@ -57,6 +57,13 @@ export type SellerWallet = {
   currency: string;
 };
 
+export type DeliveryRider = {
+  id: string;
+  userId: string;
+  name: string;
+  active: boolean;
+};
+
 export type CommerceOrder = {
   id: string;
   reference: string;
@@ -90,6 +97,10 @@ export type CommerceOrder = {
     carrier?: string | null;
     trackingCode?: string | null;
     deliveredAt?: string | null;
+    assignedAt?: string | null;
+    confirmationSource?: string | null;
+    deliveryPin?: string | null;
+    rider?: DeliveryRider | null;
   } | null;
   settlement?: {
     status: string;
@@ -110,7 +121,10 @@ const ORDER_FIELDS = `
   unitPriceCents subtotalCents shippingAmountCents marketplaceFeeCents sellerProceedsCents totalCents currency
   shippingAddress listingSnapshot createdAt paidAt shippedAt deliveredAt completedAt
   payment { id method status amountCents provider providerStatus checkoutData paidAt }
-  shipment { status carrier trackingCode deliveredAt }
+  shipment {
+    status carrier trackingCode deliveredAt assignedAt confirmationSource deliveryPin
+    rider { id userId name active }
+  }
   settlement { status amountCents releaseAfter payoutRequestedAt paidAt }
 `;
 
@@ -295,6 +309,42 @@ export const commerceService = {
     `,
       { orderId, reason, description },
     );
+  },
+
+  async getMyDeliveryRider() {
+    const data = await graphqlRequest<{ myDeliveryRider: DeliveryRider | null }>(`
+      query MyDeliveryRider {
+        myDeliveryRider { id userId name active }
+      }
+    `);
+    return data.myDeliveryRider;
+  },
+
+  async getMyDeliveryOrders(offset = 0, limit = 50) {
+    const data = await graphqlRequest<{ myDeliveryOrders: CommerceOrder[] }>(`
+      query MyDeliveryOrders($offset:Int!,$limit:Int!) {
+        myDeliveryOrders(offset:$offset,limit:$limit) { ${ORDER_FIELDS} }
+      }
+    `, { offset, limit });
+    return data.myDeliveryOrders || [];
+  },
+
+  async startDelivery(orderId: string) {
+    const data = await graphqlRequest<{ startCommerceDelivery: CommerceOrder }>(`
+      mutation StartCommerceDelivery($orderId: ID!) {
+        startCommerceDelivery(orderId: $orderId) { ${ORDER_FIELDS} }
+      }
+    `, { orderId });
+    return data.startCommerceDelivery;
+  },
+
+  async confirmRiderDeliveryPin(orderId: string, deliveryPin: string) {
+    const data = await graphqlRequest<{ confirmCommerceRiderDeliveryPin: CommerceOrder }>(`
+      mutation ConfirmCommerceRiderDeliveryPin($orderId: ID!, $deliveryPin: String!) {
+        confirmCommerceRiderDeliveryPin(orderId: $orderId, deliveryPin: $deliveryPin) { ${ORDER_FIELDS} }
+      }
+    `, { orderId, deliveryPin });
+    return data.confirmCommerceRiderDeliveryPin;
   },
 
   async getSellerPaymentAccount() {

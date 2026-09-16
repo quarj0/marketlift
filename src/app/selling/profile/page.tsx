@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, Camera, Eye, Loader2 } from "lucide-react";
 
@@ -22,22 +22,49 @@ import type { SellerType } from "@/types";
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
+type ProfileForm = {
+  displayName: string;
+  sellerType: SellerType;
+  phone: string;
+  stateName: string;
+  stateCode: string;
+  city: string;
+  district: string;
+  bio: string;
+};
+
+const EMPTY_FORM: ProfileForm = {
+  displayName: "",
+  sellerType: "individual",
+  phone: "",
+  stateName: "",
+  stateCode: "",
+  city: "",
+  district: "",
+  bio: "",
+};
+
+function normalizedForm(value: ProfileForm) {
+  return {
+    ...value,
+    displayName: value.displayName.trim(),
+    phone: value.phone.trim(),
+    stateName: value.stateName.trim(),
+    stateCode: value.stateCode.trim(),
+    city: value.city.trim(),
+    district: value.district.trim(),
+    bio: value.bio.trim(),
+  };
+}
+
 export default function SellingProfilePage() {
   const { t, locale } = useLocale();
   const { market } = useMarket();
   const { user, hydrated, refreshSession } = useAuth();
   const queryClient = useQueryClient();
   const sellerId = user?.sellerProfile?.sellerId ?? "";
-  const [form, setForm] = useState({
-    displayName: "",
-    sellerType: "individual" as SellerType,
-    phone: "",
-    stateName: "",
-    stateCode: "",
-    city: "",
-    district: "",
-    bio: "",
-  });
+  const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
+  const [baseline, setBaseline] = useState<ProfileForm | null>(null);
   const [saved, setSaved] = useState(false);
 
   const profileQuery = useQuery({
@@ -55,42 +82,109 @@ export default function SellingProfilePage() {
     if (!profileQuery.data || !sellerQuery.data) return;
     const profile = profileQuery.data;
     const seller = sellerQuery.data;
+    const next: ProfileForm = {
+      displayName: seller.name || profile.fullName,
+      sellerType: seller.type ?? "individual",
+      phone: profile.phone || "",
+      stateName: profile.location.state || "",
+      stateCode: profile.location.stateCode || "",
+      city: profile.location.city || "",
+      district: profile.location.district || "",
+      bio: profile.bio || "",
+    };
     const frame = window.requestAnimationFrame(() => {
-      setForm({
-        displayName: seller.name || profile.fullName,
-        sellerType: seller.type ?? "individual",
-        phone: profile.phone || "",
-        stateName: profile.location.state || "",
-        stateCode: profile.location.stateCode || "",
-        city: profile.location.city || "",
-        district: profile.location.district || "",
-        bio: profile.bio || "",
-      });
+      setForm(next);
+      setBaseline(next);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [profileQuery.data, sellerQuery.data]);
 
+  const normalized = useMemo(() => normalizedForm(form), [form]);
+  const normalizedBaseline = useMemo(
+    () => (baseline ? normalizedForm(baseline) : null),
+    [baseline],
+  );
+  const hasLocation = Boolean(
+    normalized.stateName ||
+      normalized.stateCode ||
+      normalized.city ||
+      normalized.district,
+  );
+  const locationComplete =
+    !hasLocation ||
+    Boolean((normalized.stateCode || normalized.stateName) && normalized.city);
+  const phoneValid =
+    !normalized.phone || /^\+[1-9]\d{6,14}$/.test(normalized.phone);
+  const dirty = Boolean(
+    normalizedBaseline &&
+      JSON.stringify(normalized) !== JSON.stringify(normalizedBaseline),
+  );
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!normalizedBaseline) throw new Error("Profile is still loading.");
+
+      const sellerPatch: {
+        displayName?: string;
+        sellerType?: SellerType;
+      } = {};
+      if (normalized.displayName !== normalizedBaseline.displayName) {
+        sellerPatch.displayName = normalized.displayName;
+      }
+      if (normalized.sellerType !== normalizedBaseline.sellerType) {
+        sellerPatch.sellerType = normalized.sellerType;
+      }
+
+      const accountPatch: {
+        phone?: string;
+        bio?: string;
+        location?: {
+          countryCode?: string;
+          state?: string;
+          stateCode?: string;
+          city?: string;
+          district?: string;
+        };
+      } = {};
+      if (normalized.phone !== normalizedBaseline.phone) {
+        accountPatch.phone = normalized.phone;
+      }
+      if (normalized.bio !== normalizedBaseline.bio) {
+        accountPatch.bio = normalized.bio;
+      }
+
+      const currentState = normalized.stateName || normalized.stateCode;
+      const baselineState =
+        normalizedBaseline.stateName || normalizedBaseline.stateCode;
+      const locationPatch: NonNullable<typeof accountPatch.location> = {};
+      if (currentState !== baselineState) locationPatch.state = currentState;
+      if (normalized.stateCode !== normalizedBaseline.stateCode) {
+        locationPatch.stateCode = normalized.stateCode;
+      }
+      if (normalized.city !== normalizedBaseline.city) {
+        locationPatch.city = normalized.city;
+      }
+      if (normalized.district !== normalizedBaseline.district) {
+        locationPatch.district = normalized.district;
+      }
+      if (Object.keys(locationPatch).length) {
+        locationPatch.countryCode =
+          profileQuery.data?.location.countryCode ||
+          user?.countryCode ||
+          market.code;
+        accountPatch.location = locationPatch;
+      }
+
+      const sellerPromise = Object.keys(sellerPatch).length
+        ? sellerService.updateMyProfile(sellerPatch)
+        : Promise.resolve(sellerQuery.data!);
+      const profilePromise = Object.keys(accountPatch).length
+        ? accountService.updateProfile(accountPatch)
+        : Promise.resolve(profileQuery.data!);
+
       const [seller, profile] = await Promise.all([
-        sellerService.updateMyProfile({
-          displayName: form.displayName.trim(),
-          sellerType: form.sellerType,
-        }),
-        accountService.updateProfile({
-          phone: form.phone.trim(),
-          bio: form.bio.trim(),
-          location: {
-            countryCode:
-              profileQuery.data?.location.countryCode ||
-              user?.countryCode ||
-              market.code,
-            state: form.stateName || form.stateCode,
-            stateCode: form.stateCode,
-            city: form.city.trim(),
-            district: form.district.trim(),
-          },
-        }),
+        sellerPromise,
+        profilePromise,
       ]);
       return { seller, profile };
     },
@@ -132,6 +226,12 @@ export default function SellingProfilePage() {
   const seller = sellerQuery.data;
   const profile = profileQuery.data;
   const locationLabel = [form.city, form.stateCode].filter(Boolean).join(", ");
+  const saveDisabled =
+    saveMutation.isPending ||
+    !normalized.displayName ||
+    !locationComplete ||
+    !phoneValid ||
+    !dirty;
 
   return (
     <MarketplaceShell>
@@ -217,12 +317,7 @@ export default function SellingProfilePage() {
                           {locationLabel}
                         </p>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        asChild
-                      >
+                      <Button variant="outline" size="sm" className="mt-3" asChild>
                         <Link href={`/seller/${seller.id}`}>
                           <Eye className="size-4" />
                           {t("selling.profile.preview")}
@@ -246,6 +341,11 @@ export default function SellingProfilePage() {
                   <h2 className="text-lg font-black">
                     {t("selling.profile.public")}
                   </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {locale === "pt-BR"
+                      ? "Altere apenas os campos que desejar. A localização é opcional, mas estado e cidade devem ser preenchidos juntos quando usada."
+                      : "Change only the fields you want. Location is optional, but state and city must be completed together when used."}
+                  </p>
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <label className="sm:col-span-2">
                       <span className="mb-1.5 block text-sm font-bold">
@@ -295,13 +395,18 @@ export default function SellingProfilePage() {
                           market.code
                         }
                         dialCode={market.dialCode}
+                        invalid={!phoneValid}
                         onChange={(phone) =>
-                          setForm((current) => ({
-                            ...current,
-                            phone,
-                          }))
+                          setForm((current) => ({ ...current, phone }))
                         }
                       />
+                      {!phoneValid && (
+                        <span className="mt-1 block text-xs font-semibold text-rose-600">
+                          {locale === "pt-BR"
+                            ? "Informe um número de telefone válido."
+                            : "Enter a valid phone number."}
+                        </span>
+                      )}
                     </label>
 
                     <div className="sm:col-span-2">
@@ -341,6 +446,13 @@ export default function SellingProfilePage() {
                           market.code
                         }
                       />
+                      {!locationComplete && (
+                        <p className="mt-2 text-xs font-semibold text-rose-600" role="alert">
+                          {locale === "pt-BR"
+                            ? "Selecione estado e cidade para salvar uma localização parcial."
+                            : "Select both state and city to save a partial location."}
+                        </p>
+                      )}
                     </div>
 
                     <label className="sm:col-span-2">
@@ -371,7 +483,7 @@ export default function SellingProfilePage() {
                     </p>
                   )}
                   {saveMutation.isError && (
-                    <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+                    <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700" role="alert">
                       {saveMutation.error instanceof Error
                         ? saveMutation.error.message
                         : t("common.error")}
@@ -379,16 +491,19 @@ export default function SellingProfilePage() {
                   )}
                   <Button
                     className="mt-5 w-full sm:w-auto"
-                    disabled={
-                      saveMutation.isPending ||
-                      !form.displayName.trim() ||
-                      !form.city.trim()
-                    }
+                    disabled={saveDisabled}
                     loading={saveMutation.isPending}
                     onClick={() => saveMutation.mutate()}
                   >
                     {t("selling.profile.save")}
                   </Button>
+                  {!dirty && !saveMutation.isPending && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      {locale === "pt-BR"
+                        ? "Faça uma alteração para habilitar o salvamento."
+                        : "Make a change to enable saving."}
+                    </p>
+                  )}
                 </section>
               </>
             )}
