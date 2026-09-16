@@ -1,6 +1,6 @@
-import { persistLocale } from '@/i18n/config';
-import { graphqlRequest } from '@/lib/api-client';
-import { LISTING_FIELDS } from '@/lib/graphql-fragments';
+import { persistLocale } from "@/i18n/config";
+import { graphqlRequest } from "@/lib/api-client";
+import { LISTING_FIELDS } from "@/lib/graphql-fragments";
 import {
   mapAccountProfile,
   mapAccountReview,
@@ -8,14 +8,14 @@ import {
   type ApiAccountProfile,
   type ApiListing,
   type ApiReview,
-} from '@/lib/api-mappers';
-import { uploadFile } from '@/services/upload.service';
+} from "@/lib/api-mappers";
+import { uploadFile } from "@/services/upload.service";
 import type {
   AccountOverview,
   AccountProfile,
   AccountReview,
   AccountSettings,
-} from '@/types';
+} from "@/types";
 
 const ACCOUNT_PROFILE_FIELDS = `
   id
@@ -60,13 +60,15 @@ const REVIEW_FIELDS = `
 
 export const accountService = {
   async getOverview(): Promise<AccountOverview> {
-    const data = await graphqlRequest<{ myAccountOverview: {
-      savedCount?: number;
-      unreadMessages?: number;
-      reviewsCount?: number;
-      recentlyViewed?: ApiListing[];
-      savedListings?: ApiListing[];
-    } }>(`
+    const data = await graphqlRequest<{
+      myAccountOverview: {
+        savedCount?: number;
+        unreadMessages?: number;
+        reviewsCount?: number;
+        recentlyViewed?: ApiListing[];
+        savedListings?: ApiListing[];
+      };
+    }>(`
       query MyAccountOverview {
         myAccountOverview {
           savedCount
@@ -82,8 +84,12 @@ export const accountService = {
       savedCount: Number(data.myAccountOverview.savedCount || 0),
       unreadMessages: Number(data.myAccountOverview.unreadMessages || 0),
       reviewsCount: Number(data.myAccountOverview.reviewsCount || 0),
-      recentlyViewed: (data.myAccountOverview.recentlyViewed || []).map(mapListing),
-      savedListings: (data.myAccountOverview.savedListings || []).map(mapListing),
+      recentlyViewed: (data.myAccountOverview.recentlyViewed || []).map(
+        mapListing,
+      ),
+      savedListings: (data.myAccountOverview.savedListings || []).map(
+        mapListing,
+      ),
     };
   },
 
@@ -123,21 +129,27 @@ export const accountService = {
           : {}),
       },
     };
-    const data = await graphqlRequest<{ updateMyProfile: ApiAccountProfile }>(`
+    const data = await graphqlRequest<{ updateMyProfile: ApiAccountProfile }>(
+      `
       mutation UpdateMyProfile($input: AccountProfileInput!) {
         updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
       }
-    `, variables);
+    `,
+      variables,
+    );
     return mapAccountProfile(data.updateMyProfile);
   },
 
   async updateAvatar(file: File): Promise<AccountProfile> {
-    const avatarUploadId = await uploadFile(file, 'avatar');
-    const data = await graphqlRequest<{ updateMyProfile: ApiAccountProfile }>(`
+    const avatarUploadId = await uploadFile(file, "avatar");
+    const data = await graphqlRequest<{ updateMyProfile: ApiAccountProfile }>(
+      `
       mutation UpdateMyAvatar($input: AccountProfileInput!) {
         updateMyProfile(input: $input) { ${ACCOUNT_PROFILE_FIELDS} }
       }
-    `, { input: { avatarUploadId } });
+    `,
+      { input: { avatarUploadId } },
+    );
     return mapAccountProfile(data.updateMyProfile);
   },
 
@@ -150,14 +162,21 @@ export const accountService = {
     return data.myAccountSettings;
   },
 
-  async updateSettings(input: Partial<AccountSettings>): Promise<AccountSettings> {
+  async updateSettings(
+    input: Partial<AccountSettings>,
+  ): Promise<AccountSettings> {
     const settingsInput = { ...input };
     delete settingsInput.currency;
-    const data = await graphqlRequest<{ updateMyAccountSettings: AccountSettings }>(`
+    const data = await graphqlRequest<{
+      updateMyAccountSettings: AccountSettings;
+    }>(
+      `
       mutation UpdateMyAccountSettings($input: AccountSettingsInput!) {
         updateMyAccountSettings(input: $input) { ${ACCOUNT_SETTINGS_FIELDS} }
       }
-    `, { input: settingsInput });
+    `,
+      { input: settingsInput },
+    );
 
     if (input.language) persistLocale(input.language);
     return data.updateMyAccountSettings;
@@ -173,11 +192,14 @@ export const accountService = {
   },
 
   async deleteReview(id: string) {
-    const data = await graphqlRequest<{ deleteMyReview: boolean }>(`
+    const data = await graphqlRequest<{ deleteMyReview: boolean }>(
+      `
       mutation DeleteMyReview($id: ID!) {
         deleteMyReview(reviewId: $id)
       }
-    `, { id });
+    `,
+      { id },
+    );
     return { success: data.deleteMyReview };
   },
 };

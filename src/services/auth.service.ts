@@ -1,6 +1,6 @@
-import { apiRequest, graphqlRequest } from '@/lib/api-client';
-import { mapUser, type ApiSeller, type ApiUser } from '@/lib/api-mappers';
-import type { User } from '@/types';
+import { apiRequest, graphqlRequest } from "@/lib/api-client";
+import { mapUser, type ApiSeller, type ApiUser } from "@/lib/api-mappers";
+import type { User } from "@/types";
 
 export type PendingRegistration = {
   id: string;
@@ -11,28 +11,37 @@ export type PendingRegistration = {
 };
 
 type SessionResponse = { authenticated: boolean; user: ApiUser | null };
-type SessionSellerProfile = NonNullable<ApiUser['sellerProfile']> & {
-  sellerType?: 'individual' | 'business' | string;
+type SessionSellerProfile = NonNullable<ApiUser["sellerProfile"]> & {
+  sellerType?: "individual" | "business" | string;
 };
 
 function mapAuthUser(raw: ApiUser): User {
   const user = mapUser(raw);
-  const rawSeller = raw.sellerProfile as SessionSellerProfile | null | undefined;
+  const rawSeller = raw.sellerProfile as
+    | SessionSellerProfile
+    | null
+    | undefined;
   if (user.sellerProfile && rawSeller?.sellerType) {
-    user.sellerProfile.sellerType = rawSeller.sellerType === 'business' ? 'business' : 'individual';
+    user.sellerProfile.sellerType =
+      rawSeller.sellerType === "business" ? "business" : "individual";
   }
   return user;
 }
 
 export const authService = {
   async getSession(): Promise<User | null> {
-    const response = await apiRequest<SessionResponse>('/api/v1/auth/session/');
-    return response.authenticated && response.user ? mapAuthUser(response.user) : null;
+    const response = await apiRequest<SessionResponse>("/api/v1/auth/session/");
+    return response.authenticated && response.user
+      ? mapAuthUser(response.user)
+      : null;
   },
 
   async login(input: { emailOrPhone: string; password: string }) {
-    const response = await apiRequest<{ authenticated: boolean; user: ApiUser }>('/api/v1/auth/login/', {
-      method: 'POST',
+    const response = await apiRequest<{
+      authenticated: boolean;
+      user: ApiUser;
+    }>("/api/v1/auth/login/", {
+      method: "POST",
       json: input,
       csrf: true,
     });
@@ -47,8 +56,8 @@ export const authService = {
     terms: boolean;
     countryCode: string;
   }): Promise<PendingRegistration> {
-    return apiRequest<PendingRegistration>('/api/v1/auth/register/', {
-      method: 'POST',
+    return apiRequest<PendingRegistration>("/api/v1/auth/register/", {
+      method: "POST",
       json: {
         fullName: input.fullName,
         email: input.email,
@@ -63,12 +72,18 @@ export const authService = {
 
   async verifyOtp(code: string, pending?: Partial<PendingRegistration>) {
     if (!pending?.id) return { success: false };
-    const response = await apiRequest<{ success: boolean; user: ApiUser | null }>('/api/v1/auth/verify-email/', {
-      method: 'POST',
+    const response = await apiRequest<{
+      success: boolean;
+      user: ApiUser | null;
+    }>("/api/v1/auth/verify-email/", {
+      method: "POST",
       json: { userId: pending.id, code },
       csrf: true,
     });
-    return { success: response.success, user: response.user ? mapAuthUser(response.user) : null };
+    return {
+      success: response.success,
+      user: response.user ? mapAuthUser(response.user) : null,
+    };
   },
 
   async activateSelling() {
@@ -76,35 +91,47 @@ export const authService = {
       `mutation ActivateSelling { activateSelling { id name avatarUrl verified sellerType isSuspended rating reviews positiveReviewPercent responseRate activeListings followerCount isFollowed memberSince location { state stateCode city district } } }`,
     );
     const session = await this.getSession();
-    if (!session) throw new Error('Authentication required');
+    if (!session) throw new Error("Authentication required");
     return session;
   },
 
   async resendOtp(userId?: string) {
-    return apiRequest<{ success: boolean }>('/api/v1/auth/resend-verification/', {
-      method: 'POST',
-      json: { userId },
-      csrf: true,
-    });
+    return apiRequest<{ success: boolean }>(
+      "/api/v1/auth/resend-verification/",
+      {
+        method: "POST",
+        json: { userId },
+        csrf: true,
+      },
+    );
   },
 
   async requestPasswordReset(identifier: string) {
-    return apiRequest<{ success: boolean; maskedDestination?: string }>('/api/v1/auth/password-reset/request/', {
-      method: 'POST',
-      json: { identifier },
-      csrf: true,
-    });
+    return apiRequest<{ success: boolean; maskedDestination?: string }>(
+      "/api/v1/auth/password-reset/request/",
+      {
+        method: "POST",
+        json: { identifier },
+        csrf: true,
+      },
+    );
   },
 
   async resetPassword(input: { token: string; password: string }) {
-    return apiRequest<{ success: boolean }>('/api/v1/auth/password-reset/confirm/', {
-      method: 'POST',
-      json: input,
-      csrf: true,
-    });
+    return apiRequest<{ success: boolean }>(
+      "/api/v1/auth/password-reset/confirm/",
+      {
+        method: "POST",
+        json: input,
+        csrf: true,
+      },
+    );
   },
 
   async logout() {
-    await apiRequest<void>('/api/v1/auth/logout/', { method: 'POST', csrf: true });
+    await apiRequest<void>("/api/v1/auth/logout/", {
+      method: "POST",
+      csrf: true,
+    });
   },
 };
