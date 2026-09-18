@@ -184,12 +184,9 @@ export const commerceService = {
     listingId: string;
     fulfillmentMethod: FulfillmentMethod;
     paymentMethod: CommercePaymentMethod;
-    customerDocument: string;
-    customerPhone: string;
     idempotencyKey: string;
     quantity?: number;
     shippingAddress?: Record<string, unknown>;
-    cardId?: string;
   }) {
     const data = await graphqlRequest<{
       createCommerceCheckout: { order: CommerceOrder };
@@ -219,61 +216,15 @@ export const commerceService = {
         ) { order { ${ORDER_FIELDS} } }
       }
     `,
-      { ...input, quantity: input.quantity ?? 1 },
-    );
-    return data.createCommerceCheckout.order;
-  },
-
-  async vaultCard(
-    cardToken: string,
-    customerDocument: string,
-    customerPhone: string,
-  ) {
-    const data = await graphqlRequest<{ vaultCommerceCard: string }>(
-      `
-      mutation VaultCommerceCard($cardToken: String!, $customerDocument: String!, $customerPhone: String!) {
-        vaultCommerceCard(cardToken: $cardToken, customerDocument: $customerDocument, customerPhone: $customerPhone)
-      }
-    `,
-      { cardToken, customerDocument, customerPhone },
-    );
-    return data.vaultCommerceCard;
-  },
-
-  async tokenizeCard(card: {
-    number: string;
-    holderName: string;
-    expMonth: number;
-    expYear: number;
-    cvv: string;
-  }) {
-    const publicKey = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY?.trim();
-    if (!publicKey) throw new Error("Pagar.me public key is not configured.");
-    const response = await fetch(
-      `https://api.pagar.me/core/v5/tokens?appId=${encodeURIComponent(publicKey)}`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "card",
-          card: {
-            number: card.number.replace(/\D/g, ""),
-            holder_name: card.holderName,
-            exp_month: card.expMonth,
-            exp_year: card.expYear,
-            cvv: card.cvv,
-          },
-        }),
+        ...input,
+        quantity: input.quantity ?? 1,
+        customerDocument: "",
+        customerPhone: "",
+        cardId: null,
       },
     );
-    const body = (await response.json()) as {
-      id?: string;
-      message?: string;
-      errors?: unknown;
-    };
-    if (!response.ok || !body.id)
-      throw new Error(body.message || "Unable to tokenize this card.");
-    return body.id;
+    return data.createCommerceCheckout.order;
   },
 
   async getMyOrders(offset = 0, limit = 100) {
