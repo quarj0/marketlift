@@ -213,7 +213,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
             : "This listing must be negotiated directly with the seller."}
         </p>
         <Button asChild className="mt-5">
-          <Link href={`/listing/${listing.slug}`}>
+          <Link href={listing ? `/listing/${listing.slug}` : "/search"}>
             {locale === "pt-BR" ? "Voltar ao anúncio" : "Back to listing"}
           </Link>
         </Button>
