@@ -56,17 +56,21 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
   useEffect(() => {
     const raw = window.localStorage.getItem(pendingCheckoutKey(listingId));
     if (!raw) return;
+    let savedUrl = "";
     try {
       const saved = JSON.parse(raw) as { url?: string; createdAt?: number };
       const age = Date.now() - Number(saved.createdAt || 0);
       if (saved.url && age >= 0 && age < 35 * 60 * 1000) {
-        setResumeUrl(saved.url);
+        savedUrl = saved.url;
       } else {
         window.localStorage.removeItem(pendingCheckoutKey(listingId));
       }
     } catch {
       window.localStorage.removeItem(pendingCheckoutKey(listingId));
     }
+    if (!savedUrl) return;
+    const timer = window.setTimeout(() => setResumeUrl(savedUrl), 0);
+    return () => window.clearTimeout(timer);
   }, [listingId]);
 
   const commerce = commerceQuery.data;
