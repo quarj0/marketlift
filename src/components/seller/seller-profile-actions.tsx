@@ -1,9 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Flag, Heart, MessageCircle } from 'lucide-react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { messagingService } from '@/services/messaging.service';
 
 import { AuthRequiredDialog } from '@/components/auth/auth-required-dialog';
@@ -20,6 +20,18 @@ export function SellerProfileActions({ sellerId, initialFollowing = false, listi
   const [authAction, setAuthAction] = useState<string | null>(null);
   const [following, setFollowing] = useState(initialFollowing);
   const isOwnProfile = Boolean(user?.sellerProfile?.sellerId === sellerId);
+  const followStateQuery = useQuery({
+    queryKey: ['seller-follow-state', sellerId],
+    queryFn: () => socialService.getSellerFollowState(sellerId),
+    enabled: isAuthenticated && !isOwnProfile,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (typeof followStateQuery.data === 'boolean') {
+      setFollowing(followStateQuery.data);
+    }
+  }, [followStateQuery.data]);
 
   const messageMutation = useMutation({
     mutationFn: async () => {
