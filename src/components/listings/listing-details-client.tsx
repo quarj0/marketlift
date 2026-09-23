@@ -24,6 +24,7 @@ import { messagingService } from "@/services/messaging.service";
 import { socialService } from "@/services/social.service";
 import { formatReadableDate, formatRelativeDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,8 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const [gallery, setGallery] = useState(false);
   const [phoneVisible, setPhoneVisible] = useState(false);
   const [authAction, setAuthAction] = useState<string | null>(null);
+  const [customOffer, setCustomOffer] = useState("");
+  const [customOfferError, setCustomOfferError] = useState("");
 
   const listingQuery = useQuery({
     queryKey: ["listing", slug],
@@ -134,6 +137,44 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const seller = sellerQuery.data;
   const image = listing.images[active] || listing.images[0];
   const saved = savedQuery.data?.includes(listing.id) ?? false;
+  const offerRoundingStep = listing.price >= 10_000
+    ? 100
+    : listing.price >= 1_000
+      ? 50
+      : listing.price >= 100
+        ? 10
+        : listing.price >= 10
+          ? 1
+          : 0.1;
+  const suggestedOffers = Array.from(
+    new Set(
+      [0.95, 0.9, 0.85]
+        .map((factor) =>
+          Math.floor((listing.price * factor) / offerRoundingStep) * offerRoundingStep,
+        )
+        .map((amount) => Math.round(amount * 100) / 100)
+        .filter((amount) => amount > 0 && amount < listing.price),
+    ),
+  );
+
+  const submitOffer = (amount: number) => {
+    setCustomOfferError("");
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setCustomOfferError(
+        locale === "pt-BR" ? "Digite um valor válido." : "Enter a valid amount.",
+      );
+      return;
+    }
+    if (amount >= listing.price) {
+      setCustomOfferError(
+        locale === "pt-BR"
+          ? "A oferta deve ser menor que o preço anunciado."
+          : "Your offer must be below the asking price.",
+      );
+      return;
+    }
+    requireAuth("make an offer", () => offerMutation.mutate(amount));
+  };
 
   function requireAuth(action: string, callback?: () => void) {
     if (!isAuthenticated) {
@@ -467,31 +508,64 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
 
                 {listing.negotiable && (
                   <div className="mt-4 rounded-xl border bg-slate-50 p-3">
-                    <p className="text-sm font-bold">{locale === "pt-BR" ? "Propor um preço" : "Make an offer"}</p>
-                    <p className="mt-1 text-xs text-slate-500">{locale === "pt-BR" ? "Escolha uma sugestão. Enviaremos uma mensagem educada ao vendedor." : "Choose a suggestion. We’ll send the seller a polite message."}</p>
+                    <p className="text-sm font-bold">
+                      {locale === "pt-BR" ? "Fazer uma oferta" : "Make an offer"}
+                    </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {Array.from(
-                        new Set(
-                          [0.9, 0.85, 0.8]
-                            .map((factor) => Math.floor(listing.price * factor * 100) / 100)
-                            .filter((amount) => amount > 0 && amount < listing.price),
-                        ),
-                      ).map((amount) => (
+                      {suggestedOffers.map((amount) => (
                         <Button
                           key={amount}
                           type="button"
                           size="sm"
                           variant="outline"
                           disabled={offerMutation.isPending}
-                          onClick={() =>
-                            requireAuth("make an offer", () => offerMutation.mutate(amount))
-                          }
+                          onClick={() => submitOffer(amount)}
                         >
                           {formatMoney(amount)}
                         </Button>
                       ))}
                     </div>
-                    {offerMutation.isError && <p className="mt-2 text-xs font-semibold text-rose-700">{locale === "pt-BR" ? "Não foi possível enviar a proposta." : "Unable to send the offer."}</p>}
+                    <form
+                      className="mt-3 flex gap-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        submitOffer(Number(customOffer));
+                      }}
+                    >
+                      <Input
+                        type="number"
+                        min="0.01"
+                        max={Math.max(0.01, listing.price - 0.01)}
+                        step="0.01"
+                        inputMode="decimal"
+                        value={customOffer}
+                        onChange={(event) => {
+                          setCustomOffer(event.target.value);
+                          setCustomOfferError("");
+                        }}
+                        placeholder={locale === "pt-BR" ? "Seu valor" : "Your price"}
+                        aria-label={locale === "pt-BR" ? "Valor da sua oferta" : "Your offer amount"}
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={offerMutation.isPending || !customOffer.trim()}
+                      >
+                        {locale === "pt-BR" ? "Enviar" : "Send"}
+                      </Button>
+                    </form>
+                    {customOfferError && (
+                      <p className="mt-2 text-xs font-semibold text-rose-700">
+                        {customOfferError}
+                      </p>
+                    )}
+                    {offerMutation.isError && (
+                      <p className="mt-2 text-xs font-semibold text-rose-700">
+                        {locale === "pt-BR"
+                          ? "Não foi possível enviar a oferta. Tente novamente."
+                          : "Unable to send the offer. Please try again."}
+                      </p>
+                    )}
                   </div>
                 )}
                 <Button variant="outline" className="mt-2 w-full" asChild>
