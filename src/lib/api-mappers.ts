@@ -247,6 +247,9 @@ export type ApiSeller = {
   phone?: string | null;
   verified: boolean;
   sellerType: "individual" | "business" | string;
+  storeAddress?: string | null;
+  opensAt?: string | null;
+  closesAt?: string | null;
   isSuspended?: boolean;
   rating: number;
   reviews: number;
@@ -310,6 +313,9 @@ export function mapSeller(raw: ApiSeller): Seller {
     phone: raw.phone?.trim() || undefined,
     verified: Boolean(raw.verified),
     type: raw.sellerType === "business" ? "business" : "individual",
+    storeAddress: raw.storeAddress?.trim() || undefined,
+    opensAt: raw.opensAt || undefined,
+    closesAt: raw.closesAt || undefined,
     rating: Number(raw.rating || 0),
     reviews: Number(raw.reviews || 0),
     activeListings: Number(raw.activeListings || 0),
