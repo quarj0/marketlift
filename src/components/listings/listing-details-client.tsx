@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
 import { messagingService } from "@/services/messaging.service";
@@ -55,6 +55,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const [authAction, setAuthAction] = useState<string | null>(null);
   const [customOffer, setCustomOffer] = useState("");
   const [customOfferError, setCustomOfferError] = useState("");
+  const [displayViews, setDisplayViews] = useState(initialListing?.views ?? 0);
 
   const listingQuery = useQuery({
     queryKey: ["listing", slug],
@@ -78,9 +79,50 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
     enabled: isAuthenticated,
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    if (listing) setDisplayViews(listing.views);
+  }, [listing?.id, listing?.views]);
+
+  useEffect(() => {
+    if (!listing?.id) return;
+
+    const key = `marketlift:view:${listing.id}`;
+    try {
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, "pending");
+    } catch {
+      // sessionStorage may be unavailable; the backend still deduplicates signed-in viewers.
+    }
+
+    let cancelled = false;
+    void listingService
+      .recordView(listing.id)
+      .then((views) => {
+        if (!cancelled) setDisplayViews(views);
+        try {
+          window.sessionStorage.setItem(key, "recorded");
+        } catch {}
+      })
+      .catch(() => {
+        try {
+          window.sessionStorage.removeItem(key);
+        } catch {}
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listing?.id]);
+  const openConversation = async (conversation: Awaited<ReturnType<typeof messagingService.startConversation>>) => {
+    queryClient.setQueryData(["conversation", conversation.id], conversation);
+    await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    router.push(`/messages/${conversation.id}`);
+  };
+
   const messageMutation = useMutation({
     mutationFn: () => messagingService.startConversation(listing!.id),
-    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
+    onSuccess: openConversation,
   });
   const offerMutation = useMutation({
     mutationFn: async (amount: number) => {
@@ -92,7 +134,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
       await messagingService.sendMessage(conversation.id, { text });
       return conversation;
     },
-    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
+    onSuccess: openConversation,
   });
   const saveMutation = useMutation({
     mutationFn: () => socialService.toggleSaved(listing!.id),
