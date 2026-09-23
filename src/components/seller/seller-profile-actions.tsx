@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Flag, Heart, MessageCircle } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { messagingService } from '@/services/messaging.service';
@@ -18,7 +18,7 @@ export function SellerProfileActions({ sellerId, initialFollowing = false, listi
   const { isAuthenticated, user } = useAuth();
   const { t, locale } = useLocale();
   const [authAction, setAuthAction] = useState<string | null>(null);
-  const [following, setFollowing] = useState(initialFollowing);
+  const [followingOverride, setFollowingOverride] = useState<boolean | null>(null);
   const isOwnProfile = Boolean(user?.sellerProfile?.sellerId === sellerId);
   const followStateQuery = useQuery({
     queryKey: ['seller-follow-state', sellerId],
@@ -27,11 +27,6 @@ export function SellerProfileActions({ sellerId, initialFollowing = false, listi
     staleTime: 30_000,
   });
 
-  useEffect(() => {
-    if (typeof followStateQuery.data === 'boolean') {
-      setFollowing(followStateQuery.data);
-    }
-  }, [followStateQuery.data]);
 
   const messageMutation = useMutation({
     mutationFn: async () => {
@@ -43,7 +38,7 @@ export function SellerProfileActions({ sellerId, initialFollowing = false, listi
 
   const followMutation = useMutation({
     mutationFn: () => socialService.toggleFollowSeller(sellerId),
-    onSuccess: setFollowing,
+    onSuccess: setFollowingOverride,
   });
 
   function requireAuth(action: string, callback?: () => void) {
@@ -53,6 +48,8 @@ export function SellerProfileActions({ sellerId, initialFollowing = false, listi
     }
     callback?.();
   }
+
+  const following = followingOverride ?? followStateQuery.data ?? initialFollowing;
 
   const ownProfileText = locale === 'pt-BR'
     ? 'Estas ações não estão disponíveis no seu próprio perfil de vendedor.'
