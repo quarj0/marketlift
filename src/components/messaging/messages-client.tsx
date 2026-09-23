@@ -674,6 +674,16 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
                 </Button>
               </form>
 
+              {send.isError && (
+                <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" role="alert">
+                  {send.error instanceof Error
+                    ? send.error.message
+                    : locale === "pt-BR"
+                      ? "Não foi possível enviar a mensagem."
+                      : "Unable to send the message."}
+                </p>
+              )}
+
               <p className="mt-1.5 pl-1 text-[10px] text-slate-400">
                 {t("messages.fileHint")}
               </p>
