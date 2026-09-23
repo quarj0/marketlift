@@ -33,6 +33,7 @@ import { categoryService } from '@/services/category.service';
 import { sellingService } from '@/services/selling.service';
 import { locationService } from '@/services/location.service';
 import type { ListingAttributes } from '@/types';
+import { MIN_LISTING_PHOTOS, maxListingPhotos } from '@/lib/listing-media';
 import { useLocale } from '@/providers/locale-provider';
 import { useMarket } from '@/providers/market-provider';
 
@@ -59,8 +60,6 @@ type PhotoPreview = {
   perceptualHash: string;
 };
 
-const MIN_LISTING_PHOTOS = 3;
-const MAX_LISTING_PHOTOS = 6;
 const MIN_PHOTO_WIDTH = 400;
 const SCREENSHOT_NAME_RE =
   /(screen[\s_-]*shot|screenshot|screencap|print[\s_-]*screen|captura[\s_-]*(de[\s_-]*)?(tela|pantalla))/i;
@@ -273,6 +272,7 @@ export default function NewListingPage() {
   }, [draftReady, draftKey, values, attributes, done, form, photos.length]);
   const selectedCategory = categories.find((category) => category.id === values.category);
   const categoryName = selectedCategory ? localizedCategoryName(selectedCategory.id, selectedCategory.name) : t('selling.new.step.details');
+  const maxPhotos = maxListingPhotos(categories, values.category || '');
 
   const categoryQuery = useQuery({
     queryKey: ['category-configuration', values.category],
@@ -413,8 +413,8 @@ export default function NewListingPage() {
     const existingPerceptual = accepted.map((photo) => photo.perceptualHash);
 
     for (const file of Array.from(files)) {
-      if (accepted.length >= MAX_LISTING_PHOTOS) {
-        messages.push(t('selling.new.photoMaximum', { count: MAX_LISTING_PHOTOS }));
+      if (accepted.length >= maxPhotos) {
+        messages.push(t('selling.new.photoMaximum', { count: maxPhotos }));
         break;
       }
 
@@ -723,7 +723,7 @@ export default function NewListingPage() {
                       <p className="mt-4 text-sm font-semibold text-slate-600">
                         {t('selling.new.photoCount', {
                           current: photos.length,
-                          maximum: MAX_LISTING_PHOTOS,
+                          maximum: maxPhotos,
                         })}
                         {photos.length < MIN_LISTING_PHOTOS
                           ? ` · ${t('selling.new.photosMoreRequired', { count: MIN_LISTING_PHOTOS - photos.length })}`
