@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { CheckCircle2, MapPin, Star } from "lucide-react";
+import { CheckCircle2, Clock3, MapPin, Star, Store } from "lucide-react";
 
 import { LocalizedDate, T } from "@/components/i18n/t";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
@@ -50,6 +50,9 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
   const sellerLocation = [seller.location.city, seller.location.stateCode]
     .filter(Boolean)
     .join(", ");
+  const showStoreDetails =
+    seller.type === "business" &&
+    Boolean(seller.storeAddress || (seller.opensAt && seller.closesAt));
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
@@ -99,6 +102,33 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
                 <T id="seller.response" />
               </span>
             </div>
+
+            {showStoreDetails && (
+              <div className="mt-4 grid gap-2 rounded-xl border bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-2">
+                {seller.storeAddress && (
+                  <div className="flex min-w-0 items-start gap-2">
+                    <Store className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800">
+                        <T id="seller.storeAddress" />
+                      </p>
+                      <p className="mt-0.5 break-words">{seller.storeAddress}</p>
+                    </div>
+                  </div>
+                )}
+                {seller.opensAt && seller.closesAt && (
+                  <div className="flex items-start gap-2">
+                    <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <div>
+                      <p className="font-bold text-slate-800">
+                        <T id="seller.workingHours" />
+                      </p>
+                      <p className="mt-0.5">{seller.opensAt}–{seller.closesAt}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <SellerProfileActions sellerId={seller.id} initialFollowing={Boolean(seller.isFollowed)} listingId={listings[0]?.id} />
