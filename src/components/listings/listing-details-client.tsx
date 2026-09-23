@@ -391,22 +391,35 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     {formatMoney(listing.price)}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  aria-pressed={saved}
-                  loading={saveMutation.isPending}
-                  loadingText={t("listing.saving")}
-                  onClick={() =>
-                    requireAuth("save this listing", () =>
-                      saveMutation.mutate(),
-                    )
-                  }
-                >
-                  <Heart
-                    className={`size-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`}
-                  />
-                  {saved ? t("listing.saved") : t("common.save")}
-                </Button>
+                <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                  <Button
+                    variant="outline"
+                    aria-pressed={saved}
+                    loading={saveMutation.isPending}
+                    loadingText={t("listing.saving")}
+                    onClick={() =>
+                      requireAuth("save this listing", () =>
+                        saveMutation.mutate(),
+                      )
+                    }
+                  >
+                    <Heart
+                      className={`size-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`}
+                    />
+                    {saved ? t("listing.saved") : t("common.save")}
+                  </Button>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 sm:justify-end">
+                    <span>{formatRelativeDate(listing.createdAt, locale)}</span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="size-4" />
+                      {t("listing.views", {
+                        count: shownViews.toLocaleString(
+                          locale === "pt-BR" ? "pt-BR" : "en-US",
+                        ),
+                      })}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y py-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
@@ -415,15 +428,6 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                   {listing.location.district
                     ? ` · ${listing.location.district}`
                     : ""}
-                </span>
-                <span>{formatRelativeDate(listing.createdAt, locale)}</span>
-                <span className="flex items-center gap-1">
-                  <Eye className="size-4" />
-                  {t("listing.views", {
-                    count: listing.views.toLocaleString(
-                      locale === "pt-BR" ? "pt-BR" : "en-US",
-                    ),
-                  })}
                 </span>
               </div>
               <div className="mt-5">
@@ -542,6 +546,8 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                   )}
                 <div className="mt-4 space-y-2">
                   <Button
+                    loading={messageMutation.isPending}
+                    loadingText={locale === "pt-BR" ? "Abrindo..." : "Opening..."}
                     onClick={() =>
                       requireAuth("message the seller", () => messageMutation.mutate())
                     }
@@ -549,6 +555,15 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     <MessageCircle className="size-4" />
                     {t("listing.messageSeller")}
                   </Button>
+                  {messageMutation.isError && (
+                    <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" role="alert">
+                      {messageMutation.error instanceof Error
+                        ? messageMutation.error.message
+                        : locale === "pt-BR"
+                          ? "Não foi possível abrir a conversa."
+                          : "Unable to open the conversation."}
+                    </p>
+                  )}
                   {seller.phone && (
                     <Button
                       variant="outline"
