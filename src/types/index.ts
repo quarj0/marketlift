@@ -52,6 +52,7 @@ export interface Seller {
   memberSince: string;
   responseRate: number;
   type?: SellerType;
+  isFollowed?: boolean;
 }
 
 export type CategoryFieldType =
