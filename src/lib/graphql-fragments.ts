@@ -30,6 +30,7 @@ export const LISTING_FIELDS = `
   condition
   location { countryCode state stateCode city district }
   images
+  videoUrl
   seller { ${SELLER_FIELDS} }
   createdAt
   expiresAt
