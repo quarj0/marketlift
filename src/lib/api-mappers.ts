@@ -253,6 +253,7 @@ export type ApiSeller = {
   responseRate?: number | null;
   activeListings: number;
   memberSince: string;
+  isFollowed?: boolean;
   location: ApiLocation;
 };
 
@@ -314,6 +315,7 @@ export function mapSeller(raw: ApiSeller): Seller {
     activeListings: Number(raw.activeListings || 0),
     memberSince: raw.memberSince,
     responseRate: Number(raw.responseRate || 0),
+    isFollowed: Boolean(raw.isFollowed),
     location: {
       countryCode: raw.location?.countryCode || undefined,
       state: raw.location?.state || "",
