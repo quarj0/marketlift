@@ -268,6 +268,7 @@ export type ApiListing = {
   condition?: string | null;
   location: ApiLocation;
   images: string[];
+  videoUrl?: string | null;
   seller: ApiSeller;
   createdAt: string;
   status: string;
@@ -340,6 +341,7 @@ export function mapListing(raw: ApiListing): Listing {
       district: raw.location?.district || undefined,
     },
     images: mapMediaUrls(raw.images),
+    videoUrl: raw.videoUrl ? resolveApiUrl(raw.videoUrl) : undefined,
     sellerId: String(raw.seller?.id || ""),
     sellerVerified: Boolean(raw.seller?.verified),
     createdAt: raw.createdAt,
