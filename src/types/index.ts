@@ -114,6 +114,7 @@ export interface Listing {
   condition?: ListingCondition;
   location: Location;
   images: string[];
+  videoUrl?: string;
   sellerId: string;
   sellerVerified?: boolean;
   createdAt: string;
