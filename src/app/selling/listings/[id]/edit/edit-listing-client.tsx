@@ -25,7 +25,7 @@ import { sellingService } from "@/services/selling.service";
 import type { ListingAttributes, ListingCondition } from "@/types";
 
 export function EditListingClient() {
-  const { t, tr } = useLocale();
+  const { t, tr, locale } = useLocale();
   const { market } = useMarket();
   const params = useParams<{ id: string }>();
   const listingId = params.id;
@@ -49,6 +49,10 @@ export function EditListingClient() {
   );
   const [replacementPhotos, setReplacementPhotos] = useState<File[]>([]);
   const [replacementPhotoError, setReplacementPhotoError] = useState("");
+  const [replacementVideo, setReplacementVideo] = useState<File | null>(null);
+  const [replacementVideoPreview, setReplacementVideoPreview] = useState("");
+  const [removeExistingVideo, setRemoveExistingVideo] = useState(false);
+  const [videoError, setVideoError] = useState("");
   const [saved, setSaved] = useState(false);
 
   const listingQuery = useQuery({
@@ -115,6 +119,8 @@ export function EditListingClient() {
           longitude: form.longitude,
         },
         images: replacementPhotos.length ? replacementPhotos : undefined,
+        video: replacementVideo ?? undefined,
+        removeVideo: removeExistingVideo,
         attributes,
         categorySchemaVersion: categoryQuery.data.schemaVersion,
       });
@@ -123,6 +129,11 @@ export function EditListingClient() {
       queryClient.setQueryData(["selling", "listing", listingId], updated);
       void queryClient.invalidateQueries({ queryKey: ["selling", "listings"] });
       setReplacementPhotos([]);
+      if (replacementVideoPreview.startsWith("blob:")) URL.revokeObjectURL(replacementVideoPreview);
+      setReplacementVideo(null);
+      setReplacementVideoPreview("");
+      setRemoveExistingVideo(false);
+      setVideoError("");
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
     },
@@ -410,6 +421,61 @@ export function EditListingClient() {
                     {replacementPhotoError}
                   </p>
                 )}
+
+                <div className="mt-6 rounded-xl border p-4">
+                  <p className="font-bold">{locale === "pt-BR" ? "Vídeo do anúncio (opcional)" : "Listing video (optional)"}</p>
+                  <p className="text-xs text-slate-500">{locale === "pt-BR" ? "1 vídeo MP4, até 30 segundos e 50 MB." : "1 MP4 video, up to 30 seconds and 50 MB."}</p>
+                  {listing.videoUrl && !removeExistingVideo && !replacementVideoPreview && (
+                    <video src={listing.videoUrl} controls preload="metadata" className="mt-3 max-h-64 w-full rounded-xl bg-black" />
+                  )}
+                  {replacementVideoPreview && (
+                    <video src={replacementVideoPreview} controls preload="metadata" className="mt-3 max-h-64 w-full rounded-xl bg-black" />
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <label className="cursor-pointer rounded-lg border px-3 py-2 text-sm font-bold">
+                      {listing.videoUrl || replacementVideo ? (locale === "pt-BR" ? "Substituir vídeo" : "Replace video") : (locale === "pt-BR" ? "Adicionar vídeo" : "Add video")}
+                      <input type="file" accept="video/mp4" className="hidden" onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        setVideoError("");
+                        if (file.type !== "video/mp4" || file.size > 50 * 1024 * 1024) {
+                          setVideoError(locale === "pt-BR" ? "Use um vídeo MP4 de até 50 MB." : "Use an MP4 video up to 50 MB.");
+                          event.target.value = "";
+                          return;
+                        }
+                        const url = URL.createObjectURL(file);
+                        const probe = document.createElement("video");
+                        probe.preload = "metadata";
+                        probe.onloadedmetadata = () => {
+                          if (!Number.isFinite(probe.duration) || probe.duration <= 0 || probe.duration > 30.25) {
+                            URL.revokeObjectURL(url);
+                            setVideoError(locale === "pt-BR" ? "O vídeo deve ter no máximo 30 segundos." : "The video must be 30 seconds or shorter.");
+                            return;
+                          }
+                          if (replacementVideoPreview.startsWith("blob:")) URL.revokeObjectURL(replacementVideoPreview);
+                          setReplacementVideo(file);
+                          setReplacementVideoPreview(url);
+                          setRemoveExistingVideo(false);
+                        };
+                        probe.onerror = () => {
+                          URL.revokeObjectURL(url);
+                          setVideoError(locale === "pt-BR" ? "Não foi possível ler este vídeo." : "This video could not be read.");
+                        };
+                        probe.src = url;
+                      }} />
+                    </label>
+                    {(listing.videoUrl || replacementVideo) && (
+                      <button type="button" className="rounded-lg px-3 py-2 text-sm font-bold text-red-600" onClick={() => {
+                        if (replacementVideoPreview.startsWith("blob:")) URL.revokeObjectURL(replacementVideoPreview);
+                        setReplacementVideo(null);
+                        setReplacementVideoPreview("");
+                        setRemoveExistingVideo(Boolean(listing.videoUrl));
+                        setVideoError("");
+                      }}>{locale === "pt-BR" ? "Remover vídeo" : "Remove video"}</button>
+                    )}
+                  </div>
+                  {videoError && <p className="mt-2 text-sm font-semibold text-red-700">{videoError}</p>}
+                </div>
               </div>
 
               {saved && (
