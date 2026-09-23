@@ -19,6 +19,8 @@ export interface CreateListingInput {
   negotiable: boolean;
   location: Location;
   images: File[];
+  video?: File;
+  removeVideo?: boolean;
   specifications?: Record<string, string | number>;
   attributes?: ListingAttributes;
   categorySchemaVersion?: number;
@@ -114,6 +116,9 @@ export const sellingService = {
     const imageUploadIds = input.images?.length
       ? await uploadFiles(input.images, "listing_image")
       : undefined;
+    const videoUploadIds = input.video
+      ? await uploadFiles([input.video], "listing_video")
+      : undefined;
     const payload: Record<string, unknown> = {
       categoryId: input.category,
       title: input.title,
@@ -137,6 +142,8 @@ export const sellingService = {
       attributes: input.attributes || input.specifications || {},
     };
     if (imageUploadIds) payload.imageUploadIds = imageUploadIds;
+    if (videoUploadIds?.[0]) payload.videoUploadId = videoUploadIds[0];
+    if (input.removeVideo) payload.removeVideo = true;
 
     try {
       const data = await graphqlRequest<{ updateListing: ApiListing }>(
@@ -149,6 +156,9 @@ export const sellingService = {
     } catch (error) {
       if (imageUploadIds) {
         await Promise.allSettled(imageUploadIds.map(deleteUpload));
+      }
+      if (videoUploadIds) {
+        await Promise.allSettled(videoUploadIds.map(deleteUpload));
       }
       throw error;
     }
@@ -189,6 +199,9 @@ export const sellingService = {
 
   async createListing(input: CreateListingInput) {
     const imageUploadIds = await uploadFiles(input.images, "listing_image");
+    const videoUploadIds = input.video
+      ? await uploadFiles([input.video], "listing_video")
+      : undefined;
     try {
       const data = await graphqlRequest<{
         createAndPublishListing: ApiListing;
@@ -219,6 +232,7 @@ export const sellingService = {
             negotiable: input.negotiable,
             attributes: input.attributes || input.specifications || {},
             imageUploadIds,
+            ...(videoUploadIds?.[0] ? { videoUploadId: videoUploadIds[0] } : {}),
           },
         },
       );
@@ -226,6 +240,7 @@ export const sellingService = {
       return mapSellerListing(data.createAndPublishListing);
     } catch (error) {
       await Promise.allSettled(imageUploadIds.map(deleteUpload));
+      if (videoUploadIds) await Promise.allSettled(videoUploadIds.map(deleteUpload));
       throw error;
     }
   },
