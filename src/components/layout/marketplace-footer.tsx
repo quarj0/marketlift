@@ -49,6 +49,7 @@ export function MarketplaceFooter() {
         [t("footer.reportProblem"), "/help/report"],
         [t("footer.terms"), "/terms"],
         [t("footer.privacy"), "/privacy"],
+        [t("footer.cookies"), "/cookies"],
       ],
     },
   ];
