@@ -470,10 +470,26 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     <p className="text-sm font-bold">{locale === "pt-BR" ? "Propor um preço" : "Make an offer"}</p>
                     <p className="mt-1 text-xs text-slate-500">{locale === "pt-BR" ? "Escolha uma sugestão. Enviaremos uma mensagem educada ao vendedor." : "Choose a suggestion. We’ll send the seller a polite message."}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {[0.9, 0.85, 0.8].map((factor) => {
-                        const amount = Math.max(1, Math.round(listing.price * factor));
-                        return <Button key={factor} type="button" size="sm" variant="outline" disabled={offerMutation.isPending} onClick={() => requireAuth("make an offer", () => offerMutation.mutate(amount))}>{formatMoney(amount)}</Button>;
-                      })}
+                      {Array.from(
+                        new Set(
+                          [0.9, 0.85, 0.8]
+                            .map((factor) => Math.floor(listing.price * factor * 100) / 100)
+                            .filter((amount) => amount > 0 && amount < listing.price),
+                        ),
+                      ).map((amount) => (
+                        <Button
+                          key={amount}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={offerMutation.isPending}
+                          onClick={() =>
+                            requireAuth("make an offer", () => offerMutation.mutate(amount))
+                          }
+                        >
+                          {formatMoney(amount)}
+                        </Button>
+                      ))}
                     </div>
                     {offerMutation.isError && <p className="mt-2 text-xs font-semibold text-rose-700">{locale === "pt-BR" ? "Não foi possível enviar a proposta." : "Unable to send the offer."}</p>}
                   </div>
@@ -557,10 +573,10 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
           {phoneVisible ? t("listing.callSeller") : t("listing.contact")}
         </Button>
         <Button
+          loading={messageMutation.isPending}
+          loadingText={locale === "pt-BR" ? "Abrindo..." : "Opening..."}
           onClick={() =>
-            requireAuth("message the seller", () => {
-              router.push("/messages");
-            })
+            requireAuth("message the seller", () => messageMutation.mutate())
           }
         >
           <MessageCircle className="size-4" />
