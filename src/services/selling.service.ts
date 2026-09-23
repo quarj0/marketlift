@@ -116,9 +116,15 @@ export const sellingService = {
     const imageUploadIds = input.images?.length
       ? await uploadFiles(input.images, "listing_image")
       : undefined;
-    const videoUploadIds = input.video
-      ? await uploadFiles([input.video], "listing_video")
-      : undefined;
+    let videoUploadIds: string[] | undefined;
+    try {
+      videoUploadIds = input.video
+        ? await uploadFiles([input.video], "listing_video")
+        : undefined;
+    } catch (error) {
+      if (imageUploadIds) await Promise.allSettled(imageUploadIds.map(deleteUpload));
+      throw error;
+    }
     const payload: Record<string, unknown> = {
       categoryId: input.category,
       title: input.title,
@@ -199,9 +205,15 @@ export const sellingService = {
 
   async createListing(input: CreateListingInput) {
     const imageUploadIds = await uploadFiles(input.images, "listing_image");
-    const videoUploadIds = input.video
-      ? await uploadFiles([input.video], "listing_video")
-      : undefined;
+    let videoUploadIds: string[] | undefined;
+    try {
+      videoUploadIds = input.video
+        ? await uploadFiles([input.video], "listing_video")
+        : undefined;
+    } catch (error) {
+      if (imageUploadIds) await Promise.allSettled(imageUploadIds.map(deleteUpload));
+      throw error;
+    }
     try {
       const data = await graphqlRequest<{
         createAndPublishListing: ApiListing;
