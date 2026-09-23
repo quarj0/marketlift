@@ -101,7 +101,7 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
             </div>
           </div>
 
-          <SellerProfileActions sellerId={seller.id} />
+          <SellerProfileActions sellerId={seller.id} initialFollowing={Boolean(seller.isFollowed)} listingId={listings[0]?.id} />
         </div>
       </section>
 
