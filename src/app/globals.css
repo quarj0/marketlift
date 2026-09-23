@@ -177,6 +177,12 @@
     scroll-behavior: smooth;
   }
 
+  @media (min-width: 1024px) {
+    html {
+      font-size: 15px;
+    }
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     min-width: 320px;
