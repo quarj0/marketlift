@@ -216,6 +216,9 @@ export default function NewListingPage() {
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [cover, setCover] = useState(0);
   const [photoError, setPhotoError] = useState('');
+  const [video, setVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState('');
+  const [videoError, setVideoError] = useState('');
   const [done, setDone] = useState(false);
   const [attributes, setAttributes] = useState<ListingAttributes>({});
   const [attributeErrors, setAttributeErrors] = useState<CategoryFieldErrors>({});
@@ -475,6 +478,47 @@ export default function NewListingPage() {
     if (messages.length) setPhotoError(messages[0]);
   };
 
+  const selectVideo = async (file?: File) => {
+    setVideoError('');
+    if (!file) return;
+    if (file.type !== 'video/mp4') {
+      setVideoError(locale === 'pt-BR' ? 'Envie um vídeo MP4.' : 'Upload an MP4 video.');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setVideoError(locale === 'pt-BR' ? 'O vídeo deve ter no máximo 50 MB.' : 'The video must be 50 MB or smaller.');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    try {
+      const duration = await new Promise<number>((resolve, reject) => {
+        const element = document.createElement('video');
+        element.preload = 'metadata';
+        element.onloadedmetadata = () => resolve(element.duration);
+        element.onerror = () => reject(new Error('invalid video'));
+        element.src = url;
+      });
+      if (!Number.isFinite(duration) || duration <= 0 || duration > 30.25) {
+        URL.revokeObjectURL(url);
+        setVideoError(locale === 'pt-BR' ? 'O vídeo deve ter no máximo 30 segundos.' : 'The video must be 30 seconds or shorter.');
+        return;
+      }
+      if (videoPreview.startsWith('blob:')) URL.revokeObjectURL(videoPreview);
+      setVideo(file);
+      setVideoPreview(url);
+    } catch {
+      URL.revokeObjectURL(url);
+      setVideoError(locale === 'pt-BR' ? 'Não foi possível ler este vídeo.' : 'This video could not be read.');
+    }
+  };
+
+  const removeVideo = () => {
+    if (videoPreview.startsWith('blob:')) URL.revokeObjectURL(videoPreview);
+    setVideo(null);
+    setVideoPreview('');
+    setVideoError('');
+  };
+
   const removePhoto = (index: number) => {
     setPhotos((current) => {
       const target = current[index];
@@ -497,6 +541,7 @@ export default function NewListingPage() {
     setPhotos([]);
     setCover(0);
     setPhotoError('');
+    removeVideo();
     setStep(0);
     setDone(false);
     setAttributes({});
@@ -535,6 +580,7 @@ export default function NewListingPage() {
       condition: categoryConfig.condition.enabled ? data.condition : undefined,
       negotiable: data.negotiable,
       images: photos.map((photo) => photo.file),
+      video: video ?? undefined,
       location: {
         countryCode: market.code,
         state: data.stateName || data.state,
@@ -743,6 +789,24 @@ export default function NewListingPage() {
                       </div>
                     </>
                   )}
+
+                  <div className="mt-6 rounded-2xl border p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-bold">{locale === 'pt-BR' ? 'Vídeo do anúncio (opcional)' : 'Listing video (optional)'}</p>
+                        <p className="text-xs text-slate-500">{locale === 'pt-BR' ? '1 vídeo MP4, até 30 segundos e 50 MB.' : '1 MP4 video, up to 30 seconds and 50 MB.'}</p>
+                      </div>
+                      {video && <button type="button" onClick={removeVideo} className="text-sm font-bold text-red-600">{locale === 'pt-BR' ? 'Remover' : 'Remove'}</button>}
+                    </div>
+                    {!video && (
+                      <label className="mt-3 flex min-h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed p-4 text-sm font-semibold text-slate-600 hover:border-brand-400">
+                        {locale === 'pt-BR' ? 'Adicionar vídeo' : 'Add video'}
+                        <input type="file" accept="video/mp4" className="hidden" onChange={(event) => void selectVideo(event.target.files?.[0])} />
+                      </label>
+                    )}
+                    {videoPreview && <video src={videoPreview} controls preload="metadata" className="mt-3 max-h-72 w-full rounded-xl bg-black" />}
+                    {videoError && <p role="alert" className="mt-2 text-sm font-semibold text-red-700">{videoError}</p>}
+                  </div>
                 </section>
               )}
 
