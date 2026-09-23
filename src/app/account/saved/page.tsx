@@ -36,6 +36,13 @@ export default function SavedPage() {
     queryKey: ["saved-listings"],
     queryFn: () => socialService.getSaved(),
   });
+  const removeSaved = useMutation({
+    mutationFn: (id: string) => socialService.unsaveListing(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saved-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["saved-listing-ids"] });
+    },
+  });
 
   return (
     <MarketplaceShell>
@@ -160,7 +167,19 @@ export default function SavedPage() {
             ) : query.data?.length ? (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {query.data.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
+                  <div key={listing.id} className="space-y-2">
+                    <ListingCard listing={listing} />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={removeSaved.isPending}
+                      onClick={() => removeSaved.mutate(listing.id)}
+                    >
+                      <Heart className="size-4 fill-rose-500 text-rose-500" />
+                      {portuguese ? "Remover dos salvos" : "Remove from saved"}
+                    </Button>
+                  </div>
                 ))}
               </div>
             ) : (
