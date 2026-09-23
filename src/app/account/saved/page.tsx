@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Heart, Trash2 } from "lucide-react";
+import { Heart, Trash2 } from "lucide-react";
 
 import { AccountSidebar } from "@/components/account/account-sidebar";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
@@ -57,27 +57,59 @@ export default function SavedPage() {
               {t("account.saved.body")}
             </p>
 
-            <div className="mt-7 rounded-2xl border bg-white p-5">
-              <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
-                  <BellRing className="size-5" />
-                </span>
-                <div>
-                  <h2 className="font-black">
-                    {portuguese ? "Alertas de busca" : "Search alerts"}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {portuguese
-                      ? "Receba um aviso quando novos anúncios corresponderem às buscas que você salvou."
-                      : "Get notified when new listings match searches you saved."}
-                  </p>
-                </div>
+            {query.isLoading ? (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3].map((item) => (
+                  <div
+                    key={item}
+                    className="h-80 animate-pulse rounded-2xl bg-slate-100"
+                  />
+                ))}
               </div>
+            ) : query.data?.length ? (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {query.data.map((listing) => (
+                  <div key={listing.id} className="space-y-2">
+                    <ListingCard listing={listing} />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={removeSaved.isPending}
+                      onClick={() => removeSaved.mutate(listing.id)}
+                    >
+                      <Heart className="size-4 fill-rose-500 text-rose-500" />
+                      {portuguese ? "Remover dos salvos" : "Remove from saved"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 rounded-3xl border border-dashed p-12 text-center">
+                <Heart className="mx-auto size-10 text-slate-300" />
+                <h2 className="mt-4 font-bold">{t("account.saved.empty")}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {t("account.saved.emptyBody")}
+                </p>
+              </div>
+            )}
 
-              {alerts.isLoading ? (
-                <div className="mt-5 h-20 animate-pulse rounded-xl bg-slate-100" />
-              ) : alerts.data?.length ? (
-                <div className="mt-5 divide-y rounded-xl border">
+            {alerts.data?.length ? (
+              <section className="mt-8 border-t pt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">
+                      {portuguese ? "Alertas de busca" : "Search alerts"}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {portuguese
+                        ? "Buscas salvas que podem avisar você quando houver novos anúncios."
+                        : "Saved searches that can notify you when new listings appear."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 divide-y border-y">
                   {alerts.data.map((alert) => {
                     const q = String(alert.criteria?.q || "").trim();
                     const label =
@@ -87,18 +119,18 @@ export default function SavedPage() {
                     return (
                       <div
                         key={alert.id}
-                        className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div className="min-w-0">
                           <a
                             href={savedSearchService.toSearchHref(
                               alert.criteria,
                             )}
-                            className="block truncate text-sm font-black text-slate-900 hover:text-brand-700 hover:underline"
+                            className="block truncate text-sm font-semibold text-slate-900 hover:text-brand-700 hover:underline"
                           >
                             {label}
                           </a>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-0.5 text-xs text-slate-500">
                             {alert.alertsEnabled
                               ? portuguese
                                 ? "Notificações ativas"
@@ -146,51 +178,8 @@ export default function SavedPage() {
                     );
                   })}
                 </div>
-              ) : (
-                <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
-                  {portuguese
-                    ? "Nenhum alerta salvo ainda. Quando uma busca não tiver resultados, você poderá pedir para ser avisado."
-                    : "No search alerts yet. When a search has no results, you’ll be able to ask Marketlift to notify you."}
-                </p>
-              )}
-            </div>
-
-            {query.isLoading ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="h-80 animate-pulse rounded-2xl bg-slate-100"
-                  />
-                ))}
-              </div>
-            ) : query.data?.length ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {query.data.map((listing) => (
-                  <div key={listing.id} className="space-y-2">
-                    <ListingCard listing={listing} />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      disabled={removeSaved.isPending}
-                      onClick={() => removeSaved.mutate(listing.id)}
-                    >
-                      <Heart className="size-4 fill-rose-500 text-rose-500" />
-                      {portuguese ? "Remover dos salvos" : "Remove from saved"}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-8 rounded-3xl border border-dashed p-12 text-center">
-                <Heart className="mx-auto size-10 text-slate-300" />
-                <h2 className="mt-4 font-bold">{t("account.saved.empty")}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {t("account.saved.emptyBody")}
-                </p>
-              </div>
-            )}
+              </section>
+            ) : null}
           </section>
         </div>
       </main>

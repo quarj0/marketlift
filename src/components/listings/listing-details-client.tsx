@@ -126,8 +126,8 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
       const conversation = await messagingService.startConversation(listing!.id);
       const amountText = formatMoney(amount, listingMarket.currency);
       const text = locale === "pt-BR"
-        ? `Olá! Tenho interesse neste anúncio. Você aceitaria ${amountText}?`
-        : `Hi! I'm interested in this listing. Would you consider ${amountText}?`;
+        ? `Gostaria de fazer uma oferta de ${amountText}.`
+        : `I would like to make an offer of ${amountText}.`;
       await messagingService.sendMessage(conversation.id, { text });
       return conversation;
     },
