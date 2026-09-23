@@ -391,37 +391,24 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     {formatMoney(listing.price)}
                   </p>
                 </div>
-                <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                  <Button
-                    variant="outline"
-                    aria-pressed={saved}
-                    loading={saveMutation.isPending}
-                    loadingText={t("listing.saving")}
-                    onClick={() =>
-                      requireAuth("save this listing", () =>
-                        saveMutation.mutate(),
-                      )
-                    }
-                  >
-                    <Heart
-                      className={`size-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`}
-                    />
-                    {saved ? t("listing.saved") : t("common.save")}
-                  </Button>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 sm:justify-end">
-                    <span>{formatRelativeDate(listing.createdAt, locale)}</span>
-                    <span className="flex items-center gap-1">
-                      <Eye className="size-4" />
-                      {t("listing.views", {
-                        count: shownViews.toLocaleString(
-                          locale === "pt-BR" ? "pt-BR" : "en-US",
-                        ),
-                      })}
-                    </span>
-                  </div>
-                </div>
+                <Button
+                  variant="outline"
+                  aria-pressed={saved}
+                  loading={saveMutation.isPending}
+                  loadingText={t("listing.saving")}
+                  onClick={() =>
+                    requireAuth("save this listing", () =>
+                      saveMutation.mutate(),
+                    )
+                  }
+                >
+                  <Heart
+                    className={`size-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`}
+                  />
+                  {saved ? t("listing.saved") : t("common.save")}
+                </Button>
               </div>
-              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y py-3 text-xs text-slate-500">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-y py-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
                   <MapPin className="size-4" />
                   {listing.location.city}, {listing.location.stateCode}
@@ -429,6 +416,17 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     ? ` · ${listing.location.district}`
                     : ""}
                 </span>
+                <div className="ml-auto flex items-center gap-3">
+                  <span>{formatRelativeDate(listing.createdAt, locale)}</span>
+                  <span className="flex items-center gap-1">
+                    <Eye className="size-4" />
+                    {t("listing.views", {
+                      count: shownViews.toLocaleString(
+                        locale === "pt-BR" ? "pt-BR" : "en-US",
+                      ),
+                    })}
+                  </span>
+                </div>
               </div>
               <div className="mt-5">
                 <h2 className="text-lg font-black">
