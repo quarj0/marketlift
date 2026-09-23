@@ -219,6 +219,7 @@ export default function NewListingPage() {
   const [video, setVideo] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState('');
   const [videoError, setVideoError] = useState('');
+  const videoValidationId = useRef(0);
   const [done, setDone] = useState(false);
   const [attributes, setAttributes] = useState<ListingAttributes>({});
   const [attributeErrors, setAttributeErrors] = useState<CategoryFieldErrors>({});
@@ -295,6 +296,10 @@ export default function NewListingPage() {
     form.setValue('category', categoryId, { shouldValidate: true });
     setAttributes({});
     setAttributeErrors({});
+    const nextMaxPhotos = maxListingPhotos(categories, categoryId);
+    if (photos.length > nextMaxPhotos) {
+      setPhotoError(t('selling.new.photoMaximum', { count: nextMaxPhotos }));
+    }
   };
 
   const updateAttribute = (fieldId: string, value: string | number | boolean) => {
@@ -479,6 +484,7 @@ export default function NewListingPage() {
   };
 
   const selectVideo = async (file?: File) => {
+    const requestId = ++videoValidationId.current;
     setVideoError('');
     if (!file) return;
     if (file.type !== 'video/mp4') {
@@ -498,6 +504,10 @@ export default function NewListingPage() {
         element.onerror = () => reject(new Error('invalid video'));
         element.src = url;
       });
+      if (requestId !== videoValidationId.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       if (!Number.isFinite(duration) || duration <= 0 || duration > 30.25) {
         URL.revokeObjectURL(url);
         setVideoError(locale === 'pt-BR' ? 'O vídeo deve ter no máximo 30 segundos.' : 'The video must be 30 seconds or shorter.');
@@ -508,11 +518,13 @@ export default function NewListingPage() {
       setVideoPreview(url);
     } catch {
       URL.revokeObjectURL(url);
+      if (requestId !== videoValidationId.current) return;
       setVideoError(locale === 'pt-BR' ? 'Não foi possível ler este vídeo.' : 'This video could not be read.');
     }
   };
 
   const removeVideo = () => {
+    videoValidationId.current += 1;
     if (videoPreview.startsWith('blob:')) URL.revokeObjectURL(videoPreview);
     setVideo(null);
     setVideoPreview('');
@@ -556,6 +568,12 @@ export default function NewListingPage() {
           count: MIN_LISTING_PHOTOS,
         }),
       );
+      setStep(2);
+      return;
+    }
+
+    if (photos.length > maxPhotos) {
+      setPhotoError(t('selling.new.photoMaximum', { count: maxPhotos }));
       setStep(2);
       return;
     }
