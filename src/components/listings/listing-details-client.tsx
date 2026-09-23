@@ -55,7 +55,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const [authAction, setAuthAction] = useState<string | null>(null);
   const [customOffer, setCustomOffer] = useState("");
   const [customOfferError, setCustomOfferError] = useState("");
-  const [displayViews, setDisplayViews] = useState(initialListing?.views ?? 0);
+  const [viewCountOverride, setViewCountOverride] = useState<number | null>(null);
 
   const listingQuery = useQuery({
     queryKey: ["listing", slug],
@@ -63,6 +63,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
     initialData: initialListing,
   });
   const listing = listingQuery.data;
+  const shownViews = viewCountOverride ?? listing?.views ?? 0;
   const sellerQuery = useQuery({
     queryKey: ["seller", listing?.sellerId],
     queryFn: () => sellerService.getSeller(listing!.sellerId),
@@ -81,10 +82,6 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   });
 
   useEffect(() => {
-    if (listing) setDisplayViews(listing.views);
-  }, [listing?.id, listing?.views]);
-
-  useEffect(() => {
     if (!listing?.id) return;
 
     const key = `marketlift:view:${listing.id}`;
@@ -99,7 +96,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
     void listingService
       .recordView(listing.id)
       .then((views) => {
-        if (!cancelled) setDisplayViews(views);
+        if (!cancelled) setViewCountOverride(views);
         try {
           window.sessionStorage.setItem(key, "recorded");
         } catch {}
