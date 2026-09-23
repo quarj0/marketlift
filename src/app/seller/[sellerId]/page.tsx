@@ -17,7 +17,7 @@ type SellerProfilePageProps = {
 function SellerProfileFallback() {
   return (
     <main
-      className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8"
+      className="mx-auto max-w-7xl px-4 py-4 pb-24 sm:px-6 sm:py-6 lg:px-8 lg:pb-8"
       aria-busy="true"
     >
       <div className="animate-pulse space-y-8">
@@ -56,17 +56,17 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
-      <section className="rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+      <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <SellerAvatar
             src={seller.avatar}
             alt={seller.name}
-            className="size-24 rounded-3xl object-cover"
+            className="size-20 rounded-2xl object-cover"
           />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-extrabold">{seller.name}</h1>
+              <h1 className="text-xl font-extrabold">{seller.name}</h1>
 
               {seller.verified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
@@ -76,7 +76,7 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
               )}
             </div>
 
-            <p className="mt-2 flex flex-wrap items-center gap-1 text-sm text-slate-500">
+            <p className="mt-1.5 flex flex-wrap items-center gap-1 text-xs text-slate-500">
               {sellerLocation && (
                 <>
                   <MapPin className="size-4" aria-hidden="true" />
@@ -88,7 +88,7 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
               <LocalizedDate value={seller.memberSince} dateStyle="medium" />
             </p>
 
-            <div className="mt-3 grid grid-cols-3 gap-3 rounded-2xl bg-slate-50 p-3 text-center text-xs sm:flex sm:gap-6 sm:bg-transparent sm:p-0 sm:text-left sm:text-sm">
+            <div className="mt-2.5 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center text-[11px] sm:flex sm:gap-5 sm:bg-transparent sm:p-0 sm:text-left sm:text-xs">
               <span>
                 <b className="block sm:inline">{seller.rating}</b>{" "}
                 <T id="seller.rating" />
@@ -135,14 +135,14 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
         </div>
       </section>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section aria-labelledby="seller-listings-heading">
-          <h2 id="seller-listings-heading" className="text-xl font-bold">
+          <h2 id="seller-listings-heading" className="text-lg font-bold">
             <T id="seller.activeListings" values={{ count: listings.length }} />
           </h2>
 
           {listings.length ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-3">
               {listings.map((listing) => (
                 <ListingCard
                   key={listing.id}
@@ -159,7 +159,7 @@ async function SellerProfileContent({ params }: SellerProfilePageProps) {
         </section>
 
         <aside aria-labelledby="seller-reviews-heading">
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border bg-white p-4 shadow-sm">
             <h2 id="seller-reviews-heading" className="font-bold">
               <T id="seller.recentReviews" />
             </h2>
