@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Eye,
   Heart,
   MapPin,
@@ -14,6 +15,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Star,
+  Store,
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -194,10 +196,10 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
 
   return (
     <>
-      <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
+      <main className="mx-auto max-w-7xl px-4 py-4 pb-28 sm:px-6 sm:py-6 lg:px-8 lg:pb-8">
         <nav
           aria-label={t("listing.breadcrumbLabel")}
-          className="mb-4 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-500 sm:text-sm"
+          className="mb-3 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-500"
         >
           <Link
             href="/"
@@ -232,7 +234,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
           </span>
         </nav>
 
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
           <section className="min-w-0">
             <div className="overflow-hidden rounded-2xl border bg-white shadow-sm sm:rounded-3xl">
               <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100 sm:aspect-16/10">
@@ -328,7 +330,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
               </div>
             )}
 
-            <article className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-7">
+            <article className="mt-4 rounded-2xl border bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap gap-2">
@@ -343,10 +345,10 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                       </span>
                     )}
                   </div>
-                  <h1 className="mt-3 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+                  <h1 className="mt-2 text-xl font-black leading-tight text-slate-950 sm:text-2xl">
                     {listing.title}
                   </h1>
-                  <p className="mt-3 text-3xl font-black text-brand-700">
+                  <p className="mt-2 text-2xl font-black text-brand-700">
                     {formatMoney(listing.price)}
                   </p>
                 </div>
@@ -367,7 +369,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                   {saved ? t("listing.saved") : t("common.save")}
                 </Button>
               </div>
-              <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-y py-4 text-sm text-slate-500">
+              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y py-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
                   <MapPin className="size-4" />
                   {listing.location.city}, {listing.location.stateCode}
@@ -385,23 +387,23 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                   })}
                 </span>
               </div>
-              <div className="mt-7">
-                <h2 className="text-xl font-black">
+              <div className="mt-5">
+                <h2 className="text-lg font-black">
                   {t("listing.description")}
                 </h2>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600 sm:text-base">
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">
                   {listing.description}
                 </p>
               </div>
               {listing.specifications && (
-                <div className="mt-8">
-                  <h2 className="text-xl font-black">
+                <div className="mt-6">
+                  <h2 className="text-lg font-black">
                     {t("listing.specifications")}
                   </h2>
-                  <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-2.5 sm:grid-cols-2">
                     {Object.entries(listing.specifications).map(
                       ([key, value]) => (
-                        <div key={key} className="rounded-xl bg-slate-50 p-4">
+                        <div key={key} className="rounded-xl bg-slate-50 p-3">
                           <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
                             {tr(key)}
                           </dt>
@@ -436,7 +438,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                 onRetry={() => sellerQuery.refetch()}
               />
             ) : seller ? (
-              <div className="rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl">
+              <div className="rounded-2xl border bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-3">
                   <Image
                     src={seller.avatar}
@@ -462,7 +464,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-center text-xs">
+                <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2.5 text-center text-[11px]">
                   <div>
                     <strong className="block text-sm text-slate-900">
                       {seller.responseRate}%
@@ -476,6 +478,29 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     {t("listing.memberSinceLabel")}
                   </div>
                 </div>
+                {seller.type === "business" &&
+                  (seller.storeAddress || (seller.opensAt && seller.closesAt)) && (
+                    <div className="mt-3 space-y-2 border-t pt-3 text-xs text-slate-600">
+                      {seller.storeAddress && (
+                        <div className="flex items-start gap-2">
+                          <Store className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800">{t("seller.storeAddress")}</p>
+                            <p className="mt-0.5 break-words">{seller.storeAddress}</p>
+                          </div>
+                        </div>
+                      )}
+                      {seller.opensAt && seller.closesAt && (
+                        <div className="flex items-start gap-2">
+                          <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          <div>
+                            <p className="font-bold text-slate-800">{t("seller.workingHours")}</p>
+                            <p className="mt-0.5">{seller.opensAt}–{seller.closesAt}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 <div className="mt-4 space-y-2">
                   <Button
                     onClick={() =>
@@ -586,7 +611,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
 
             <ListingAvailabilityReport listingId={listing.id} />
 
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
               <div className="flex gap-2">
                 <ShieldAlert className="mt-0.5 size-5 shrink-0" />
                 <p>
@@ -598,13 +623,13 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
           </aside>
         </div>
 
-        <section className="mt-12">
+        <section className="mt-9">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-brand-700">
                 {t("listing.keepBrowsing")}
               </p>
-              <h2 className="text-2xl font-black">{t("listing.similar")}</h2>
+              <h2 className="text-xl font-black">{t("listing.similar")}</h2>
             </div>
             <Link
               href={`/category/${listing.category}`}
