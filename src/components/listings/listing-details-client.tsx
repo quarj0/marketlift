@@ -250,6 +250,18 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
               )}
             </div>
 
+            {listing.videoUrl && (
+              <div className="mt-5 overflow-hidden rounded-2xl border bg-black shadow-sm sm:rounded-3xl">
+                <video
+                  src={listing.videoUrl}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="max-h-[70vh] w-full"
+                />
+              </div>
+            )}
+
             <article className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-7">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
