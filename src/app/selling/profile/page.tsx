@@ -31,6 +31,9 @@ type ProfileForm = {
   city: string;
   district: string;
   bio: string;
+  storeAddress: string;
+  opensAt: string;
+  closesAt: string;
 };
 
 const EMPTY_FORM: ProfileForm = {
@@ -42,6 +45,9 @@ const EMPTY_FORM: ProfileForm = {
   city: "",
   district: "",
   bio: "",
+  storeAddress: "",
+  opensAt: "",
+  closesAt: "",
 };
 
 function normalizedForm(value: ProfileForm) {
@@ -54,6 +60,9 @@ function normalizedForm(value: ProfileForm) {
     city: value.city.trim(),
     district: value.district.trim(),
     bio: value.bio.trim(),
+    storeAddress: value.storeAddress.trim(),
+    opensAt: value.opensAt.trim(),
+    closesAt: value.closesAt.trim(),
   };
 }
 
@@ -91,6 +100,9 @@ export default function SellingProfilePage() {
       city: profile.location.city || "",
       district: profile.location.district || "",
       bio: profile.bio || "",
+      storeAddress: seller.storeAddress || "",
+      opensAt: seller.opensAt || "",
+      closesAt: seller.closesAt || "",
     };
     const frame = window.requestAnimationFrame(() => {
       setForm(next);
@@ -115,6 +127,9 @@ export default function SellingProfilePage() {
     Boolean((normalized.stateCode || normalized.stateName) && normalized.city);
   const phoneValid =
     !normalized.phone || /^\+[1-9]\d{6,14}$/.test(normalized.phone);
+  const workingHoursComplete =
+    (!normalized.opensAt && !normalized.closesAt) ||
+    Boolean(normalized.opensAt && normalized.closesAt);
   const dirty = Boolean(
     normalizedBaseline &&
       JSON.stringify(normalized) !== JSON.stringify(normalizedBaseline),
@@ -127,12 +142,25 @@ export default function SellingProfilePage() {
       const sellerPatch: {
         displayName?: string;
         sellerType?: SellerType;
+        storeAddress?: string;
+        opensAt?: string;
+        closesAt?: string;
       } = {};
       if (normalized.displayName !== normalizedBaseline.displayName) {
         sellerPatch.displayName = normalized.displayName;
       }
       if (normalized.sellerType !== normalizedBaseline.sellerType) {
         sellerPatch.sellerType = normalized.sellerType;
+      }
+      if (normalized.storeAddress !== normalizedBaseline.storeAddress) {
+        sellerPatch.storeAddress = normalized.storeAddress;
+      }
+      if (
+        normalized.opensAt !== normalizedBaseline.opensAt ||
+        normalized.closesAt !== normalizedBaseline.closesAt
+      ) {
+        sellerPatch.opensAt = normalized.opensAt;
+        sellerPatch.closesAt = normalized.closesAt;
       }
 
       const accountPatch: {
@@ -231,6 +259,7 @@ export default function SellingProfilePage() {
     !normalized.displayName ||
     !locationComplete ||
     !phoneValid ||
+    !workingHoursComplete ||
     !dirty;
 
   return (
@@ -408,6 +437,73 @@ export default function SellingProfilePage() {
                         </span>
                       )}
                     </label>
+
+                    {form.sellerType === "business" && (
+                      <div className="sm:col-span-2 rounded-xl border bg-slate-50 p-4">
+                        <h3 className="text-sm font-black text-slate-900">
+                          {locale === "pt-BR" ? "Detalhes da loja" : "Store details"}
+                        </h3>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                          <label className="sm:col-span-2">
+                            <span className="mb-1.5 block text-sm font-bold">
+                              {locale === "pt-BR" ? "Endereço da loja" : "Store address"}
+                            </span>
+                            <Input
+                              value={form.storeAddress}
+                              maxLength={255}
+                              placeholder={
+                                locale === "pt-BR"
+                                  ? "Rua, número ou referência"
+                                  : "Street, number or landmark"
+                              }
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  storeAddress: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            <span className="mb-1.5 block text-sm font-bold">
+                              {locale === "pt-BR" ? "Abre às" : "Opens at"}
+                            </span>
+                            <Input
+                              type="time"
+                              value={form.opensAt}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  opensAt: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            <span className="mb-1.5 block text-sm font-bold">
+                              {locale === "pt-BR" ? "Fecha às" : "Closes at"}
+                            </span>
+                            <Input
+                              type="time"
+                              value={form.closesAt}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  closesAt: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                        </div>
+                        {!workingHoursComplete && (
+                          <p className="mt-2 text-xs font-semibold text-rose-600" role="alert">
+                            {locale === "pt-BR"
+                              ? "Informe os horários de abertura e fechamento juntos."
+                              : "Provide both opening and closing times."}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="sm:col-span-2">
                       <LocationFields
