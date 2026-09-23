@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Wrench } from "lucide-react";
+import { RefreshCw, TriangleAlert } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -43,39 +43,55 @@ function AccessLoading() {
   );
 }
 
-function MaintenanceScreen({ onRetry, checking }: { onRetry: () => void; checking: boolean }) {
+function MaintenanceScreen({
+  onRetry,
+  checking,
+}: {
+  onRetry: () => void;
+  checking: boolean;
+}) {
   const { locale } = useLocale();
   const pt = locale === "pt-BR";
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#02122f] px-4 py-12 text-white">
-      <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.06] p-7 text-center shadow-2xl backdrop-blur sm:p-10">
-        <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-amber-400/15 text-amber-300">
-          <Wrench className="size-8" aria-hidden="true" />
+    <main
+      className="grid min-h-screen place-items-center bg-slate-100 px-4 py-10 text-slate-900"
+      role="alert"
+      aria-live="assertive"
+    >
+      <section className="w-full max-w-lg rounded-lg border border-slate-300 bg-white p-6 shadow-sm sm:p-7">
+        <div className="flex items-start gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700">
+            <TriangleAlert className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              {pt ? "Manutenção em andamento" : "Maintenance in progress"}
+            </p>
+            <h1 className="mt-1 text-xl font-bold leading-tight text-slate-950">
+              {pt
+                ? "Marketplace temporariamente indisponível"
+                : "Marketplace temporarily unavailable"}
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {pt
+                ? "Estamos realizando uma manutenção programada. Esta é uma interrupção temporária do serviço e não há problema com sua conta ou dispositivo. Tente novamente em alguns minutos."
+                : "We’re carrying out scheduled maintenance. This is a temporary service interruption, not a problem with your account or device. Please try again in a few minutes."}
+            </p>
+          </div>
         </div>
-        <p className="mt-6 text-sm font-black uppercase tracking-[0.22em] text-sky-300">Marketlift</p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-          {pt ? "Estamos fazendo uma manutenção rápida" : "We’re making a quick improvement"}
-        </h1>
-        <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-slate-300 sm:text-base">
-          {pt
-            ? "O marketplace está temporariamente indisponível enquanto concluímos uma atualização. Seus dados e sua conta permanecem seguros. Tente novamente em alguns minutos."
-            : "The marketplace is temporarily unavailable while we finish an update. Your account and data remain safe. Please try again in a few minutes."}
-        </p>
-        <Button
-          className="mt-7 bg-white text-slate-950 hover:bg-slate-100"
-          disabled={checking}
-          onClick={onRetry}
-        >
-          <RefreshCw className={`size-4 ${checking ? "animate-spin" : ""}`} />
-          {pt ? "Verificar novamente" : "Check again"}
-        </Button>
-        <p className="mt-5 text-xs text-slate-400">
-          {pt
-            ? "Administradores ainda podem acessar o console para concluir a manutenção."
-            : "Administrators can still access the console to complete maintenance."}
-        </p>
-      </div>
+
+        <div className="mt-5 border-t border-slate-200 pt-4">
+          <Button
+            variant="outline"
+            disabled={checking}
+            onClick={onRetry}
+          >
+            <RefreshCw className={`size-4 ${checking ? "animate-spin" : ""}`} />
+            {pt ? "Tentar novamente" : "Try again"}
+          </Button>
+        </div>
+      </section>
     </main>
   );
 }
