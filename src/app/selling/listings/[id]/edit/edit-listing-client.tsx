@@ -47,6 +47,7 @@ export function EditListingClient() {
     {},
   );
   const [replacementPhotos, setReplacementPhotos] = useState<File[]>([]);
+  const [replacementPhotoError, setReplacementPhotoError] = useState("");
   const [saved, setSaved] = useState(false);
 
   const listingQuery = useQuery({
@@ -383,13 +384,27 @@ export function EditListingClient() {
                     accept="image/png,image/jpeg,image/webp"
                     multiple
                     className="sr-only"
-                    onChange={(event) =>
-                      setReplacementPhotos(
-                        Array.from(event.target.files ?? []).slice(0, 6),
-                      )
-                    }
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files ?? []);
+                      if (files.length > 6) {
+                        setReplacementPhotoError(
+                          locale === "pt-BR"
+                            ? "Selecione no máximo 6 fotos."
+                            : "Select no more than 6 photos.",
+                        );
+                        event.target.value = "";
+                        return;
+                      }
+                      setReplacementPhotoError("");
+                      setReplacementPhotos(files);
+                    }}
                   />
                 </label>
+                {replacementPhotoError && (
+                  <p className="mt-2 text-sm font-semibold text-rose-700">
+                    {replacementPhotoError}
+                  </p>
+                )}
               </div>
 
               {saved && (
