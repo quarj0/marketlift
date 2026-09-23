@@ -83,7 +83,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const offerMutation = useMutation({
     mutationFn: async (amount: number) => {
       const conversation = await messagingService.startConversation(listing!.id);
-      const amountText = formatMoney(amount);
+      const amountText = formatMoney(amount, listingMarket.currency);
       const text = locale === "pt-BR"
         ? `Olá! Tenho interesse neste anúncio. Você aceitaria ${amountText}?`
         : `Hi! I'm interested in this listing. Would you consider ${amountText}?`;
@@ -529,7 +529,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                           disabled={offerMutation.isPending}
                           onClick={() => submitOffer(amount)}
                         >
-                          {formatMoney(amount)}
+                          {formatMoney(amount, listingMarket.currency)}
                         </Button>
                       ))}
                     </div>
