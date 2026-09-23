@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Flag, Heart, MessageCircle } from 'lucide-react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { messagingService } from '@/services/messaging.service';
 
 import { AuthRequiredDialog } from '@/components/auth/auth-required-dialog';
 import { ReportDialog } from '@/components/feedback/report-dialog';
@@ -12,17 +13,32 @@ import { useAuth } from '@/providers/auth-provider';
 import { useLocale } from '@/providers/locale-provider';
 import { socialService } from '@/services/social.service';
 
-export function SellerProfileActions({ sellerId }: { sellerId: string }) {
+export function SellerProfileActions({ sellerId, initialFollowing = false, listingId }: { sellerId: string; initialFollowing?: boolean; listingId?: string }) {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const { t, locale } = useLocale();
   const [authAction, setAuthAction] = useState<string | null>(null);
-  const [following, setFollowing] = useState(false);
+  const [followingOverride, setFollowingOverride] = useState<boolean | null>(null);
   const isOwnProfile = Boolean(user?.sellerProfile?.sellerId === sellerId);
+  const followStateQuery = useQuery({
+    queryKey: ['seller-follow-state', sellerId],
+    queryFn: () => socialService.getSellerFollowState(sellerId),
+    enabled: isAuthenticated && !isOwnProfile,
+    staleTime: 30_000,
+  });
+
+
+  const messageMutation = useMutation({
+    mutationFn: async () => {
+      if (!listingId) throw new Error(locale === 'pt-BR' ? 'Abra um anúncio deste vendedor para iniciar uma conversa.' : 'Open one of this seller’s listings to start a conversation.');
+      return messagingService.startConversation(listingId);
+    },
+    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
+  });
 
   const followMutation = useMutation({
     mutationFn: () => socialService.toggleFollowSeller(sellerId),
-    onSuccess: setFollowing,
+    onSuccess: setFollowingOverride,
   });
 
   function requireAuth(action: string, callback?: () => void) {
@@ -32,6 +48,8 @@ export function SellerProfileActions({ sellerId }: { sellerId: string }) {
     }
     callback?.();
   }
+
+  const following = followingOverride ?? followStateQuery.data ?? initialFollowing;
 
   const ownProfileText = locale === 'pt-BR'
     ? 'Estas ações não estão disponíveis no seu próprio perfil de vendedor.'
@@ -44,7 +62,9 @@ export function SellerProfileActions({ sellerId }: { sellerId: string }) {
           <Button
             disabled={isOwnProfile}
             title={isOwnProfile ? ownProfileText : undefined}
-            onClick={() => requireAuth('message this seller', () => router.push('/messages'))}
+            loading={messageMutation.isPending}
+            loadingText={locale === 'pt-BR' ? 'Abrindo...' : 'Opening...'}
+            onClick={() => requireAuth('message this seller', () => messageMutation.mutate())}
           >
             <MessageCircle className="size-4" />
             {t('seller.message')}
@@ -60,7 +80,7 @@ export function SellerProfileActions({ sellerId }: { sellerId: string }) {
             onClick={() => requireAuth('follow this seller', () => followMutation.mutate())}
           >
             <Heart className={`size-4 ${following ? 'fill-rose-500 text-rose-500' : ''}`} />
-            {following ? t('seller.following') : t('seller.follow')}
+            {following ? (locale === 'pt-BR' ? 'Deixar de seguir' : 'Unfollow') : t('seller.follow')}
           </Button>
 
           {isOwnProfile ? (
@@ -76,6 +96,12 @@ export function SellerProfileActions({ sellerId }: { sellerId: string }) {
         {isOwnProfile && (
           <p className="mt-2 max-w-sm text-xs text-slate-500" role="status">
             {ownProfileText}
+          </p>
+        )}
+
+        {messageMutation.isError && !isOwnProfile && (
+          <p className="mt-2 max-w-sm rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700" role="alert">
+            {messageMutation.error instanceof Error ? messageMutation.error.message : (locale === 'pt-BR' ? 'Não foi possível abrir a conversa.' : 'Unable to open the conversation.')}
           </p>
         )}
 

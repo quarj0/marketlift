@@ -80,6 +80,14 @@ export const socialService = {
     return isSaved ? !data.unsaveListing : Boolean(data.saveListing);
   },
 
+  async getSellerFollowState(id: string) {
+    const data = await graphqlRequest<{ seller: { isFollowed: boolean } | null }>(
+      `query SellerFollowState($id: ID!) { seller(id: $id) { isFollowed } }`,
+      { id },
+    );
+    return Boolean(data.seller?.isFollowed);
+  },
+
   async toggleFollowSeller(id: string) {
     const current = await graphqlRequest<{ seller: { isFollowed: boolean } | null }>(`
       query SellerFollowState($id: ID!) { seller(id: $id) { isFollowed } }

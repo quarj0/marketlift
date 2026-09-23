@@ -52,6 +52,7 @@ export interface Seller {
   memberSince: string;
   responseRate: number;
   type?: SellerType;
+  isFollowed?: boolean;
 }
 
 export type CategoryFieldType =
@@ -114,6 +115,7 @@ export interface Listing {
   condition?: ListingCondition;
   location: Location;
   images: string[];
+  videoUrl?: string;
   sellerId: string;
   sellerVerified?: boolean;
   createdAt: string;

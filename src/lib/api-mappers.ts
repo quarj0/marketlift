@@ -253,6 +253,7 @@ export type ApiSeller = {
   responseRate?: number | null;
   activeListings: number;
   memberSince: string;
+  isFollowed?: boolean;
   location: ApiLocation;
 };
 
@@ -268,6 +269,7 @@ export type ApiListing = {
   condition?: string | null;
   location: ApiLocation;
   images: string[];
+  videoUrl?: string | null;
   seller: ApiSeller;
   createdAt: string;
   status: string;
@@ -313,6 +315,7 @@ export function mapSeller(raw: ApiSeller): Seller {
     activeListings: Number(raw.activeListings || 0),
     memberSince: raw.memberSince,
     responseRate: Number(raw.responseRate || 0),
+    isFollowed: Boolean(raw.isFollowed),
     location: {
       countryCode: raw.location?.countryCode || undefined,
       state: raw.location?.state || "",
@@ -340,6 +343,7 @@ export function mapListing(raw: ApiListing): Listing {
       district: raw.location?.district || undefined,
     },
     images: mapMediaUrls(raw.images),
+    videoUrl: raw.videoUrl ? resolveApiUrl(raw.videoUrl) : undefined,
     sellerId: String(raw.seller?.id || ""),
     sellerVerified: Boolean(raw.seller?.verified),
     createdAt: raw.createdAt,

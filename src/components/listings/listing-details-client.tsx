@@ -20,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
+import { messagingService } from "@/services/messaging.service";
 import { socialService } from "@/services/social.service";
 import { formatReadableDate, formatRelativeDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,22 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
     queryFn: socialService.getSavedIds,
     enabled: isAuthenticated,
     staleTime: 60_000,
+  });
+  const messageMutation = useMutation({
+    mutationFn: () => messagingService.startConversation(listing!.id),
+    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
+  });
+  const offerMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const conversation = await messagingService.startConversation(listing!.id);
+      const amountText = formatMoney(amount);
+      const text = locale === "pt-BR"
+        ? `Olá! Tenho interesse neste anúncio. Você aceitaria ${amountText}?`
+        : `Hi! I'm interested in this listing. Would you consider ${amountText}?`;
+      await messagingService.sendMessage(conversation.id, { text });
+      return conversation;
+    },
+    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
   });
   const saveMutation = useMutation({
     mutationFn: () => socialService.toggleSaved(listing!.id),
@@ -250,6 +267,18 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
               )}
             </div>
 
+            {listing.videoUrl && (
+              <div className="mt-5 overflow-hidden rounded-2xl border bg-black shadow-sm sm:rounded-3xl">
+                <video
+                  src={listing.videoUrl}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="max-h-[70vh] w-full"
+                />
+              </div>
+            )}
+
             <article className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-7">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
@@ -401,9 +430,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                 <div className="mt-4 space-y-2">
                   <Button
                     onClick={() =>
-                      requireAuth("message the seller", () => {
-                        router.push("/messages");
-                      })
+                      requireAuth("message the seller", () => messageMutation.mutate())
                     }
                   >
                     <MessageCircle className="size-4" />
@@ -437,6 +464,36 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     {saved ? t("listing.saved") : t("listing.saveListing")}
                   </Button>
                 </div>
+
+                {listing.negotiable && (
+                  <div className="mt-4 rounded-xl border bg-slate-50 p-3">
+                    <p className="text-sm font-bold">{locale === "pt-BR" ? "Propor um preço" : "Make an offer"}</p>
+                    <p className="mt-1 text-xs text-slate-500">{locale === "pt-BR" ? "Escolha uma sugestão. Enviaremos uma mensagem educada ao vendedor." : "Choose a suggestion. We’ll send the seller a polite message."}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {Array.from(
+                        new Set(
+                          [0.9, 0.85, 0.8]
+                            .map((factor) => Math.floor(listing.price * factor * 100) / 100)
+                            .filter((amount) => amount > 0 && amount < listing.price),
+                        ),
+                      ).map((amount) => (
+                        <Button
+                          key={amount}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={offerMutation.isPending}
+                          onClick={() =>
+                            requireAuth("make an offer", () => offerMutation.mutate(amount))
+                          }
+                        >
+                          {formatMoney(amount)}
+                        </Button>
+                      ))}
+                    </div>
+                    {offerMutation.isError && <p className="mt-2 text-xs font-semibold text-rose-700">{locale === "pt-BR" ? "Não foi possível enviar a proposta." : "Unable to send the offer."}</p>}
+                  </div>
+                )}
                 <Button variant="outline" className="mt-2 w-full" asChild>
                   <Link href={`/seller/${seller.id}`}>
                     {t("listing.viewSeller")}
@@ -516,10 +573,10 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
           {phoneVisible ? t("listing.callSeller") : t("listing.contact")}
         </Button>
         <Button
+          loading={messageMutation.isPending}
+          loadingText={locale === "pt-BR" ? "Abrindo..." : "Opening..."}
           onClick={() =>
-            requireAuth("message the seller", () => {
-              router.push("/messages");
-            })
+            requireAuth("message the seller", () => messageMutation.mutate())
           }
         >
           <MessageCircle className="size-4" />
