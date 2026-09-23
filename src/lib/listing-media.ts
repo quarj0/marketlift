@@ -18,7 +18,7 @@ function rootForCategory(categories: Category[], categoryId: string): Category |
 
 export function maxListingPhotos(categories: Category[], categoryId: string): number {
   const root = rootForCategory(categories, categoryId);
-  if (root?.name === "Vehicles") return 10;
-  if (root?.name === "Property") return 7;
+  if (root?.id === "vehicles") return 10;
+  if (root?.id === "properties" || root?.id === "property") return 7;
   return DEFAULT_MAX_LISTING_PHOTOS;
 }
