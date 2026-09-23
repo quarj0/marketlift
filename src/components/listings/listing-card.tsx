@@ -117,13 +117,13 @@ export function ListingCard({
           </div>
         </div>
 
-        <div className="p-3 sm:p-4">
-          <p className="text-lg font-black tracking-tight text-slate-950 sm:text-xl">
+        <div className="p-2.5 sm:p-3">
+          <p className="text-base font-black tracking-tight text-slate-950 sm:text-lg">
             {formatMoney(listing.price)}
           </p>
           <Link
             href={`/listing/${listing.slug}`}
-            className={`mt-1 line-clamp-2 block font-semibold leading-5 text-slate-800 hover:text-brand-700 ${list ? "text-lg" : "min-h-10 text-sm sm:min-h-12 sm:text-base"}`}
+            className={`mt-1 line-clamp-2 block font-semibold leading-5 text-slate-800 hover:text-brand-700 ${list ? "text-base" : "min-h-9 text-xs sm:min-h-10 sm:text-sm"}`}
           >
             {listing.title}
           </Link>
@@ -134,7 +134,7 @@ export function ListingCard({
             </p>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-1 text-[11px] text-slate-500 sm:text-xs">
+          <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:text-[11px]">
             <MapPin className="size-3.5 shrink-0" />
             {listing.location.city}, {listing.location.stateCode}
             <span aria-hidden="true">·</span>
@@ -142,7 +142,7 @@ export function ListingCard({
           </div>
 
           {sellerVerified && (
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-700 sm:text-xs">
+            <div className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-emerald-700 sm:text-[11px]">
               <ShieldCheck className="size-4" />
               {t("listing.verifiedSeller")}
             </div>
