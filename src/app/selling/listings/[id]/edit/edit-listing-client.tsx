@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { useLocale } from "@/providers/locale-provider";
 import { useMarket } from "@/providers/market-provider";
 import { categoryService } from "@/services/category.service";
+import { maxListingPhotos } from "@/lib/listing-media";
 import { sellingService } from "@/services/selling.service";
 import type { ListingAttributes, ListingCondition } from "@/types";
 
@@ -63,6 +64,12 @@ export function EditListingClient() {
     enabled: Boolean(listing?.category),
     staleTime: 5 * 60_000,
   });
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: categoryService.getCategories,
+    staleTime: 5 * 60_000,
+  });
+  const maxPhotos = maxListingPhotos(categoriesQuery.data ?? [], listing?.category ?? "");
 
   useEffect(() => {
     if (!listing) return;
@@ -386,9 +393,9 @@ export function EditListingClient() {
                     className="sr-only"
                     onChange={(event) => {
                       const files = Array.from(event.target.files ?? []);
-                      if (files.length > 6) {
+                      if (files.length > maxPhotos) {
                         setReplacementPhotoError(
-                          t("selling.new.validation.maxPhotos"),
+                          t("selling.new.photoMaximum", { count: maxPhotos }),
                         );
                         event.target.value = "";
                         return;
