@@ -44,7 +44,7 @@ import { useMarket } from "@/providers/market-provider";
 export function ListingDetailsClient({ slug, initialListing }: { slug: string; initialListing?: Awaited<ReturnType<typeof listingService.getListing>> }) {
   const { isAuthenticated } = useAuth();
   const { t, locale, tr, categoryName } = useLocale();
-  const { formatMoney } = useMarket();
+  const { formatMoney, market, enabledMarkets } = useMarket();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [active, setActive] = useState(0);
@@ -137,6 +137,13 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const seller = sellerQuery.data;
   const image = listing.images[active] || listing.images[0];
   const saved = savedQuery.data?.includes(listing.id) ?? false;
+  const listingMarket =
+    enabledMarkets.find((item) => item.countryCode === listing.countryCode) ||
+    market;
+  const offerFractionDigits = listingMarket.currency === "XOF" ? 0 : 2;
+  const offerUnit = 10 ** -offerFractionDigits;
+  const normalizeOffer = (value: number) =>
+    Math.round(value / offerUnit) * offerUnit;
   const offerRoundingStep = listing.price >= 10_000
     ? 100
     : listing.price >= 1_000
@@ -145,27 +152,28 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
         ? 10
         : listing.price >= 10
           ? 1
-          : 0.1;
+          : offerUnit;
   const suggestedOffers = Array.from(
     new Set(
       [0.95, 0.9, 0.85]
         .map((factor) =>
           Math.floor((listing.price * factor) / offerRoundingStep) * offerRoundingStep,
         )
-        .map((amount) => Math.round(amount * 100) / 100)
+        .map(normalizeOffer)
         .filter((amount) => amount > 0 && amount < listing.price),
     ),
   );
 
   const submitOffer = (amount: number) => {
     setCustomOfferError("");
-    if (!Number.isFinite(amount) || amount <= 0) {
+    const normalizedAmount = normalizeOffer(amount);
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount < offerUnit) {
       setCustomOfferError(
         locale === "pt-BR" ? "Digite um valor válido." : "Enter a valid amount.",
       );
       return;
     }
-    if (amount >= listing.price) {
+    if (normalizedAmount >= listing.price) {
       setCustomOfferError(
         locale === "pt-BR"
           ? "A oferta deve ser menor que o preço anunciado."
@@ -173,7 +181,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
       );
       return;
     }
-    requireAuth("make an offer", () => offerMutation.mutate(amount));
+    requireAuth("make an offer", () => offerMutation.mutate(normalizedAmount));
   };
 
   function requireAuth(action: string, callback?: () => void) {
@@ -534,9 +542,9 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     >
                       <Input
                         type="number"
-                        min="0.01"
-                        max={Math.max(0.01, listing.price - 0.01)}
-                        step="0.01"
+                        min={offerUnit}
+                        max={Math.max(offerUnit, listing.price - offerUnit)}
+                        step={offerUnit}
                         inputMode="decimal"
                         value={customOffer}
                         onChange={(event) => {
