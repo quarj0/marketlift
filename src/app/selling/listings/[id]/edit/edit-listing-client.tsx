@@ -388,9 +388,7 @@ export function EditListingClient() {
                       const files = Array.from(event.target.files ?? []);
                       if (files.length > 6) {
                         setReplacementPhotoError(
-                          locale === "pt-BR"
-                            ? "Selecione no máximo 6 fotos."
-                            : "Select no more than 6 photos.",
+                          t("selling.new.validation.maxPhotos"),
                         );
                         event.target.value = "";
                         return;
