@@ -385,7 +385,7 @@ export function EditListingClient() {
                     className="sr-only"
                     onChange={(event) =>
                       setReplacementPhotos(
-                        Array.from(event.target.files ?? []).slice(0, 10),
+                        Array.from(event.target.files ?? []).slice(0, 6),
                       )
                     }
                   />
