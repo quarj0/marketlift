@@ -15,6 +15,9 @@ export const SELLER_FIELDS = `
   isFollowed
   memberSince
   countryCode
+  storeAddress
+  opensAt
+  closesAt
   location { countryCode state stateCode city district }
 `;
 

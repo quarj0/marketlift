@@ -205,13 +205,27 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
     );
   }
 
-  if (!conversations.data?.length) {
+  if (!conversations.data?.length && !activeId) {
     return (
       <EmptyState
         title={t("messages.empty")}
         description={t("messages.emptyBody")}
         href="/search"
         action={t("messages.browse")}
+      />
+    );
+  }
+
+  if (activeId && !current && selectedConversation.isLoading) {
+    return <PageLoading label={t("messages.loading")} />;
+  }
+
+  if (activeId && !current && selectedConversation.isError) {
+    return (
+      <InlineError
+        title={t("messages.loadError")}
+        description={t("messages.loadErrorBody")}
+        onRetry={() => selectedConversation.refetch()}
       />
     );
   }
@@ -232,7 +246,7 @@ export function MessagesClient({ initialId }: { initialId?: string }) {
         </div>
 
         <div className="divide-y">
-          {conversations.data.map((conversation) => (
+          {(conversations.data ?? []).map((conversation) => (
             <button
               key={conversation.id}
               type="button"

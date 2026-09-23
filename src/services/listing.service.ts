@@ -109,6 +109,15 @@ async function fetchListings(filters: SearchFilters = {}, pageSize = 24) {
 }
 
 export const listingService = {
+  async recordView(listingId: string) {
+    const data = await graphqlRequest<{ recordListingView: number }>(
+      `mutation RecordListingView($listingId: ID!) {
+        recordListingView(listingId: $listingId)
+      }`,
+      { listingId },
+    );
+    return Number(data.recordListingView || 0);
+  },
   async searchPage(
     filters: SearchFilters,
     cursor: string | null,

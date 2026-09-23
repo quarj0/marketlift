@@ -69,6 +69,14 @@ export const socialService = {
     return (data.mySavedListings || []).map((listing) => String(listing.id));
   },
 
+  async unsaveListing(id: string) {
+    const data = await graphqlRequest<{ unsaveListing: boolean }>(
+      `mutation UnsaveListing($id: ID!) { unsaveListing(listingId: $id) }`,
+      { id },
+    );
+    return Boolean(data.unsaveListing);
+  },
+
   async toggleSaved(id: string) {
     const savedIds = await this.getSavedIds();
     const isSaved = savedIds.includes(id);

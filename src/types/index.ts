@@ -52,6 +52,9 @@ export interface Seller {
   memberSince: string;
   responseRate: number;
   type?: SellerType;
+  storeAddress?: string;
+  opensAt?: string;
+  closesAt?: string;
   isFollowed?: boolean;
 }
 

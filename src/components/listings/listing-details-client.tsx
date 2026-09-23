@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Eye,
   Heart,
   MapPin,
@@ -14,16 +15,18 @@ import {
   ShieldAlert,
   ShieldCheck,
   Star,
+  Store,
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { listingService } from "@/services/listing.service";
 import { sellerService } from "@/services/seller.service";
 import { messagingService } from "@/services/messaging.service";
 import { socialService } from "@/services/social.service";
 import { formatReadableDate, formatRelativeDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -43,13 +46,16 @@ import { useMarket } from "@/providers/market-provider";
 export function ListingDetailsClient({ slug, initialListing }: { slug: string; initialListing?: Awaited<ReturnType<typeof listingService.getListing>> }) {
   const { isAuthenticated } = useAuth();
   const { t, locale, tr, categoryName } = useLocale();
-  const { formatMoney } = useMarket();
+  const { formatMoney, market, enabledMarkets } = useMarket();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [active, setActive] = useState(0);
   const [gallery, setGallery] = useState(false);
   const [phoneVisible, setPhoneVisible] = useState(false);
   const [authAction, setAuthAction] = useState<string | null>(null);
+  const [customOffer, setCustomOffer] = useState("");
+  const [customOfferError, setCustomOfferError] = useState("");
+  const [viewCountOverride, setViewCountOverride] = useState<number | null>(null);
 
   const listingQuery = useQuery({
     queryKey: ["listing", slug],
@@ -57,6 +63,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
     initialData: initialListing,
   });
   const listing = listingQuery.data;
+  const shownViews = viewCountOverride ?? listing?.views ?? 0;
   const sellerQuery = useQuery({
     queryKey: ["seller", listing?.sellerId],
     queryFn: () => sellerService.getSeller(listing!.sellerId),
@@ -73,21 +80,58 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
     enabled: isAuthenticated,
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    if (!listing?.id) return;
+
+    const key = `marketlift:view:${listing.id}`;
+    try {
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, "pending");
+    } catch {
+      // sessionStorage may be unavailable; the backend still deduplicates signed-in viewers.
+    }
+
+    let cancelled = false;
+    void listingService
+      .recordView(listing.id)
+      .then((views) => {
+        if (!cancelled) setViewCountOverride(views);
+        try {
+          window.sessionStorage.setItem(key, "recorded");
+        } catch {}
+      })
+      .catch(() => {
+        try {
+          window.sessionStorage.removeItem(key);
+        } catch {}
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listing?.id]);
+  const openConversation = async (conversation: Awaited<ReturnType<typeof messagingService.startConversation>>) => {
+    queryClient.setQueryData(["conversation", conversation.id], conversation);
+    await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    router.push(`/messages/${conversation.id}`);
+  };
+
   const messageMutation = useMutation({
     mutationFn: () => messagingService.startConversation(listing!.id),
-    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
+    onSuccess: openConversation,
   });
   const offerMutation = useMutation({
     mutationFn: async (amount: number) => {
       const conversation = await messagingService.startConversation(listing!.id);
-      const amountText = formatMoney(amount);
+      const amountText = formatMoney(amount, listingMarket.currency);
       const text = locale === "pt-BR"
         ? `Olá! Tenho interesse neste anúncio. Você aceitaria ${amountText}?`
         : `Hi! I'm interested in this listing. Would you consider ${amountText}?`;
       await messagingService.sendMessage(conversation.id, { text });
       return conversation;
     },
-    onSuccess: (conversation) => router.push(`/messages/${conversation.id}`),
+    onSuccess: openConversation,
   });
   const saveMutation = useMutation({
     mutationFn: () => socialService.toggleSaved(listing!.id),
@@ -134,6 +178,52 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const seller = sellerQuery.data;
   const image = listing.images[active] || listing.images[0];
   const saved = savedQuery.data?.includes(listing.id) ?? false;
+  const listingMarket =
+    enabledMarkets.find((item) => item.countryCode === listing.location.countryCode) ||
+    market;
+  const offerFractionDigits = listingMarket.currency === "XOF" ? 0 : 2;
+  const offerUnit = 10 ** -offerFractionDigits;
+  const normalizeOffer = (value: number) =>
+    Math.round(value / offerUnit) * offerUnit;
+  const offerRoundingStep = listing.price >= 10_000
+    ? 100
+    : listing.price >= 1_000
+      ? 50
+      : listing.price >= 100
+        ? 10
+        : listing.price >= 10
+          ? 1
+          : offerUnit;
+  const suggestedOffers = Array.from(
+    new Set(
+      [0.95, 0.9, 0.85]
+        .map((factor) =>
+          Math.floor((listing.price * factor) / offerRoundingStep) * offerRoundingStep,
+        )
+        .map(normalizeOffer)
+        .filter((amount) => amount > 0 && amount < listing.price),
+    ),
+  );
+
+  const submitOffer = (amount: number) => {
+    setCustomOfferError("");
+    const normalizedAmount = normalizeOffer(amount);
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount < offerUnit) {
+      setCustomOfferError(
+        locale === "pt-BR" ? "Digite um valor válido." : "Enter a valid amount.",
+      );
+      return;
+    }
+    if (normalizedAmount >= listing.price) {
+      setCustomOfferError(
+        locale === "pt-BR"
+          ? "A oferta deve ser menor que o preço anunciado."
+          : "Your offer must be below the asking price.",
+      );
+      return;
+    }
+    requireAuth("make an offer", () => offerMutation.mutate(normalizedAmount));
+  };
 
   function requireAuth(action: string, callback?: () => void) {
     if (!isAuthenticated) {
@@ -145,10 +235,10 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
 
   return (
     <>
-      <main className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
+      <main className="mx-auto max-w-7xl px-4 py-4 pb-28 sm:px-6 sm:py-6 lg:px-8 lg:pb-8">
         <nav
           aria-label={t("listing.breadcrumbLabel")}
-          className="mb-4 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-500 sm:text-sm"
+          className="mb-3 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-500"
         >
           <Link
             href="/"
@@ -183,7 +273,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
           </span>
         </nav>
 
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
           <section className="min-w-0">
             <div className="overflow-hidden rounded-2xl border bg-white shadow-sm sm:rounded-3xl">
               <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100 sm:aspect-16/10">
@@ -279,7 +369,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
               </div>
             )}
 
-            <article className="mt-5 rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-7">
+            <article className="mt-4 rounded-2xl border bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap gap-2">
@@ -294,31 +384,44 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                       </span>
                     )}
                   </div>
-                  <h1 className="mt-3 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+                  <h1 className="mt-2 text-xl font-black leading-tight text-slate-950 sm:text-2xl">
                     {listing.title}
                   </h1>
-                  <p className="mt-3 text-3xl font-black text-brand-700">
+                  <p className="mt-2 text-2xl font-black text-brand-700">
                     {formatMoney(listing.price)}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  aria-pressed={saved}
-                  loading={saveMutation.isPending}
-                  loadingText={t("listing.saving")}
-                  onClick={() =>
-                    requireAuth("save this listing", () =>
-                      saveMutation.mutate(),
-                    )
-                  }
-                >
-                  <Heart
-                    className={`size-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`}
-                  />
-                  {saved ? t("listing.saved") : t("common.save")}
-                </Button>
+                <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                  <Button
+                    variant="outline"
+                    aria-pressed={saved}
+                    loading={saveMutation.isPending}
+                    loadingText={t("listing.saving")}
+                    onClick={() =>
+                      requireAuth("save this listing", () =>
+                        saveMutation.mutate(),
+                      )
+                    }
+                  >
+                    <Heart
+                      className={`size-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`}
+                    />
+                    {saved ? t("listing.saved") : t("common.save")}
+                  </Button>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 sm:justify-end">
+                    <span>{formatRelativeDate(listing.createdAt, locale)}</span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="size-4" />
+                      {t("listing.views", {
+                        count: shownViews.toLocaleString(
+                          locale === "pt-BR" ? "pt-BR" : "en-US",
+                        ),
+                      })}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-y py-4 text-sm text-slate-500">
+              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y py-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
                   <MapPin className="size-4" />
                   {listing.location.city}, {listing.location.stateCode}
@@ -326,33 +429,24 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     ? ` · ${listing.location.district}`
                     : ""}
                 </span>
-                <span>{formatRelativeDate(listing.createdAt, locale)}</span>
-                <span className="flex items-center gap-1">
-                  <Eye className="size-4" />
-                  {t("listing.views", {
-                    count: listing.views.toLocaleString(
-                      locale === "pt-BR" ? "pt-BR" : "en-US",
-                    ),
-                  })}
-                </span>
               </div>
-              <div className="mt-7">
-                <h2 className="text-xl font-black">
+              <div className="mt-5">
+                <h2 className="text-lg font-black">
                   {t("listing.description")}
                 </h2>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600 sm:text-base">
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">
                   {listing.description}
                 </p>
               </div>
               {listing.specifications && (
-                <div className="mt-8">
-                  <h2 className="text-xl font-black">
+                <div className="mt-6">
+                  <h2 className="text-lg font-black">
                     {t("listing.specifications")}
                   </h2>
-                  <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-2.5 sm:grid-cols-2">
                     {Object.entries(listing.specifications).map(
                       ([key, value]) => (
-                        <div key={key} className="rounded-xl bg-slate-50 p-4">
+                        <div key={key} className="rounded-xl bg-slate-50 p-3">
                           <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
                             {tr(key)}
                           </dt>
@@ -387,7 +481,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                 onRetry={() => sellerQuery.refetch()}
               />
             ) : seller ? (
-              <div className="rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl">
+              <div className="rounded-2xl border bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-3">
                   <Image
                     src={seller.avatar}
@@ -413,7 +507,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-center text-xs">
+                <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2.5 text-center text-[11px]">
                   <div>
                     <strong className="block text-sm text-slate-900">
                       {seller.responseRate}%
@@ -427,8 +521,33 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     {t("listing.memberSinceLabel")}
                   </div>
                 </div>
+                {seller.type === "business" &&
+                  (seller.storeAddress || (seller.opensAt && seller.closesAt)) && (
+                    <div className="mt-3 space-y-2 border-t pt-3 text-xs text-slate-600">
+                      {seller.storeAddress && (
+                        <div className="flex items-start gap-2">
+                          <Store className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800">{t("seller.storeAddress")}</p>
+                            <p className="mt-0.5 break-words">{seller.storeAddress}</p>
+                          </div>
+                        </div>
+                      )}
+                      {seller.opensAt && seller.closesAt && (
+                        <div className="flex items-start gap-2">
+                          <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          <div>
+                            <p className="font-bold text-slate-800">{t("seller.workingHours")}</p>
+                            <p className="mt-0.5">{seller.opensAt}–{seller.closesAt}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 <div className="mt-4 space-y-2">
                   <Button
+                    loading={messageMutation.isPending}
+                    loadingText={locale === "pt-BR" ? "Abrindo..." : "Opening..."}
                     onClick={() =>
                       requireAuth("message the seller", () => messageMutation.mutate())
                     }
@@ -436,6 +555,15 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
                     <MessageCircle className="size-4" />
                     {t("listing.messageSeller")}
                   </Button>
+                  {messageMutation.isError && (
+                    <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" role="alert">
+                      {messageMutation.error instanceof Error
+                        ? messageMutation.error.message
+                        : locale === "pt-BR"
+                          ? "Não foi possível abrir a conversa."
+                          : "Unable to open the conversation."}
+                    </p>
+                  )}
                   {seller.phone && (
                     <Button
                       variant="outline"
@@ -467,31 +595,64 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
 
                 {listing.negotiable && (
                   <div className="mt-4 rounded-xl border bg-slate-50 p-3">
-                    <p className="text-sm font-bold">{locale === "pt-BR" ? "Propor um preço" : "Make an offer"}</p>
-                    <p className="mt-1 text-xs text-slate-500">{locale === "pt-BR" ? "Escolha uma sugestão. Enviaremos uma mensagem educada ao vendedor." : "Choose a suggestion. We’ll send the seller a polite message."}</p>
+                    <p className="text-sm font-bold">
+                      {locale === "pt-BR" ? "Fazer uma oferta" : "Make an offer"}
+                    </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {Array.from(
-                        new Set(
-                          [0.9, 0.85, 0.8]
-                            .map((factor) => Math.floor(listing.price * factor * 100) / 100)
-                            .filter((amount) => amount > 0 && amount < listing.price),
-                        ),
-                      ).map((amount) => (
+                      {suggestedOffers.map((amount) => (
                         <Button
                           key={amount}
                           type="button"
                           size="sm"
                           variant="outline"
                           disabled={offerMutation.isPending}
-                          onClick={() =>
-                            requireAuth("make an offer", () => offerMutation.mutate(amount))
-                          }
+                          onClick={() => submitOffer(amount)}
                         >
-                          {formatMoney(amount)}
+                          {formatMoney(amount, listingMarket.currency)}
                         </Button>
                       ))}
                     </div>
-                    {offerMutation.isError && <p className="mt-2 text-xs font-semibold text-rose-700">{locale === "pt-BR" ? "Não foi possível enviar a proposta." : "Unable to send the offer."}</p>}
+                    <form
+                      className="mt-3 flex gap-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        submitOffer(Number(customOffer));
+                      }}
+                    >
+                      <Input
+                        type="number"
+                        min={offerUnit}
+                        max={Math.max(offerUnit, listing.price - offerUnit)}
+                        step={offerUnit}
+                        inputMode="decimal"
+                        value={customOffer}
+                        onChange={(event) => {
+                          setCustomOffer(event.target.value);
+                          setCustomOfferError("");
+                        }}
+                        placeholder={locale === "pt-BR" ? "Seu valor" : "Your price"}
+                        aria-label={locale === "pt-BR" ? "Valor da sua oferta" : "Your offer amount"}
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={offerMutation.isPending || !customOffer.trim()}
+                      >
+                        {locale === "pt-BR" ? "Enviar" : "Send"}
+                      </Button>
+                    </form>
+                    {customOfferError && (
+                      <p className="mt-2 text-xs font-semibold text-rose-700">
+                        {customOfferError}
+                      </p>
+                    )}
+                    {offerMutation.isError && (
+                      <p className="mt-2 text-xs font-semibold text-rose-700">
+                        {locale === "pt-BR"
+                          ? "Não foi possível enviar a oferta. Tente novamente."
+                          : "Unable to send the offer. Please try again."}
+                      </p>
+                    )}
                   </div>
                 )}
                 <Button variant="outline" className="mt-2 w-full" asChild>
@@ -504,7 +665,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
 
             <ListingAvailabilityReport listingId={listing.id} />
 
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
               <div className="flex gap-2">
                 <ShieldAlert className="mt-0.5 size-5 shrink-0" />
                 <p>
@@ -516,13 +677,13 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
           </aside>
         </div>
 
-        <section className="mt-12">
+        <section className="mt-9">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-brand-700">
                 {t("listing.keepBrowsing")}
               </p>
-              <h2 className="text-2xl font-black">{t("listing.similar")}</h2>
+              <h2 className="text-xl font-black">{t("listing.similar")}</h2>
             </div>
             <Link
               href={`/category/${listing.category}`}
