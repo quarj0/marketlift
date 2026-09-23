@@ -138,7 +138,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   const image = listing.images[active] || listing.images[0];
   const saved = savedQuery.data?.includes(listing.id) ?? false;
   const listingMarket =
-    enabledMarkets.find((item) => item.countryCode === listing.countryCode) ||
+    enabledMarkets.find((item) => item.countryCode === listing.location.countryCode) ||
     market;
   const offerFractionDigits = listingMarket.currency === "XOF" ? 0 : 2;
   const offerUnit = 10 ** -offerFractionDigits;
