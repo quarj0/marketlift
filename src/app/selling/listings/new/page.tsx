@@ -59,8 +59,8 @@ type PhotoPreview = {
   perceptualHash: string;
 };
 
-const MIN_LISTING_PHOTOS = 5;
-const MAX_LISTING_PHOTOS = 12;
+const MIN_LISTING_PHOTOS = 3;
+const MAX_LISTING_PHOTOS = 6;
 const MIN_PHOTO_WIDTH = 400;
 const SCREENSHOT_NAME_RE =
   /(screen[\s_-]*shot|screenshot|screencap|print[\s_-]*screen|captura[\s_-]*(de[\s_-]*)?(tela|pantalla))/i;
