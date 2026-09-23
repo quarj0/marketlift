@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ImagePlus, Loader2, RefreshCw } from "lucide-react";
@@ -53,6 +53,7 @@ export function EditListingClient() {
   const [replacementVideoPreview, setReplacementVideoPreview] = useState("");
   const [removeExistingVideo, setRemoveExistingVideo] = useState(false);
   const [videoError, setVideoError] = useState("");
+  const videoValidationId = useRef(0);
   const [saved, setSaved] = useState(false);
 
   const listingQuery = useQuery({
@@ -436,6 +437,7 @@ export function EditListingClient() {
                       {listing.videoUrl || replacementVideo ? (locale === "pt-BR" ? "Substituir vídeo" : "Replace video") : (locale === "pt-BR" ? "Adicionar vídeo" : "Add video")}
                       <input type="file" accept="video/mp4" className="hidden" onChange={(event) => {
                         const file = event.target.files?.[0];
+                        const requestId = ++videoValidationId.current;
                         if (!file) return;
                         setVideoError("");
                         if (file.type !== "video/mp4" || file.size > 50 * 1024 * 1024) {
@@ -447,6 +449,10 @@ export function EditListingClient() {
                         const probe = document.createElement("video");
                         probe.preload = "metadata";
                         probe.onloadedmetadata = () => {
+                          if (requestId !== videoValidationId.current) {
+                            URL.revokeObjectURL(url);
+                            return;
+                          }
                           if (!Number.isFinite(probe.duration) || probe.duration <= 0 || probe.duration > 30.25) {
                             URL.revokeObjectURL(url);
                             setVideoError(locale === "pt-BR" ? "O vídeo deve ter no máximo 30 segundos." : "The video must be 30 seconds or shorter.");
@@ -459,6 +465,7 @@ export function EditListingClient() {
                         };
                         probe.onerror = () => {
                           URL.revokeObjectURL(url);
+                          if (requestId !== videoValidationId.current) return;
                           setVideoError(locale === "pt-BR" ? "Não foi possível ler este vídeo." : "This video could not be read.");
                         };
                         probe.src = url;
@@ -466,6 +473,7 @@ export function EditListingClient() {
                     </label>
                     {(listing.videoUrl || replacementVideo) && (
                       <button type="button" className="rounded-lg px-3 py-2 text-sm font-bold text-red-600" onClick={() => {
+                        videoValidationId.current += 1;
                         if (replacementVideoPreview.startsWith("blob:")) URL.revokeObjectURL(replacementVideoPreview);
                         setReplacementVideo(null);
                         setReplacementVideoPreview("");
