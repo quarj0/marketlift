@@ -98,7 +98,7 @@ async function retireLocalSubscription(subscription: PushSubscription) {
   }
 }
 
-async function ensureSubscription(version = lifecycleVersion) {
+async function ensureSubscription(version = lifecycleVersion, publicKeyValue?: string) {
   if (!supported()) throw new Error("This browser does not support Web Push.");
   if (Notification.permission !== "granted") {
     throw new Error("Notification permission has not been granted.");
@@ -107,7 +107,7 @@ async function ensureSubscription(version = lifecycleVersion) {
   assertLifecycle(version);
   const registration = await serviceWorkerRegistration();
   assertLifecycle(version);
-  const applicationServerKey = decodeApplicationServerKey(await publicKey());
+  const applicationServerKey = decodeApplicationServerKey(publicKeyValue || await publicKey());
   assertLifecycle(version);
   let subscription = await registration.pushManager.getSubscription();
   assertLifecycle(version);
@@ -189,6 +189,13 @@ async function getStatus() {
 async function enable() {
   if (!supported()) throw new Error("This browser does not support Web Push.");
   const version = lifecycleVersion;
+
+  // Confirm server-side Web Push is configured before asking the user for
+  // browser permission. A permission prompt should only appear when Marketlift
+  // can actually register and deliver to the resulting subscription.
+  const publicKeyValue = await publicKey();
+  assertLifecycle(version);
+
   let permission = Notification.permission;
   if (permission === "default") {
     permission = await Notification.requestPermission();
@@ -197,7 +204,7 @@ async function enable() {
     throw new Error("Notification permission was not granted.");
   }
   assertLifecycle(version);
-  return ensureSubscription(version);
+  return ensureSubscription(version, publicKeyValue);
 }
 
 async function reconcile(enabled: boolean) {
