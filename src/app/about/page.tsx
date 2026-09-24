@@ -14,6 +14,7 @@ const sections = [
   ["about.marketplaceTitle", "about.marketplaceBody"],
   ["about.howTitle", "about.howBody"],
   ["about.identityTitle", "about.identityBody"],
+  ["about.companyTitle", "about.companyBody"],
 ] as const;
 
 export default function AboutPage() {

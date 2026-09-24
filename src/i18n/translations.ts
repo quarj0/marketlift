@@ -153,10 +153,13 @@ const en: Dictionary = {
     "Marketlift helps buyers find vehicles, property, phones, electronics, fashion and everyday items from sellers across Brazil. Search and location tools make relevant local listings easier to discover.",
   "about.howTitle": "How Marketlift works",
   "about.howBody":
-    "Sellers publish listings and interested buyers contact them through the marketplace. Buyers and sellers arrange product payment and delivery directly; Marketlift does not hold product payments or provide escrow.",
+    "Sellers publish listings and interested buyers can contact them through the marketplace. Some eligible listings may support Marketlift online checkout and delivery features, while other transactions are arranged directly between buyer and seller.",
   "about.identityTitle": "What the Marketlift name represents",
   "about.identityBody":
-    "Marketlift Brazil is a local classified-listings marketplace at marketlift.com.br. It is not an advertising analytics or campaign-measurement service.",
+    "Marketlift Brazil is a local marketplace at marketlift.com.br, operated by Marketlift Company LTDA.",
+  "about.companyTitle": "Company information",
+  "about.companyBody":
+    "Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil.",
 
   "account.menu": "Account menu",
   "account.overview": "Overview",
@@ -357,10 +360,13 @@ const ptBR: Dictionary = {
     "O Marketlift ajuda compradores a encontrar veículos, imóveis, celulares, eletrônicos, moda e itens do dia a dia anunciados por vendedores em todo o Brasil. As ferramentas de busca e localização facilitam a descoberta de anúncios relevantes por perto.",
   "about.howTitle": "Como o Marketlift funciona",
   "about.howBody":
-    "Os vendedores publicam anúncios e os compradores interessados entram em contato pelo marketplace. Compradores e vendedores combinam diretamente o pagamento e a entrega dos produtos; o Marketlift não recebe pagamentos de produtos nem oferece custódia (escrow).",
+    "Os vendedores publicam anúncios e os compradores interessados podem entrar em contato pelo marketplace. Alguns anúncios elegíveis podem oferecer checkout online e recursos de entrega do Marketlift, enquanto outras transações são combinadas diretamente entre comprador e vendedor.",
   "about.identityTitle": "O que o nome Marketlift representa",
   "about.identityBody":
-    "O Marketlift Brasil é um marketplace de anúncios classificados locais disponível em marketlift.com.br. Não é um serviço de análise de publicidade nem de mensuração de campanhas.",
+    "O Marketlift Brasil é um marketplace local disponível em marketlift.com.br, operado pela Marketlift Company LTDA.",
+  "about.companyTitle": "Informações da empresa",
+  "about.companyBody":
+    "Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil.",
 
   "account.menu": "Menu da conta",
   "account.overview": "Visão geral",
