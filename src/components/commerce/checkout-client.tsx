@@ -25,8 +25,7 @@ import {
 import { useMarket } from "@/providers/market-provider";
 import { useLocale } from "@/providers/locale-provider";
 
-const pendingCheckoutKey = (listingId: string) =>
-  `marketlift:stripe-checkout:${listingId}`;
+const pendingCheckoutKey = (listingId: string) => `__c:${listingId}`;
 
 export function CheckoutClient({ listingId }: { listingId: string }) {
   const { formatMoney } = useMarket();
@@ -54,7 +53,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
   const [zipCode, setZipCode] = useState("");
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(pendingCheckoutKey(listingId));
+    const raw = window.sessionStorage.getItem(pendingCheckoutKey(listingId));
     if (!raw) return;
     let savedUrl = "";
     try {
@@ -63,10 +62,10 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
       if (saved.url && age >= 0 && age < 35 * 60 * 1000) {
         savedUrl = saved.url;
       } else {
-        window.localStorage.removeItem(pendingCheckoutKey(listingId));
+        window.sessionStorage.removeItem(pendingCheckoutKey(listingId));
       }
     } catch {
-      window.localStorage.removeItem(pendingCheckoutKey(listingId));
+      window.sessionStorage.removeItem(pendingCheckoutKey(listingId));
     }
     if (!savedUrl) return;
     const timer = window.setTimeout(() => setResumeUrl(savedUrl), 0);
@@ -151,7 +150,7 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
         );
       }
 
-      window.localStorage.setItem(
+      window.sessionStorage.setItem(
         pendingCheckoutKey(listingId),
         JSON.stringify({
           url: checkoutUrl,
