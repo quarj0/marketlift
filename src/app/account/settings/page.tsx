@@ -171,7 +171,10 @@ function SettingsForm({
   }
 
   useEffect(() => {
-    void refreshPushDeviceStatus(true);
+    const timeoutId = window.setTimeout(() => {
+      void refreshPushDeviceStatus(true);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
     // Only reconcile this device when the settings screen is opened.
     // Reconciliation never triggers a browser permission prompt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
