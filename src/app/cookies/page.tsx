@@ -4,16 +4,16 @@ import { LegalDocument } from "@/components/legal/legal-document";
 import { MarketplaceShell } from "@/components/layout/marketplace-shell";
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions",
+  title: "Cookie Policy",
   description:
-    "Read the Terms and Conditions governing the Marketlift marketplace operated by Marketlift Company LTDA.",
-  alternates: { canonical: "/terms" },
+    "Read how Marketlift Company LTDA uses necessary cookies and browser storage.",
+  alternates: { canonical: "/cookies" },
 };
 
-export default function TermsPage() {
+export default function CookiesPage() {
   return (
     <MarketplaceShell>
-      <LegalDocument kind="terms" />
+      <LegalDocument kind="cookies" />
     </MarketplaceShell>
   );
 }
