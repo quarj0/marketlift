@@ -161,6 +161,27 @@ async function removeSubscription() {
   await retireLocalSubscription(subscription);
 }
 
+async function getStatus() {
+  if (!supported()) {
+    return {
+      supported: false,
+      permission: "unsupported" as const,
+      subscribed: false,
+    };
+  }
+
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  const subscription = registration
+    ? await registration.pushManager.getSubscription()
+    : null;
+
+  return {
+    supported: true,
+    permission: Notification.permission,
+    subscribed: Boolean(subscription),
+  };
+}
+
 async function enable() {
   if (!supported()) throw new Error("This browser does not support Web Push.");
   const version = lifecycleVersion;
@@ -196,4 +217,5 @@ export const webPushService = {
   reconcile,
   cancelPendingReconciliation,
   hasPersistedSubscription,
+  getStatus,
 };
