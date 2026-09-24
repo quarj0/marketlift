@@ -33,7 +33,7 @@ const termsEn: LegalCopy = {
     {
       title: "1. About Marketlift and acceptance",
       paragraphs: [
-        "Marketlift is operated by Marketlift Company LTDA (\"Marketlift\", \"we\", \"us\" or \"our\"), CNPJ 69.204.820/0001-00, with registered office at Rua Ledóina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil. By creating an account, publishing a listing, contacting another user, purchasing a Marketlift service or using an eligible checkout, you agree to these Terms and the policies referenced here.",
+        "Marketlift is operated by Marketlift Company LTDA (\"Marketlift\", \"we\", \"us\" or \"our\"), CNPJ 69.204.820/0001-00, with registered office at Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil. By creating an account, publishing a listing, contacting another user, purchasing a Marketlift service or using an eligible checkout, you agree to these Terms and the policies referenced here.",
         "If you do not agree with these Terms, do not use the platform. Mandatory rights granted by Brazilian law are not waived by these Terms.",
       ],
     },
@@ -194,7 +194,7 @@ const termsPt: LegalCopy = {
     {
       title: "1. Sobre o Marketlift e aceitação",
       paragraphs: [
-        "O Marketlift é operado pela Marketlift Company LTDA (\"Marketlift\", \"nós\" ou \"nosso\"), CNPJ 69.204.820/0001-00, com sede registrada na Rua Ledóina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil. Ao criar uma conta, publicar um anúncio, contatar outro usuário, contratar um serviço do Marketlift ou usar um checkout elegível, você concorda com estes Termos e com as políticas aqui referenciadas.",
+        "O Marketlift é operado pela Marketlift Company LTDA (\"Marketlift\", \"nós\" ou \"nosso\"), CNPJ 69.204.820/0001-00, com sede registrada na Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil. Ao criar uma conta, publicar um anúncio, contatar outro usuário, contratar um serviço do Marketlift ou usar um checkout elegível, você concorda com estes Termos e com as políticas aqui referenciadas.",
         "Se você não concordar com estes Termos, não utilize a plataforma. Direitos obrigatórios assegurados pela legislação brasileira não são renunciados por estes Termos.",
       ],
     },
@@ -355,7 +355,7 @@ const privacyEn: LegalCopy = {
     {
       title: "1. Controller and scope",
       paragraphs: [
-        "Marketlift Company LTDA, CNPJ 69.204.820/0001-00, with registered office at Rua Ledóina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil, is the controller responsible for decisions about the personal data it processes to operate Marketlift, except where a third-party provider independently determines how it processes data under its own legal role.",
+        "Marketlift Company LTDA, CNPJ 69.204.820/0001-00, with registered office at Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil, is the controller responsible for decisions about the personal data it processes to operate Marketlift, except where a third-party provider independently determines how it processes data under its own legal role.",
         "This Policy applies to the public marketplace, registered accounts, seller tools, order and delivery features, support, moderation and administrative operations connected to Marketlift.",
       ],
     },
@@ -502,7 +502,7 @@ const privacyPt: LegalCopy = {
     {
       title: "1. Controlador e escopo",
       paragraphs: [
-        "A Marketlift Company LTDA, CNPJ 69.204.820/0001-00, com sede registrada na Rua Ledóina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil, é a controladora responsável pelas decisões sobre os dados pessoais tratados para operar o Marketlift, exceto quando um terceiro determinar de forma independente como tratará dados sob sua própria responsabilidade legal.",
+        "A Marketlift Company LTDA, CNPJ 69.204.820/0001-00, com sede registrada na Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil, é a controladora responsável pelas decisões sobre os dados pessoais tratados para operar o Marketlift, exceto quando um terceiro determinar de forma independente como tratará dados sob sua própria responsabilidade legal.",
         "Esta Política se aplica ao marketplace público, contas registradas, ferramentas de vendedor, recursos de pedidos e entrega, suporte, moderação e operações administrativas ligadas ao Marketlift.",
       ],
     },
