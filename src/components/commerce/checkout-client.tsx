@@ -459,9 +459,33 @@ export function CheckoutClient({ listingId }: { listingId: string }) {
             : `${locale === "pt-BR" ? "Pagar" : "Pay"} ${finalTotal}`}
         </Button>
         <p className="mt-3 text-center text-[11px] leading-4 text-slate-500">
-          {locale === "pt-BR"
-            ? "Ao continuar, o pedido fica registrado no Marketlift para entrega, suporte, disputa e reembolso."
-            : "By continuing, the order is recorded in Marketlift for fulfillment, support, disputes and refunds."}
+          {locale === "pt-BR" ? (
+            <>
+              Ao continuar, o pedido fica registrado no Marketlift para entrega,
+              suporte, disputa e reembolso. Você concorda com os{" "}
+              <Link className="font-semibold text-brand-700 hover:underline" href="/terms">
+                Termos e Condições
+              </Link>{" "}
+              e reconhece a{" "}
+              <Link className="font-semibold text-brand-700 hover:underline" href="/privacy">
+                Política de Privacidade
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              By continuing, the order is recorded in Marketlift for
+              fulfillment, support, disputes and refunds. You agree to the{" "}
+              <Link className="font-semibold text-brand-700 hover:underline" href="/terms">
+                Terms &amp; Conditions
+              </Link>{" "}
+              and acknowledge the{" "}
+              <Link className="font-semibold text-brand-700 hover:underline" href="/privacy">
+                Privacy Policy
+              </Link>
+              .
+            </>
+          )}
         </p>
       </aside>
     </div>
