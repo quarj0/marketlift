@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useMutation,
   useQuery,
@@ -112,106 +112,136 @@ function SettingsForm({
 
   const [form, setForm] = useState<AccountSettings>(initialSettings);
   const [saved, setSaved] = useState(false);
-  const [pushPending, setPushPending] = useState(false);
+  const [pendingKey, setPendingKey] = useState<keyof AccountSettings | "pushDevice" | null>(null);
   const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
+  const [pushDeviceStatus, setPushDeviceStatus] = useState<Awaited<ReturnType<typeof webPushService.getStatus>> | null>(null);
 
   const mutation = useMutation({
     mutationFn: accountService.updateSettings,
 
-    onMutate: (next) => {
-      const previous = form;
-      setForm({ ...form, ...next });
-      setSaved(false);
-      return { previous };
-    },
-
     onSuccess: (data) => {
       setForm(data);
       setLocale(data.language);
-
-      queryClient.setQueryData(
-        ["account", "settings"],
-        data,
-      );
-
+      queryClient.setQueryData(["account", "settings"], data);
       setSaved(true);
-      window.setTimeout(
-        () => setSaved(false),
-        2200,
-      );
-    },
-
-    onError: (_error, _variables, context) => {
-      if (context?.previous) {
-        setForm(context.previous);
-        setLocale(context.previous.language);
-      }
+      window.setTimeout(() => setSaved(false), 2200);
     },
   });
 
-  const settingPending = mutation.isPending || pushPending;
+  async function refreshPushDeviceStatus(reconcile = false) {
+    try {
+      if (reconcile && (form.pushMessages || form.pushListingUpdates)) {
+        await webPushService.reconcile(true);
+      }
+      setPushDeviceStatus(await webPushService.getStatus());
+    } catch {
+      setPushDeviceStatus(await webPushService.getStatus());
+    }
+  }
 
-  function persist<K extends keyof AccountSettings>(
+  useEffect(() => {
+    void refreshPushDeviceStatus(true);
+    // Only reconcile this device when the settings screen is opened.
+    // Reconciliation never triggers a browser permission prompt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function persist<K extends keyof AccountSettings>(
     key: K,
     value: AccountSettings[K],
   ) {
-    if (settingPending) return;
-    mutation.mutate({
-      ...form,
-      [key]: value,
-      language: locale,
-    });
+    if (pendingKey) return;
+    const previous = form;
+    setPendingKey(key);
+    setSaved(false);
+    setForm((current) => ({ ...current, [key]: value }));
+    try {
+      await mutation.mutateAsync({ [key]: value } as Partial<AccountSettings>);
+    } catch {
+      setForm(previous);
+    } finally {
+      setPendingKey(null);
+    }
   }
 
   async function persistBrowserNotification(
     key: "pushMessages" | "pushListingUpdates",
     value: boolean,
   ) {
-    if (settingPending) return;
+    if (pendingKey) return;
+    const previous = form;
+    setPendingKey(key);
     setNotificationNotice(null);
-    setPushPending(true);
-    const next = {
-      ...form,
-      [key]: value,
-      language: locale,
-    };
+    setSaved(false);
+    setForm((current) => ({ ...current, [key]: value }));
 
     try {
       if (value) {
         await webPushService.enable();
-        await mutation.mutateAsync(next);
-        return;
       }
 
-      const updated = await mutation.mutateAsync(next);
+      const updated = await mutation.mutateAsync({ [key]: value });
       if (!updated.pushMessages && !updated.pushListingUpdates) {
         await webPushService.removeSubscription();
       }
+      await refreshPushDeviceStatus(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "";
+      setForm(previous);
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
       setNotificationNotice(
         locale === "pt-BR"
           ? message.includes("permission")
-            ? "Permita notificações nas configurações do navegador para ativar este alerta."
-            : "Não foi possível configurar as notificações push neste dispositivo. Tente novamente."
+            ? "As notificações estão bloqueadas neste navegador. Permita notificações nas configurações do site e tente novamente."
+            : "Não foi possível ativar as notificações neste dispositivo. Tente novamente."
           : message.includes("permission")
-            ? "Allow notifications in your browser settings to enable this alert."
-            : "Web Push could not be configured on this device. Please try again.",
+            ? "Notifications are blocked in this browser. Allow them in the site settings and try again."
+            : "Browser notifications could not be enabled on this device. Please try again.",
       );
+      await refreshPushDeviceStatus(false);
     } finally {
-      setPushPending(false);
+      setPendingKey(null);
     }
   }
 
-  function updateLanguage(
+  async function enablePushOnThisDevice() {
+    if (pendingKey) return;
+    setPendingKey("pushDevice");
+    setNotificationNotice(null);
+    try {
+      await webPushService.enable();
+      await refreshPushDeviceStatus(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      setNotificationNotice(
+        locale === "pt-BR"
+          ? message.includes("permission")
+            ? "As notificações estão bloqueadas neste navegador. Altere a permissão do site nas configurações do navegador."
+            : "Não foi possível registrar este dispositivo para notificações."
+          : message.includes("permission")
+            ? "Notifications are blocked in this browser. Change this site's notification permission in your browser settings."
+            : "This device could not be registered for browser notifications.",
+      );
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  async function updateLanguage(
     language: AccountSettings["language"],
   ) {
-    if (settingPending) return;
+    if (pendingKey) return;
+    const previous = form;
+    setPendingKey("language");
     setLocale(language);
-    mutation.mutate({
-      ...form,
-      language,
-    });
+    setForm((current) => ({ ...current, language }));
+    try {
+      await mutation.mutateAsync({ language });
+    } catch {
+      setForm(previous);
+      setLocale(previous.language);
+    } finally {
+      setPendingKey(null);
+    }
   }
 
   return (
@@ -239,8 +269,8 @@ function SettingsForm({
             title={t("settings.emailMessages")}
             description={t("settings.emailMessagesBody")}
             checked={form.emailMessages}
-            disabled={settingPending}
-            onChange={(value) => persist("emailMessages", value)}
+            disabled={pendingKey === "emailMessages"}
+            onChange={(value) => void persist("emailMessages", value)}
           />
 
           <SettingRow
@@ -248,8 +278,8 @@ function SettingsForm({
             title={t("settings.emailListing")}
             description={t("settings.emailListingBody")}
             checked={form.emailListingUpdates}
-            disabled={settingPending}
-            onChange={(value) => persist("emailListingUpdates", value)}
+            disabled={pendingKey === "emailListingUpdates"}
+            onChange={(value) => void persist("emailListingUpdates", value)}
           />
 
           <SettingRow
@@ -257,7 +287,7 @@ function SettingsForm({
             title={t("settings.pushMessages")}
             description={t("settings.pushMessagesBody")}
             checked={form.pushMessages}
-            disabled={settingPending}
+            disabled={pendingKey === "pushMessages" || pendingKey === "pushDevice"}
             onChange={(value) => void persistBrowserNotification("pushMessages", value)}
           />
 
@@ -266,7 +296,7 @@ function SettingsForm({
             title={t("settings.pushListing")}
             description={t("settings.pushListingBody")}
             checked={form.pushListingUpdates}
-            disabled={settingPending}
+            disabled={pendingKey === "pushListingUpdates" || pendingKey === "pushDevice"}
             onChange={(value) => void persistBrowserNotification("pushListingUpdates", value)}
           />
 
@@ -275,8 +305,8 @@ function SettingsForm({
             title={t("settings.recommendations")}
             description={t("settings.recommendationsBody")}
             checked={form.emailRecommendations}
-            disabled={settingPending}
-            onChange={(value) => persist("emailRecommendations", value)}
+            disabled={pendingKey === "emailRecommendations"}
+            onChange={(value) => void persist("emailRecommendations", value)}
           />
 
           <SettingRow
@@ -284,8 +314,8 @@ function SettingsForm({
             title={t("settings.marketing")}
             description={t("settings.marketingBody")}
             checked={form.marketingEmails}
-            disabled={settingPending}
-            onChange={(value) => persist("marketingEmails", value)}
+            disabled={pendingKey === "marketingEmails"}
+            onChange={(value) => void persist("marketingEmails", value)}
           />
         </div>
 
@@ -293,6 +323,45 @@ function SettingsForm({
           <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900" role="status">
             {notificationNotice}
           </p>
+        )}
+
+        {pushDeviceStatus && (
+          <div className="mt-3 flex flex-col gap-2 border-t pt-3 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {!pushDeviceStatus.supported
+                ? locale === "pt-BR"
+                  ? "Este navegador não oferece suporte a notificações push."
+                  : "This browser does not support push notifications."
+                : pushDeviceStatus.subscribed
+                  ? locale === "pt-BR"
+                    ? "Este dispositivo está registrado para notificações do Marketlift."
+                    : "This device is registered for Marketlift notifications."
+                  : pushDeviceStatus.permission === "denied"
+                    ? locale === "pt-BR"
+                      ? "As notificações estão bloqueadas neste navegador."
+                      : "Notifications are blocked in this browser."
+                    : form.pushMessages || form.pushListingUpdates
+                      ? locale === "pt-BR"
+                        ? "As preferências estão ativas, mas este dispositivo ainda não está registrado."
+                        : "Your preferences are on, but this device is not registered yet."
+                      : locale === "pt-BR"
+                        ? "Ative uma opção de notificação do navegador para registrar este dispositivo."
+                        : "Turn on a browser notification option to register this device."}
+            </span>
+            {pushDeviceStatus.supported &&
+              !pushDeviceStatus.subscribed &&
+              (form.pushMessages || form.pushListingUpdates) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={pendingKey === "pushDevice"}
+                  onClick={() => void enablePushOnThisDevice()}
+                >
+                  {locale === "pt-BR" ? "Ativar neste dispositivo" : "Enable on this device"}
+                </Button>
+              )}
+          </div>
         )}
       </section>
 
@@ -319,8 +388,8 @@ function SettingsForm({
             title={t("settings.online")}
             description={t("settings.onlineBody")}
             checked={form.showOnlineStatus}
-            disabled={settingPending}
-            onChange={(value) => persist("showOnlineStatus", value)}
+            disabled={pendingKey === "showOnlineStatus"}
+            onChange={(value) => void persist("showOnlineStatus", value)}
           />
 
           <SettingRow
@@ -328,8 +397,8 @@ function SettingsForm({
             title={t("settings.phone")}
             description={t("settings.phoneBody")}
             checked={form.showPhoneToSellers}
-            disabled={settingPending}
-            onChange={(value) => persist("showPhoneToSellers", value)}
+            disabled={pendingKey === "showPhoneToSellers"}
+            onChange={(value) => void persist("showPhoneToSellers", value)}
           />
         </div>
       </section>
@@ -359,9 +428,9 @@ function SettingsForm({
 
             <select
               value={locale}
-              disabled={settingPending}
+              disabled={Boolean(pendingKey)}
               onChange={(event) =>
-                updateLanguage(event.target.value as AccountSettings["language"])
+                void updateLanguage(event.target.value as AccountSettings["language"])
               }
               className="h-11 w-full rounded-xl border bg-white px-3.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -388,13 +457,13 @@ function SettingsForm({
 
       <AccountSecurityControls />
 
-      {settingPending && (
+      {pendingKey && (
         <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800" role="status">
           {t("common.saving")}
         </div>
       )}
 
-      {saved && !settingPending && (
+      {saved && !pendingKey && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
           {t("settings.saved")}
         </div>
