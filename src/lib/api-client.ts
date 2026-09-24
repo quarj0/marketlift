@@ -69,19 +69,9 @@ export function resolveApiUrl(path: string) {
   return `${API_BASE_URL}/${path.replace(/^\/+/, "")}`;
 }
 
-function getCookie(name: string) {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie
-    .split("; ")
-    .find((part) => part.startsWith(`${encodeURIComponent(name)}=`));
-  return match ? decodeURIComponent(match.slice(match.indexOf("=") + 1)) : "";
-}
-
 let csrfPromise: Promise<string> | null = null;
 
 export async function ensureCsrfToken() {
-  const existing = getCookie("csrftoken");
-  if (existing) return existing;
   if (!csrfPromise) {
     csrfPromise = requestFetch(resolveApiUrl("/api/v1/auth/csrf/"), {
       method: "GET",
@@ -96,7 +86,7 @@ export async function ensureCsrfToken() {
             { status: response.status },
           );
         const body = (await response.json()) as { csrfToken?: string };
-        return getCookie("csrftoken") || body.csrfToken || "";
+        return body.csrfToken || "";
       })
       .finally(() => {
         csrfPromise = null;

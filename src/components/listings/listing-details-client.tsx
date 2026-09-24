@@ -84,7 +84,7 @@ export function ListingDetailsClient({ slug, initialListing }: { slug: string; i
   useEffect(() => {
     if (!listing?.id) return;
 
-    const key = `marketlift:view:${listing.id}`;
+    const key = `__v:${listing.id}`;
     try {
       if (window.sessionStorage.getItem(key)) return;
       window.sessionStorage.setItem(key, "pending");
