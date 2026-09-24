@@ -479,7 +479,7 @@ const privacyEn: LegalCopy = {
     {
       title: "16. Cookies and browser storage",
       paragraphs: [
-        "Marketlift uses strictly necessary session/security cookies and browser storage needed for functions such as login, CSRF protection, preferences, checkout continuity and view de-duplication. See the Cookie Policy for details.",
+        "Marketlift uses strictly necessary session and security technologies, together with limited browser storage, to support sign-in, request integrity, preferences, checkout continuity and basic marketplace functionality. See the Cookie Policy for details.",
       ],
     },
     {
@@ -626,7 +626,7 @@ const privacyPt: LegalCopy = {
     {
       title: "16. Cookies e armazenamento no navegador",
       paragraphs: [
-        "O Marketlift utiliza cookies estritamente necessários de sessão/segurança e armazenamento no navegador para funções como login, proteção CSRF, preferências, continuidade de checkout e deduplicação de visualizações. Consulte a Política de Cookies para detalhes.",
+        "O Marketlift utiliza tecnologias estritamente necessárias de sessão e segurança, além de armazenamento limitado no navegador, para login, integridade de requisições, preferências, continuidade de checkout e funcionamento básico do marketplace. Consulte a Política de Cookies para detalhes.",
       ],
     },
     {
@@ -649,7 +649,7 @@ const cookiesEn: LegalCopy = {
     {
       title: "1. What cookies are",
       paragraphs: [
-        "Cookies are small files or values stored by a website in your browser. Similar browser technologies, such as localStorage and sessionStorage, can store preferences or short-lived application state.",
+        "Cookies are small browser-stored values used by websites. Related browser-storage technologies can retain limited preferences or short-lived application state needed for site functionality.",
       ],
     },
     {
@@ -658,16 +658,16 @@ const cookiesEn: LegalCopy = {
         "Marketlift currently relies primarily on first-party cookies that are necessary for the service to work securely. These cookies are not used to build advertising profiles.",
       ],
       bullets: [
-        "marketlift_sessionid: keeps a signed-in marketplace session associated with the correct account. It is configured as an HTTP-only session cookie and may remain valid for up to the configured session period unless you sign out or the session is invalidated.",
-        "csrftoken: supports cross-site request forgery protection for authenticated or state-changing requests.",
-        "marketlift_admin_sessionid: a separate strictly necessary session cookie used only by authorized administrators in the administration console.",
+        "Authenticated-session cookies keep a signed-in session associated with the correct account and are protected from ordinary page scripts.",
+        "Request-integrity cookies help protect authenticated or state-changing requests from cross-site forgery and similar abuse.",
+        "Separate security boundaries may use distinct strictly necessary session cookies so public marketplace activity and authorized administration sessions do not share the same browser session state.",
       ],
     },
     {
       title: "3. Browser storage used for functionality",
       paragraphs: [
-        "Marketlift may use localStorage or sessionStorage for non-advertising functionality such as remembering the selected market, retaining a recent checkout continuation link for a limited time, avoiding duplicate view-count events within a browser session and preserving other interface preferences.",
-        "Browser storage is not automatically sent with every web request in the same way as cookies, but it remains stored in the browser until it expires, is replaced or is cleared.",
+        "Marketlift may use limited browser storage for non-advertising functionality such as remembering a selected market, keeping short-lived checkout continuity information, avoiding duplicate view-count events within a browser session and preserving interface preferences.",
+        "This browser-held state is used only for the stated functional purposes and remains on the device until it expires, is replaced or is cleared by the application or the user.",
       ],
     },
     {
@@ -709,7 +709,7 @@ const cookiesPt: LegalCopy = {
     {
       title: "1. O que são cookies",
       paragraphs: [
-        "Cookies são pequenos arquivos ou valores armazenados pelo site no navegador. Tecnologias semelhantes, como localStorage e sessionStorage, podem guardar preferências ou estados temporários da aplicação.",
+        "Cookies são pequenos valores armazenados pelo navegador para o funcionamento de sites. Tecnologias relacionadas de armazenamento no navegador podem manter preferências limitadas ou estados temporários necessários ao funcionamento da plataforma.",
       ],
     },
     {
@@ -718,16 +718,16 @@ const cookiesPt: LegalCopy = {
         "O Marketlift utiliza principalmente cookies próprios estritamente necessários para o funcionamento seguro do serviço. Esses cookies não são usados para criar perfis publicitários.",
       ],
       bullets: [
-        "marketlift_sessionid: mantém a sessão autenticada do marketplace associada à conta correta. É configurado como cookie HTTP-only e pode permanecer válido durante o período de sessão configurado, salvo logout ou invalidação.",
-        "csrftoken: oferece proteção contra falsificação de requisições entre sites (CSRF) em requisições autenticadas ou que alteram dados.",
-        "marketlift_admin_sessionid: cookie de sessão estritamente necessário e separado, usado somente por administradores autorizados no console administrativo.",
+        "Cookies de sessão autenticada mantêm a sessão vinculada à conta correta e são protegidos contra acesso por scripts comuns da página.",
+        "Cookies de integridade de requisição ajudam a proteger ações autenticadas ou que alteram dados contra falsificação entre sites e abusos semelhantes.",
+        "Limites de segurança separados podem utilizar cookies de sessão estritamente necessários distintos para que a atividade pública do marketplace e sessões administrativas autorizadas não compartilhem o mesmo estado de sessão no navegador.",
       ],
     },
     {
       title: "3. Armazenamento no navegador para funcionalidades",
       paragraphs: [
-        "O Marketlift pode utilizar localStorage ou sessionStorage para funcionalidades não publicitárias, como lembrar o mercado selecionado, manter por tempo limitado um link recente para continuar um checkout, evitar contagem duplicada de visualizações na mesma sessão do navegador e preservar outras preferências da interface.",
-        "Esse armazenamento não é enviado automaticamente em toda requisição da mesma forma que cookies, mas pode permanecer no navegador até expirar, ser substituído ou ser apagado.",
+        "O Marketlift pode utilizar armazenamento limitado no navegador para funcionalidades não publicitárias, como lembrar o mercado selecionado, manter por curto período informações de continuidade do checkout, evitar contagem duplicada de visualizações na mesma sessão do navegador e preservar preferências da interface.",
+        "Esse estado mantido no navegador é usado apenas para as finalidades funcionais descritas e permanece no dispositivo até expirar, ser substituído ou ser apagado pela aplicação ou pelo usuário.",
       ],
     },
     {
