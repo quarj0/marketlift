@@ -103,7 +103,7 @@ export function MarketplaceFooter() {
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div>
             <p>{t("footer.rights")}</p>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[11px] text-slate-300">
               Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · São Paulo, SP
             </p>
           </div>
