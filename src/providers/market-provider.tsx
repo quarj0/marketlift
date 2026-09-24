@@ -16,7 +16,7 @@ import {
   type MarketProfile,
 } from "@/services/market.service";
 
-const STORAGE_KEY = "marketlift.marketCode";
+const STORAGE_KEY = "__m";
 
 const FALLBACK_MARKET: MarketProfile = {
   code: "BR",
