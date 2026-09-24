@@ -159,7 +159,7 @@ const en: Dictionary = {
     "Marketlift Brazil is a local marketplace at marketlift.com.br, operated by Marketlift Company LTDA.",
   "about.companyTitle": "Company information",
   "about.companyBody":
-    "Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · Rua Ledóina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil.",
+    "Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brazil.",
 
   "account.menu": "Account menu",
   "account.overview": "Overview",
@@ -366,7 +366,7 @@ const ptBR: Dictionary = {
     "O Marketlift Brasil é um marketplace local disponível em marketlift.com.br, operado pela Marketlift Company LTDA.",
   "about.companyTitle": "Informações da empresa",
   "about.companyBody":
-    "Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · Rua Ledóina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil.",
+    "Marketlift Company LTDA · CNPJ 69.204.820/0001-00 · Rua Ledoina Denis Ramires, 61, Casa 5, Vila Franca, São Paulo - SP, CEP 05776-440, Brasil.",
 
   "account.menu": "Menu da conta",
   "account.overview": "Visão geral",
