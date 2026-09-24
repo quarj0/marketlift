@@ -112,21 +112,52 @@ function SettingsForm({
 
   const [form, setForm] = useState<AccountSettings>(initialSettings);
   const [saved, setSaved] = useState(false);
-  const [pendingKey, setPendingKey] = useState<keyof AccountSettings | "pushDevice" | null>(null);
+  const [pendingKeys, setPendingKeys] = useState<Set<string>>(() => new Set());
   const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
   const [pushDeviceStatus, setPushDeviceStatus] = useState<Awaited<ReturnType<typeof webPushService.getStatus>> | null>(null);
 
   const mutation = useMutation({
     mutationFn: accountService.updateSettings,
 
-    onSuccess: (data) => {
-      setForm(data);
-      setLocale(data.language);
-      queryClient.setQueryData(["account", "settings"], data);
+    onSuccess: (data, variables) => {
+      const changedKeys = Object.keys(variables) as (keyof AccountSettings)[];
+      setForm((current) => {
+        const next = { ...current };
+        for (const key of changedKeys) next[key] = data[key] as never;
+        return next;
+      });
+      queryClient.setQueryData<AccountSettings>(
+        ["account", "settings"],
+        (current) => {
+          if (!current) return data;
+          const next = { ...current };
+          for (const key of changedKeys) next[key] = data[key] as never;
+          return next;
+        },
+      );
+      if (variables.language) setLocale(data.language);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2200);
     },
   });
+
+  function isPending(key: string) {
+    return pendingKeys.has(key);
+  }
+
+  function setPending(key: string, value: boolean) {
+    setPendingKeys((current) => {
+      const next = new Set(current);
+      if (value) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  const pushBusy =
+    isPending("pushMessages") ||
+    isPending("pushListingUpdates") ||
+    isPending("pushDevice");
 
   async function refreshPushDeviceStatus(reconcile = false) {
     try {
@@ -150,17 +181,17 @@ function SettingsForm({
     key: K,
     value: AccountSettings[K],
   ) {
-    if (pendingKey) return;
-    const previous = form;
-    setPendingKey(key);
+    if (isPending(String(key))) return;
+    const previous = form[key];
+    setPending(String(key), true);
     setSaved(false);
     setForm((current) => ({ ...current, [key]: value }));
     try {
       await mutation.mutateAsync({ [key]: value } as Partial<AccountSettings>);
     } catch {
-      setForm(previous);
+      setForm((current) => ({ ...current, [key]: previous }));
     } finally {
-      setPendingKey(null);
+      setPending(String(key), false);
     }
   }
 
@@ -168,9 +199,9 @@ function SettingsForm({
     key: "pushMessages" | "pushListingUpdates",
     value: boolean,
   ) {
-    if (pendingKey) return;
-    const previous = form;
-    setPendingKey(key);
+    if (pushBusy) return;
+    const previous = form[key];
+    setPending(key, true);
     setNotificationNotice(null);
     setSaved(false);
     setForm((current) => ({ ...current, [key]: value }));
@@ -186,7 +217,7 @@ function SettingsForm({
       }
       await refreshPushDeviceStatus(false);
     } catch (error) {
-      setForm(previous);
+      setForm((current) => ({ ...current, [key]: previous }));
       const message = error instanceof Error ? error.message.toLowerCase() : "";
       setNotificationNotice(
         locale === "pt-BR"
@@ -199,13 +230,13 @@ function SettingsForm({
       );
       await refreshPushDeviceStatus(false);
     } finally {
-      setPendingKey(null);
+      setPending(key, false);
     }
   }
 
   async function enablePushOnThisDevice() {
-    if (pendingKey) return;
-    setPendingKey("pushDevice");
+    if (pushBusy) return;
+    setPending("pushDevice", true);
     setNotificationNotice(null);
     try {
       await webPushService.enable();
@@ -222,25 +253,25 @@ function SettingsForm({
             : "This device could not be registered for browser notifications.",
       );
     } finally {
-      setPendingKey(null);
+      setPending("pushDevice", false);
     }
   }
 
   async function updateLanguage(
     language: AccountSettings["language"],
   ) {
-    if (pendingKey) return;
-    const previous = form;
-    setPendingKey("language");
+    if (isPending("language")) return;
+    const previous = form.language;
+    setPending("language", true);
     setLocale(language);
     setForm((current) => ({ ...current, language }));
     try {
       await mutation.mutateAsync({ language });
     } catch {
-      setForm(previous);
-      setLocale(previous.language);
+      setForm((current) => ({ ...current, language: previous }));
+      setLocale(previous);
     } finally {
-      setPendingKey(null);
+      setPending("language", false);
     }
   }
 
@@ -269,7 +300,7 @@ function SettingsForm({
             title={t("settings.emailMessages")}
             description={t("settings.emailMessagesBody")}
             checked={form.emailMessages}
-            disabled={pendingKey === "emailMessages"}
+            disabled={isPending("emailMessages")}
             onChange={(value) => void persist("emailMessages", value)}
           />
 
@@ -278,7 +309,7 @@ function SettingsForm({
             title={t("settings.emailListing")}
             description={t("settings.emailListingBody")}
             checked={form.emailListingUpdates}
-            disabled={pendingKey === "emailListingUpdates"}
+            disabled={isPending("emailListingUpdates")}
             onChange={(value) => void persist("emailListingUpdates", value)}
           />
 
@@ -287,7 +318,7 @@ function SettingsForm({
             title={t("settings.pushMessages")}
             description={t("settings.pushMessagesBody")}
             checked={form.pushMessages}
-            disabled={pendingKey === "pushMessages" || pendingKey === "pushDevice"}
+            disabled={pushBusy}
             onChange={(value) => void persistBrowserNotification("pushMessages", value)}
           />
 
@@ -296,7 +327,7 @@ function SettingsForm({
             title={t("settings.pushListing")}
             description={t("settings.pushListingBody")}
             checked={form.pushListingUpdates}
-            disabled={pendingKey === "pushListingUpdates" || pendingKey === "pushDevice"}
+            disabled={pushBusy}
             onChange={(value) => void persistBrowserNotification("pushListingUpdates", value)}
           />
 
@@ -305,7 +336,7 @@ function SettingsForm({
             title={t("settings.recommendations")}
             description={t("settings.recommendationsBody")}
             checked={form.emailRecommendations}
-            disabled={pendingKey === "emailRecommendations"}
+            disabled={isPending("emailRecommendations")}
             onChange={(value) => void persist("emailRecommendations", value)}
           />
 
@@ -314,7 +345,7 @@ function SettingsForm({
             title={t("settings.marketing")}
             description={t("settings.marketingBody")}
             checked={form.marketingEmails}
-            disabled={pendingKey === "marketingEmails"}
+            disabled={isPending("marketingEmails")}
             onChange={(value) => void persist("marketingEmails", value)}
           />
         </div>
@@ -355,7 +386,7 @@ function SettingsForm({
                   type="button"
                   size="sm"
                   variant="outline"
-                  disabled={pendingKey === "pushDevice"}
+                  disabled={isPending("pushDevice")}
                   onClick={() => void enablePushOnThisDevice()}
                 >
                   {locale === "pt-BR" ? "Ativar neste dispositivo" : "Enable on this device"}
@@ -388,7 +419,7 @@ function SettingsForm({
             title={t("settings.online")}
             description={t("settings.onlineBody")}
             checked={form.showOnlineStatus}
-            disabled={pendingKey === "showOnlineStatus"}
+            disabled={isPending("showOnlineStatus")}
             onChange={(value) => void persist("showOnlineStatus", value)}
           />
 
@@ -397,7 +428,7 @@ function SettingsForm({
             title={t("settings.phone")}
             description={t("settings.phoneBody")}
             checked={form.showPhoneToSellers}
-            disabled={pendingKey === "showPhoneToSellers"}
+            disabled={isPending("showPhoneToSellers")}
             onChange={(value) => void persist("showPhoneToSellers", value)}
           />
         </div>
@@ -428,7 +459,7 @@ function SettingsForm({
 
             <select
               value={locale}
-              disabled={Boolean(pendingKey)}
+              disabled={isPending("language")}
               onChange={(event) =>
                 void updateLanguage(event.target.value as AccountSettings["language"])
               }
@@ -457,13 +488,13 @@ function SettingsForm({
 
       <AccountSecurityControls />
 
-      {pendingKey && (
+      {pendingKeys.size > 0 && (
         <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800" role="status">
           {t("common.saving")}
         </div>
       )}
 
-      {saved && !pendingKey && (
+      {saved && pendingKeys.size === 0 && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
           {t("settings.saved")}
         </div>
