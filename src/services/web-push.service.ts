@@ -166,6 +166,7 @@ async function getStatus() {
     return {
       supported: false,
       permission: "unsupported" as const,
+      browserSubscribed: false,
       subscribed: false,
     };
   }
@@ -178,7 +179,10 @@ async function getStatus() {
   return {
     supported: true,
     permission: Notification.permission,
-    subscribed: Boolean(subscription),
+    browserSubscribed: Boolean(subscription),
+    subscribed: Boolean(
+      subscription && persistedEndpoint === subscription.endpoint,
+    ),
   };
 }
 
